@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { applyRefundEvent } from '../../../features/refunds/sync';
@@ -10,7 +11,8 @@ export const prerender = false;
 
 // POST /api/admin/refunds — reconciliation actions for refund events that
 // arrived from a provider but could not be matched to an order.
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const form = await request.formData();
   const action = String(form.get('_action'));
   const back = redirect('/admin/orders', 303);

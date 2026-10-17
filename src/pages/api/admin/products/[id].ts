@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import {
@@ -100,7 +101,8 @@ async function resolveVariantFormIds(
 
 // POST /api/admin/products/:id — update (with optional image replace), or delete
 // when `_action=delete`. :id is the prod_ public ID; numeric ids are not accepted.
-export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
+export const POST: APIRoute = async ({ request, params, redirect: astroRedirect, locals }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const publicId = parsePublicId(params.id, 'product');
   const existing = publicId ? await getProductByPublicId(env.DB, publicId) : null;
   if (!publicId || !existing) return new Response('Not found', { status: 404 });

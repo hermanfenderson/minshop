@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { createCategory, getCategoryByPublicId } from '../../../features/categories/db';
@@ -11,7 +12,8 @@ export const prerender = false;
 const fail = (msg: string) => `/admin/categories/new?error=${encodeURIComponent(msg)}`;
 
 // POST /api/admin/categories — create a category, then redirect to the list.
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const form = await request.formData();
   const parsed = parseCategoryForm(form);
   if ('error' in parsed) return redirect(fail(parsed.error), 303);

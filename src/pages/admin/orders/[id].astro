@@ -153,7 +153,7 @@ const willEmailCustomer =
 
 <AdminLayout title={`Order #${num}`} active="orders">
   <a
-    href="/admin/orders"
+    href={Astro.locals.urls.href('/admin/orders')}
     class="text-xs uppercase tracking-widest text-gray-400 hover:text-brand"
   >
     &larr; Back to orders
@@ -185,7 +185,7 @@ const willEmailCustomer =
         <p class="mt-1">Payment arrived after the stock hold ended. The order remains paid, but these quantities could not be deducted automatically.</p>
         <div class="mt-4 space-y-3">
           {inventoryExceptions.filter((entry) => !entry.resolved_at).map((entry) => (
-            <form method="post" action={`/api/admin/orders/${publicId}`} class="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-white/60 p-3">
+            <form method="post" action={Astro.locals.urls.href(`/api/admin/orders/${publicId}`)} class="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-white/60 p-3">
               <span><strong>{items.find((item) => item.product_id === entry.product_id && item.variant_id === entry.variant_id)?.name ?? 'Order item'}</strong>: ordered {entry.requested_qty}, only {entry.consumed_qty} available at settlement ({entry.shortfall_qty} oversold).</span>
               <input type="hidden" name="_action" value="resolve_inventory_exception" />
               <input type="hidden" name="exception_id" value={entry.public_id} />
@@ -307,7 +307,7 @@ const willEmailCustomer =
             {labelRecord.error && <> ({labelRecord.error})</>} — it <strong>may</strong> have been
             charged (Shippo order reference <code class="text-xs">{order.public_id}</code>).
           </p>
-          <form method="POST" action={`/api/admin/orders/${order.public_id}`}>
+          <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)}>
             <input type="hidden" name="_action" value="label_reconcile" />
             <button type="submit" class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">
               Reconcile with Shippo
@@ -321,7 +321,7 @@ const willEmailCustomer =
               in your Shippo dashboard and will not be recorded here. Reconcile first when
               in doubt.
             </p>
-            <form method="POST" action={`/api/admin/orders/${order.public_id}`} class="mt-2">
+            <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)} class="mt-2">
               <input type="hidden" name="_action" value="label_force_discard" />
               <button type="submit" class="rounded-md border border-amber-400 px-3 py-1.5 font-medium uppercase tracking-wider hover:bg-amber-100">
                 I accept the risk — force discard
@@ -357,7 +357,7 @@ const willEmailCustomer =
               </a>
             </p>
           )}
-          <form method="POST" action={`/api/admin/orders/${order.public_id}`}>
+          <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)}>
             <input type="hidden" name="_action" value="unfulfill" />
             <button type="submit" class="text-xs uppercase tracking-widest text-gray-400 hover:text-red-600">
               Mark unfulfilled
@@ -382,7 +382,7 @@ const willEmailCustomer =
                     been charged. Reconciling asks Shippo directly: a found label is recorded here
                     and the order fulfilled; a confirmed no-purchase reopens rate fetching.
                   </p>
-                  <form method="POST" action={`/api/admin/orders/${order.public_id}`}>
+                  <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)}>
                     <input type="hidden" name="_action" value="label_reconcile" />
                     <button type="submit" class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">
                       Reconcile with Shippo
@@ -396,7 +396,7 @@ const willEmailCustomer =
                       in your Shippo dashboard and will not be recorded here. Reconcile first when
                       in doubt.
                     </p>
-                    <form method="POST" action={`/api/admin/orders/${order.public_id}`} class="mt-2">
+                    <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)} class="mt-2">
                       <input type="hidden" name="_action" value="label_force_discard" />
                       <button type="submit" class="rounded-md border border-amber-400 px-3 py-1.5 font-medium uppercase tracking-wider hover:bg-amber-100">
                         I accept the risk — force discard
@@ -427,7 +427,7 @@ const willEmailCustomer =
               )}
               {labelRatesError && <p class="mb-3 text-red-700">{labelRatesError}</p>}
               {labelRates.length > 0 ? (
-                <form method="POST" action={`/api/admin/orders/${order.public_id}`} class="space-y-2">
+                <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)} class="space-y-2">
                   <input type="hidden" name="_action" value="buy_label" />
                   {labelRates.map((r, i) => (
                     <label class="flex items-center gap-3">
@@ -464,11 +464,11 @@ const willEmailCustomer =
                       : 'No customer email will be sent (demo order or no email on file).'}
                   </p>
                 </form>
-                <form method="POST" action={`/api/admin/orders/${order.public_id}`} id="label-discard">
+                <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)} id="label-discard">
                   <input type="hidden" name="_action" value="label_discard" />
                 </form>
               ) : (
-                <form method="POST" action={`/api/admin/orders/${order.public_id}`} class="space-y-3">
+                <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)} class="space-y-3">
                   <input type="hidden" name="_action" value="label_rates" />
                   <div class="grid gap-3 sm:grid-cols-3">
                     <label class="block sm:col-span-3">
@@ -530,7 +530,7 @@ const willEmailCustomer =
           )}
         <form
           method="POST"
-          action={`/api/admin/orders/${order.public_id}`}
+          action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)}
           class="flex flex-wrap items-end gap-3 text-sm"
         >
           <input type="hidden" name="_action" value="fulfill" />
@@ -621,7 +621,7 @@ const willEmailCustomer =
             token is never shown here — the email is the only delivery path. */}
         <form
           method="POST"
-          action={`/api/admin/orders/${order.public_id}`}
+          action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)}
           onsubmit={`return confirm('Email ${order.email} a fresh order link? Every previously shared link for this order stops working immediately.')`}
         >
           <input type="hidden" name="_action" value="reissue_link" />
@@ -657,7 +657,7 @@ const willEmailCustomer =
           <tr class="border-b border-line">
             <td class="py-3 pr-4">
               {it.product_public_id ? (
-                <a href={`/admin/products/${it.product_public_id}/edit`} class="text-accent hover:underline">
+                <a href={Astro.locals.urls.href(`/admin/products/${it.product_public_id}/edit`)} class="text-accent hover:underline">
                   {it.name}
                 </a>
               ) : (

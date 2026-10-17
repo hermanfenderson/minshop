@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { getEmailProvider } from '../../../../features/email';
 import { getStoreSettings } from '../../../../features/settings/db';
@@ -9,7 +10,8 @@ export const prerender = false;
 // email config (provider + key + from), so the owner can confirm delivery actually
 // works (the only way past "binding present ≠ deliverable"). Returns JSON for the
 // dashboard's inline button; falls back to a ?msg redirect without JS.
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const form = await request.formData();
   const to = String(form.get('test_to') ?? '').trim();
   const wantsJson = request.headers.get('x-requested-with') === 'fetch';

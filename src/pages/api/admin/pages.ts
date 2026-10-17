@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { createDraft, getPage } from '../../../features/pages/db';
@@ -8,7 +9,8 @@ export const prerender = false;
 // POST /api/admin/pages — create an unpublished draft, then send the author to
 // the editor. Two steps on purpose: attaching media needs a page id, so the
 // editor only opens once the row exists.
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const form = await request.formData();
   const title = String(form.get('title') ?? '').trim();
   if (!title) {

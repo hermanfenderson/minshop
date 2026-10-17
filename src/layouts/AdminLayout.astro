@@ -1,5 +1,5 @@
 ---
-import { cookieName } from '../deployment';
+import { cookieName, withMount } from '../deployment';
 import { getConfig } from '../config';
 import { paymentsInDemoMode } from '../features/payments';
 import { shippingFor } from '../features/shipping/effective';
@@ -32,7 +32,7 @@ const config = getConfig();
 const storeName = Astro.locals.settings?.storeName ?? config.storeName;
 // Nudge to finish first-run setup — except while on the wizard itself.
 const showSetupNudge =
-  !Astro.locals.settings?.setupComplete && Astro.url.pathname !== '/admin/setup';
+  !Astro.locals.settings?.setupComplete && Astro.locals.path !== '/admin/setup';
 // Show "Log out" only when a password-login session cookie is present. Under
 // Cloudflare Access or local dev there's no minshop session to clear.
 const showLogout = !!Astro.cookies.get(cookieName('admin_session'))?.value;
@@ -46,16 +46,16 @@ const shippingIssue = shippingFor(Astro.locals.settings).issue;
 const inventoryExceptionCount = await countUnresolvedInventoryExceptions(env.DB);
 
 const nav: { key: Section; label: string; href: string }[] = [
-  { key: 'dashboard', label: 'Dashboard', href: '/admin' },
-  { key: 'products', label: 'Products', href: '/admin/products' },
-  { key: 'orders', label: 'Orders', href: '/admin/orders' },
-  { key: 'customers', label: 'Customers', href: '/admin/customers' },
-  { key: 'categories', label: 'Categories', href: '/admin/categories' },
-  { key: 'pages', label: 'Pages', href: '/admin/pages' },
-  { key: 'navigation', label: 'Navigation', href: '/admin/navigation' },
-  { key: 'shipping', label: 'Shipping', href: '/admin/shipping' },
-  { key: 'media', label: 'Media', href: '/admin/media' },
-  { key: 'settings', label: 'Settings', href: '/admin/settings' },
+  { key: 'dashboard', label: 'Dashboard', href: Astro.locals.urls.href('/admin') },
+  { key: 'products', label: 'Products', href: Astro.locals.urls.href('/admin/products') },
+  { key: 'orders', label: 'Orders', href: Astro.locals.urls.href('/admin/orders') },
+  { key: 'customers', label: 'Customers', href: Astro.locals.urls.href('/admin/customers') },
+  { key: 'categories', label: 'Categories', href: Astro.locals.urls.href('/admin/categories') },
+  { key: 'pages', label: 'Pages', href: Astro.locals.urls.href('/admin/pages') },
+  { key: 'navigation', label: 'Navigation', href: Astro.locals.urls.href('/admin/navigation') },
+  { key: 'shipping', label: 'Shipping', href: Astro.locals.urls.href('/admin/shipping') },
+  { key: 'media', label: 'Media', href: Astro.locals.urls.href('/admin/media') },
+  { key: 'settings', label: 'Settings', href: Astro.locals.urls.href('/admin/settings') },
 ];
 // Label of the section we're on — shown in the collapsed mobile disclosure.
 const currentLabel = nav.find((n) => n.key === active)?.label ?? 'Menu';
@@ -66,14 +66,14 @@ const currentLabel = nav.find((n) => n.key === active)?.label ?? 'Menu';
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href={withMount('/favicon.ico')} sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href={withMount('/favicon.svg')} />
     <title>{pageTitle}</title>
   </head>
   <body class="min-h-screen bg-paper text-ink antialiased">
     <div class="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8 sm:flex-row sm:gap-10">
       <aside class="w-full shrink-0 sm:w-52 sm:border-r sm:border-line sm:pr-6">
-        <a href="/" class="mb-4 block font-serif text-xl tracking-tight sm:mb-8">{storeName}</a>
+        <a href={Astro.locals.urls.href('/')} class="mb-4 block font-serif text-xl tracking-tight sm:mb-8">{storeName}</a>
 
         {/* Pure-CSS disclosure (a hidden checkbox toggle). On mobile the list is
             collapsed by default and the labelled summary card expands it — no JS,
@@ -136,8 +136,8 @@ const currentLabel = nav.find((n) => n.key === active)?.label ?? 'Menu';
         </nav>
 
         <div class="mt-4 flex gap-4 text-xs uppercase tracking-widest text-gray-400 sm:mt-8 sm:flex-col sm:gap-2">
-          <a href="/" class="hover:text-brand">&larr; View store</a>
-          {showLogout && <a href="/admin/logout" class="hover:text-brand">Log out</a>}
+          <a href={Astro.locals.urls.href('/')} class="hover:text-brand">&larr; View store</a>
+          {showLogout && <a href={Astro.locals.urls.href('/admin/logout')} class="hover:text-brand">Log out</a>}
         </div>
       </aside>
 
@@ -145,7 +145,7 @@ const currentLabel = nav.find((n) => n.key === active)?.label ?? 'Menu';
         {
           showSetupNudge && (
             <a
-              href="/admin/setup"
+              href={Astro.locals.urls.href('/admin/setup')}
               class="mb-6 flex items-center justify-between gap-3 rounded-md border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-gray-700 transition hover:border-brand"
             >
               <span>
@@ -169,7 +169,7 @@ const currentLabel = nav.find((n) => n.key === active)?.label ?? 'Menu';
         {
           shippingIssue && (
             <a
-              href="/admin/shipping"
+              href={Astro.locals.urls.href('/admin/shipping')}
               class="mb-6 flex items-center justify-between gap-3 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 transition hover:border-red-500"
             >
               <span>
@@ -183,7 +183,7 @@ const currentLabel = nav.find((n) => n.key === active)?.label ?? 'Menu';
         {
           inventoryExceptionCount > 0 && (
             <a
-              href="/admin/orders#inventory-exceptions"
+              href={Astro.locals.urls.href('/admin/orders#inventory-exceptions')}
               class="mb-6 flex items-center justify-between gap-3 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 transition hover:border-red-500"
             >
               <span>

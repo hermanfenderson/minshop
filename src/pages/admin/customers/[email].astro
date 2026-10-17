@@ -22,7 +22,7 @@ const { page, offset, totalPages } = paginate(
   PAGE_SIZE,
 );
 const orders = await getCustomerOrders(env.DB, email, PAGE_SIZE, offset);
-const base = `/admin/customers/${encodeURIComponent(email)}`;
+const base = Astro.locals.urls.href(`/admin/customers/${encodeURIComponent(email)}`);
 const hrefFor = (p: number) => queryHref(base, { page: p > 1 ? p : undefined });
 const onCfg = getConfig().orderNumber;
 const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
@@ -30,7 +30,7 @@ const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
 
 <AdminLayout title={email} active="customers">
   <a
-    href="/admin/customers"
+    href={Astro.locals.urls.href('/admin/customers')}
     class="text-xs uppercase tracking-widest text-gray-400 hover:text-brand"
   >
     &larr; Back to customers
@@ -55,7 +55,7 @@ const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
           <tr class="border-b border-line">
             <td class="py-3 pr-4">
               <a
-                href={`/admin/orders/${o.public_id}`}
+                href={Astro.locals.urls.href(`/admin/orders/${o.public_id}`)}
                 class="text-accent tabular-nums hover:underline"
               >
                 #{orderReference(o.public_id, o.id, onCfg)}

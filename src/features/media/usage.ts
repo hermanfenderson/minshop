@@ -1,3 +1,4 @@
+import { withMount } from '../../deployment';
 import type { D1Database } from '@cloudflare/workers-types';
 
 /** Everywhere one media item is currently used. Empty everywhere = deletable. */
@@ -122,13 +123,13 @@ export interface UsageLink {
 export function usageLinks(usage: MediaUsage): UsageLink[] {
   return [
     ...usage.products.map((p) => ({
-      href: `/admin/products/${p.public_id}/edit`,
+      href: withMount(`/admin/products/${p.public_id}/edit`),
       label: p.name,
       kind: 'product' as const,
       title: `Edit ${p.name}`,
     })),
     ...usage.pages.map((p) => ({
-      href: `/admin/pages/${p.public_id}/edit`,
+      href: withMount(`/admin/pages/${p.public_id}/edit`),
       label: p.title,
       kind: 'page' as const,
       title: `Edit the ${p.title} page`,
@@ -137,7 +138,7 @@ export function usageLinks(usage: MediaUsage): UsageLink[] {
     ...(usage.logo
       ? [
           {
-            href: '/admin/settings',
+            href: withMount('/admin/settings'),
             label: 'Store logo',
             kind: 'logo' as const,
             title: 'Change the logo in Settings',

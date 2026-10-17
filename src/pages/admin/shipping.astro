@@ -171,7 +171,7 @@ if (Astro.request.method === 'POST') {
           ? await replaceInvalidShippingConfig(env.DB, String(form.get('fingerprint') ?? ''), parsedForm.document)
           : await saveRuntimeShippingConfig(env.DB, parsedForm.revision, parsedForm.document);
 
-      if (result.ok) return Astro.redirect('/admin/shipping?saved=1', 303);
+      if (result.ok) return Astro.redirect(Astro.locals.urls.href('/admin/shipping?saved=1'), 303);
       if (result.reason === 'conflict') {
         conflict = true;
         notice = 'Shipping changed in another tab. Reload and review those changes before saving yours.';
@@ -230,10 +230,10 @@ const label = (path: string) => `text-xs uppercase tracking-widest text-gray-500
       <p class="mt-2 text-sm text-gray-500">
         Zones, rates, and free-shipping thresholds. Amounts are in {currency.toUpperCase()};
         weights are entered in <strong>{unit}</strong> and stored in grams — change the unit in{' '}
-        <a href="/admin/settings" class="underline hover:text-brand">Settings</a>.
+        <a href={Astro.locals.urls.href('/admin/settings')} class="underline hover:text-brand">Settings</a>.
       </p>
     </div>
-    <a href="/cart" class="text-xs uppercase tracking-widest text-gray-500 hover:text-brand">
+    <a href={Astro.locals.urls.href('/cart')} class="text-xs uppercase tracking-widest text-gray-500 hover:text-brand">
       View cart checkout &rarr;
     </a>
   </div>

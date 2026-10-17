@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { getConfig } from '../../../config';
@@ -102,7 +103,8 @@ export const GET: APIRoute = async ({ url }) => {
 
 // POST /api/admin/media — upload one or more images into the library.
 // Answers JSON to the picker (fetch) and redirects for a plain form post.
-export const POST: APIRoute = async ({ request, redirect, locals }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect, locals }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const form = await request.formData();
   const wantsJson = request.headers.get('accept')?.includes('application/json');
   const files = form.getAll('files').filter((f): f is File => f instanceof File && f.size > 0);

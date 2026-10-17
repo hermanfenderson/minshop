@@ -20,7 +20,7 @@ const formatDate = (iso: string) => dateFmt.format(new Date(`${iso.replace(' ', 
   <div class="mb-8 flex items-center justify-between">
     <h1 class="font-serif text-3xl tracking-tight">Pages</h1>
     <a
-      href="/admin/pages/new"
+      href={Astro.locals.urls.href('/admin/pages/new')}
       class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover"
     >
       New page
@@ -32,7 +32,7 @@ const formatDate = (iso: string) => dateFmt.format(new Date(`${iso.replace(' ', 
       <p class="py-12 text-center text-sm text-gray-500">
         No pages yet. Create one for About, Shipping, Returns, or Privacy, then add it to your
         {' '}
-        <a href="/admin/navigation" class="underline hover:text-brand">
+        <a href={Astro.locals.urls.href('/admin/navigation')} class="underline hover:text-brand">
           navigation
         </a>{' '}
         so shoppers can find it.
@@ -53,7 +53,7 @@ const formatDate = (iso: string) => dateFmt.format(new Date(`${iso.replace(' ', 
             {pages.map((page) => (
               <tr class="border-b border-line">
                 <td class="py-3 pr-4">
-                  <a href={`/admin/pages/${page.public_id}/edit`} class="font-medium hover:text-brand">
+                  <a href={Astro.locals.urls.href(`/admin/pages/${page.public_id}/edit`)} class="font-medium hover:text-brand">
                     {page.title}
                   </a>
                 </td>
@@ -72,7 +72,7 @@ const formatDate = (iso: string) => dateFmt.format(new Date(`${iso.replace(' ', 
                   <span class="inline-flex items-center gap-3">
                     {page.published !== 0 && (
                       <a
-                        href={`/pages/${page.slug}`}
+                        href={Astro.locals.urls.href(`/pages/${page.slug}`)}
                         target="_blank"
                         rel="noopener"
                         class="text-xs uppercase tracking-widest text-gray-500 hover:text-brand"
@@ -81,14 +81,14 @@ const formatDate = (iso: string) => dateFmt.format(new Date(`${iso.replace(' ', 
                       </a>
                     )}
                     <a
-                      href={`/admin/pages/${page.public_id}/edit`}
+                      href={Astro.locals.urls.href(`/admin/pages/${page.public_id}/edit`)}
                       class="text-xs uppercase tracking-widest text-gray-500 hover:text-brand"
                     >
                       Edit
                     </a>
                     <form
                       method="POST"
-                      action={`/api/admin/pages/${page.public_id}`}
+                      action={Astro.locals.urls.href(`/api/admin/pages/${page.public_id}`)}
                       onsubmit={`return confirm('${
                         menuRefs.has(page.id)
                           ? 'This page is linked from your navigation. Deleting it hides that link on the storefront. Continue?'

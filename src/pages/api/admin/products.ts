@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import {
@@ -29,7 +30,8 @@ export const prerender = false;
 const fail = (msg: string) => `/admin/products/new?error=${encodeURIComponent(msg)}`;
 
 // POST /api/admin/products — create a product (with optional image), then redirect.
-export const POST: APIRoute = async ({ request, redirect, locals }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect, locals }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const form = await request.formData();
   // The store's display unit, plus whether a blank weight would make this product
   // unsellable (every enabled zone prices by weight). Both come from settings the

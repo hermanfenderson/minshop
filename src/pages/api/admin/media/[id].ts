@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { getMediaByPublicId, deleteMediaRecord } from '../../../../features/media/db';
@@ -10,7 +11,8 @@ export const prerender = false;
 // POST /api/admin/media/:id — `_action=delete` removes a library item.
 // :id is the med_ public ID; numeric row ids are not accepted.
 // This is the ONLY place an object leaves storage.
-export const POST: APIRoute = async ({ request, params, redirect }) => {
+export const POST: APIRoute = async ({ request, params, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const publicId = parsePublicId(params.id, 'media');
   if (!publicId) return new Response('Invalid id', { status: 400 });
 

@@ -13,7 +13,7 @@ import Turnstile from '../../features/auth/Turnstile.astro';
 const cred = await adminCredential(env.DB);
 // No password set yet → nothing to log into; send them to the setup wizard (open
 // during bootstrap) to create one.
-if (!cred.enabled) return Astro.redirect('/admin/setup', 303);
+if (!cred.enabled) return Astro.redirect(Astro.locals.urls.href('/admin/setup'), 303);
 
 // Sessions are signed with AUTH_SECRET (high-entropy), bound to the credential via a
 // tag so rotation invalidates them. Fall back to the credential as the key only when
@@ -25,7 +25,7 @@ const now = Date.now() / 1000;
 if (
   await verifySession(Astro.cookies.get(cookieName('admin_session'))?.value ?? null, signingKey, cred.tagSource, now)
 ) {
-  return Astro.redirect('/admin', 303);
+  return Astro.redirect(Astro.locals.urls.href('/admin'), 303);
 }
 
 const SESSION_TTL = 7 * 24 * 3600; // 7 days
@@ -59,7 +59,7 @@ if (Astro.request.method === 'POST') {
       path: '/',
       maxAge: SESSION_TTL,
     });
-    return Astro.redirect('/admin', 303);
+    return Astro.redirect(Astro.locals.urls.href('/admin'), 303);
   }
 }
 ---
@@ -76,7 +76,7 @@ if (Astro.request.method === 'POST') {
       )
     }
 
-    <form method="POST" action="/admin/login" class="space-y-4">
+    <form method="POST" action={Astro.locals.urls.href('/admin/login')} class="space-y-4">
       <label class="block text-sm">
         <span class="mb-1 block font-medium">Password</span>
         <input

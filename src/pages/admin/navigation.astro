@@ -119,7 +119,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
         controls to keep in sync, and it all works without JavaScript. */}
     <form
       method="POST"
-      action="/api/admin/navigation"
+      action={Astro.locals.urls.href('/api/admin/navigation')}
       data-add-item
       class="flex flex-col gap-4"
     >
@@ -160,7 +160,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
           <button
             type="submit"
             formmethod="get"
-            formaction="/admin/navigation"
+            formaction={Astro.locals.urls.href('/admin/navigation')}
             hidden={!searchAllNeeded}
             class="rounded-md border border-line px-3 py-2 text-xs uppercase tracking-wider hover:border-brand hover:text-brand"
           >
@@ -323,7 +323,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
                         </summary>
                         <form
                           method="POST"
-                          action="/api/admin/navigation"
+                          action={Astro.locals.urls.href('/api/admin/navigation')}
                           class="mt-2 rounded-md bg-gray-50 p-2"
                         >
                           <input type="hidden" name="_action" value="label" />
@@ -362,7 +362,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
                     <div class="flex flex-none items-center gap-1">
                       {/* Up/Down, not drag-and-drop: works with no JavaScript.
                           The gallery's drag pattern can be layered on later. */}
-                      <form method="POST" action="/api/admin/navigation">
+                      <form method="POST" action={Astro.locals.urls.href('/api/admin/navigation')}>
                         <input type="hidden" name="_action" value="move" />
                         <input type="hidden" name="id" value={item.publicId} />
                         <input type="hidden" name="direction" value="up" />
@@ -375,7 +375,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
                           ↑
                         </button>
                       </form>
-                      <form method="POST" action="/api/admin/navigation">
+                      <form method="POST" action={Astro.locals.urls.href('/api/admin/navigation')}>
                         <input type="hidden" name="_action" value="move" />
                         <input type="hidden" name="id" value={item.publicId} />
                         <input type="hidden" name="direction" value="down" />
@@ -393,7 +393,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
                           undo. The other delete sites in admin all confirm. */}
                       <form
                         method="POST"
-                        action="/api/admin/navigation"
+                        action={Astro.locals.urls.href('/api/admin/navigation')}
                         onsubmit={`return confirm('Remove ${(item.text || 'this item').replace(/'/g, "\\'")} from the ${loc.title.toLowerCase()} menu?')`}
                       >
                         <input type="hidden" name="_action" value="remove" />
@@ -419,6 +419,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
 
 
 <script>
+  import { withMount } from '../../deployment';
   // Progressive enhancement over a form that already works without it.
   //
   // Baseline: pick a type, pick from its (server-filtered) <select>, submit —
@@ -556,7 +557,7 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
       body.set('location', menuLocation);
       for (const row of rows()) body.append('order', row.getAttribute('data-menu-item') ?? '');
       try {
-        const response = await fetch('/api/admin/navigation', {
+        const response = await fetch(withMount('/api/admin/navigation'), {
           method: 'POST',
           body,
           headers: { 'x-partial': '1' },

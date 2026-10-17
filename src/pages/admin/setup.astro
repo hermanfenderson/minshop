@@ -76,7 +76,7 @@ if (Astro.request.method === 'POST') {
     }
     await setSetting(env.DB, 'setup_complete', '1');
     await purgeCacheTags([CACHE_TAG.shell, CACHE_TAG.catalog]);
-    return Astro.redirect('/admin?msg=setup-complete', 303);
+    return Astro.redirect(Astro.locals.urls.href('/admin?msg=setup-complete'), 303);
   }
 }
 

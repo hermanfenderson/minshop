@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import {
@@ -34,7 +35,8 @@ export const prerender = false;
 //   _action=move     → swap image `image_id` up/down one slot
 //   _action=alt      → set image `image_id`'s alt text
 //   _action=delete   → remove image `image_id` (association only)
-export const POST: APIRoute = async ({ request, params, redirect }) => {
+export const POST: APIRoute = async ({ request, params, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const publicId = parsePublicId(params.id, 'product');
   const product = publicId ? await getProductByPublicId(env.DB, publicId) : null;
   if (!publicId || !product) return new Response('Not found', { status: 404 });

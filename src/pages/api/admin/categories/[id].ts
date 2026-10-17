@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import {
@@ -16,7 +17,8 @@ export const prerender = false;
 
 // POST /api/admin/categories/:id — update, or delete when `_action=delete`.
 // :id is the cat_ public ID; numeric row ids are not accepted.
-export const POST: APIRoute = async ({ request, params, redirect }) => {
+export const POST: APIRoute = async ({ request, params, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const publicId = parsePublicId(params.id, 'category');
   const category = publicId ? await getCategoryByPublicId(env.DB, publicId) : null;
   if (!category) return new Response('Not found', { status: 404 });

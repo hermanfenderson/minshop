@@ -13,10 +13,10 @@ const weightRequired = zonesRequireWeight(shippingFor(Astro.locals.settings).con
 ---
 
 <AdminLayout title="New product" active="products">
-  <a href="/admin/products" class="text-sm text-gray-500 hover:text-brand">&larr; Back to products</a>
+  <a href={Astro.locals.urls.href('/admin/products')} class="text-sm text-gray-500 hover:text-brand">&larr; Back to products</a>
   <h1 class="mt-4 mb-6 text-2xl font-bold">New product</h1>
   <ProductForm
-    action="/api/admin/products"
+    action={Astro.locals.urls.href('/api/admin/products')}
     submitLabel="Create product"
     categoryOptions={categoryOptions}
     error={error}

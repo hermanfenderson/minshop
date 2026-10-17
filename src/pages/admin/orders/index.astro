@@ -50,7 +50,7 @@ if (rawQuery !== null) {
     ].filter((c): c is string => c !== null);
     for (const candidate of candidates) {
       const found = await getOrderByPublicId(env.DB, candidate);
-      if (found) return Astro.redirect(`/admin/orders/${found.public_id}`, 302);
+      if (found) return Astro.redirect(Astro.locals.urls.href(`/admin/orders/${found.public_id}`), 302);
     }
     lookupError = `No order matches “${query}”.`;
   }
@@ -77,13 +77,13 @@ const orders = await listOrders(
 // Sort and pagination links carry the active filters, so paging or re-sorting a
 // filtered list doesn't silently drop back to everything.
 const hrefFor = (p: number) =>
-  queryHref('/admin/orders', { ...filterQuery, sort, dir, page: p > 1 ? p : undefined });
+  queryHref(Astro.locals.urls.href('/admin/orders'), { ...filterQuery, sort, dir, page: p > 1 ? p : undefined });
 const onCfg = getConfig().orderNumber;
 const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
 
 // Column header → sort by it, toggling direction (default desc on a new column).
 const sortHref = (col: string) =>
-  queryHref('/admin/orders', {
+  queryHref(Astro.locals.urls.href('/admin/orders'), {
     ...filterQuery,
     sort: col,
     dir: sort === col && dir === 'desc' ? 'asc' : 'desc',
@@ -115,7 +115,7 @@ const listError = Astro.url.searchParams.get('error');
         <ul class="mt-3 space-y-2 text-sm text-red-900">
           {inventoryExceptions.map((entry) => (
             <li>
-              <a class="font-medium underline" href={`/admin/orders/${entry.order_public_id}`}>
+              <a class="font-medium underline" href={Astro.locals.urls.href(`/admin/orders/${entry.order_public_id}`)}>
                 Order #{orderReference(entry.order_public_id, entry.order_id, onCfg)}
               </a>{' '}
               — {entry.shortfall_qty} unit{entry.shortfall_qty === 1 ? '' : 's'} oversold
@@ -159,7 +159,7 @@ const listError = Astro.url.searchParams.get('error');
                   <span>
                     Conflicts with{' '}
                     <a
-                      href={`/admin/orders/${conflictOrders.get(e.order_id)!.public_id}`}
+                      href={Astro.locals.urls.href(`/admin/orders/${conflictOrders.get(e.order_id)!.public_id}`)}
                       class="underline"
                     >
                       order #{orderReference(
@@ -170,7 +170,7 @@ const listError = Astro.url.searchParams.get('error');
                     </a>
                     {e.last_error ? ` — ${e.last_error.replace(/_/g, ' ')}` : ''}
                   </span>
-                  <form method="POST" action="/api/admin/refunds">
+                  <form method="POST" action={Astro.locals.urls.href('/api/admin/refunds')}>
                     <input type="hidden" name="_action" value="dismiss_refund_event" />
                     <input type="hidden" name="event_id" value={e.provider_event_id} />
                     <button
@@ -184,7 +184,7 @@ const listError = Astro.url.searchParams.get('error');
               ) : (
                 <Fragment>
                   <span>No order records this payment</span>
-                  <form method="POST" action="/api/admin/refunds">
+                  <form method="POST" action={Astro.locals.urls.href('/api/admin/refunds')}>
                     <input type="hidden" name="_action" value="retry_refund_event" />
                     <input type="hidden" name="event_id" value={e.provider_event_id} />
                     <button
@@ -208,7 +208,7 @@ const listError = Astro.url.searchParams.get('error');
       {/* Lookup accepts the customer reference in any form it was communicated:
           the bare 10-char token, the full ord_ ID, or a legacy calculated
           number preserved in order_reference_aliases. */}
-      <form method="GET" action="/admin/orders" class="flex items-center gap-2">
+      <form method="GET" action={Astro.locals.urls.href('/admin/orders')} class="flex items-center gap-2">
         <input
           type="search"
           name="q"
@@ -227,7 +227,7 @@ const listError = Astro.url.searchParams.get('error');
       {/* Exports exactly what's on screen. Handing back the whole table right
           after someone narrowed it is a quiet way to ship the wrong numbers. */}
       <a
-        href={queryHref('/admin/orders/export.csv', filterQuery)}
+        href={queryHref(Astro.locals.urls.href('/admin/orders/export.csv'), filterQuery)}
         class="rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 hover:border-brand hover:text-brand"
       >
         {filtered ? 'Export these' : 'Export CSV'}
@@ -244,7 +244,7 @@ const listError = Astro.url.searchParams.get('error');
   }
 
   <FilterBar
-    action="/admin/orders"
+    action={Astro.locals.urls.href('/admin/orders')}
     active={filtered}
     count={matchCount}
     noun="order"
@@ -307,7 +307,7 @@ const listError = Astro.url.searchParams.get('error');
         orders.map((o) => (
           <tr class="border-b border-line">
             <td data-label="Order #" class="py-3 pr-4">
-              <a href={`/admin/orders/${o.public_id}`} class="text-accent tabular-nums hover:underline">
+              <a href={Astro.locals.urls.href(`/admin/orders/${o.public_id}`)} class="text-accent tabular-nums hover:underline">
                 #{o.id}
               </a>
             </td>
@@ -317,7 +317,7 @@ const listError = Astro.url.searchParams.get('error');
                   the column for every row. The link and the title keep the full
                   value, so it stays copyable. */}
               <a
-                href={`/admin/orders/${o.public_id}`}
+                href={Astro.locals.urls.href(`/admin/orders/${o.public_id}`)}
                 title={o.public_id ?? undefined}
                 class="text-accent hover:underline"
               >
@@ -331,7 +331,7 @@ const listError = Astro.url.searchParams.get('error');
                   it fine and has the room. The title keeps it readable. */}
               {o.email ? (
                 <a
-                  href={`/admin/customers/${encodeURIComponent(o.email)}`}
+                  href={Astro.locals.urls.href(`/admin/customers/${encodeURIComponent(o.email)}`)}
                   title={o.email}
                   class="text-accent hover:underline sm:block sm:max-w-[11rem] sm:truncate"
                 >

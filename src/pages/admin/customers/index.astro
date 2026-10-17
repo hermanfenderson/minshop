@@ -17,12 +17,12 @@ const { page, offset, totalPages } = paginate(
 );
 const customers = await listCustomers(env.DB, orderByClause(sort, dir), PAGE_SIZE, offset);
 const hrefFor = (p: number) =>
-  queryHref('/admin/customers', { sort, dir, page: p > 1 ? p : undefined });
+  queryHref(Astro.locals.urls.href('/admin/customers'), { sort, dir, page: p > 1 ? p : undefined });
 const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
 
 // Column header → sort by it, toggling direction (default desc on a new column).
 const sortHref = (col: string) =>
-  queryHref('/admin/customers', {
+  queryHref(Astro.locals.urls.href('/admin/customers'), {
     sort: col,
     dir: sort === col && dir === 'desc' ? 'asc' : 'desc',
   });
@@ -56,7 +56,7 @@ const arrow = (col: string) => (sort === col ? (dir === 'asc' ? ' ↑' : ' ↓')
           <tr class="border-b border-line">
             <td class="py-3 pr-4">
               <a
-                href={`/admin/customers/${encodeURIComponent(c.email)}`}
+                href={Astro.locals.urls.href(`/admin/customers/${encodeURIComponent(c.email)}`)}
                 class="text-accent hover:underline"
               >
                 {c.email}

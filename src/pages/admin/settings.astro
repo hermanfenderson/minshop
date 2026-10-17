@@ -1,5 +1,5 @@
 ---
-import { cookieName } from '../../deployment';
+import { cookieName, withMount } from '../../deployment';
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import MediaPicker from '../../features/media/MediaPicker.astro';
@@ -316,12 +316,12 @@ if (Astro.request.method === 'POST') {
   if (!validationError) {
     // No-JS path: Post/Redirect/Get with a one-time flash banner.
     Astro.cookies.set(cookieName('flash'), 'Settings updated', {
-      path: '/admin/settings',
+      path: withMount('/admin/settings'),
       maxAge: 15,
       httpOnly: true,
       sameSite: 'lax',
     });
-    return Astro.redirect('/admin/settings', 303);
+    return Astro.redirect(Astro.locals.urls.href('/admin/settings'), 303);
   }
 }
 
@@ -332,7 +332,7 @@ const { currency } = cfg;
 // redirects from other endpoints (the reindex API); the inline script strips any
 // lingering ?msg from the URL after it's shown.
 const flash = Astro.cookies.get(cookieName('flash'))?.value ?? null;
-if (flash) Astro.cookies.delete(cookieName('flash'), { path: '/admin/settings' });
+if (flash) Astro.cookies.delete(cookieName('flash'), { path: withMount('/admin/settings') });
 const msg = validationError || flash || Astro.url.searchParams.get('msg');
 
 const settings = await getStoreSettings(env.DB);
@@ -681,7 +681,7 @@ const sections = [
             Your product list moved to <code>/products</code> when you set a custom home page,
             and no menu links to it — shoppers currently have no way to reach your catalog. Add
             a Catalog item in{' '}
-            <a href="/admin/navigation" class="underline hover:text-brand">
+            <a href={Astro.locals.urls.href('/admin/navigation')} class="underline hover:text-brand">
               Navigation
             </a>
             .
@@ -746,7 +746,7 @@ const sections = [
         rate editor so changing it can never reinterpret values typed on that page
         (forms always re-render converted from grams). */}
     <div class="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-4">
-      <a href="/admin/shipping" class="group block">
+      <a href={Astro.locals.urls.href('/admin/shipping')} class="group block">
         <p class="font-medium group-hover:text-brand">Shipping</p>
         <p class="text-xs text-gray-500">
           {effectiveShipping.enabled ? 'On' : 'Off'} ·{' '}
@@ -1211,7 +1211,7 @@ const sections = [
 
     {/* Send a test email using the SAVED config (save first, then test). Posts to its
         own endpoint, so the section-save handler ignores it. */}
-    <form method="POST" action="/api/admin/email/test" data-email-test class="mb-10 flex flex-wrap items-center gap-2">
+    <form method="POST" action={Astro.locals.urls.href('/api/admin/email/test')} data-email-test class="mb-10 flex flex-wrap items-center gap-2">
       <label class="text-xs uppercase tracking-widest text-gray-400">Send test email to</label>
       <input
         type="email"
@@ -1340,7 +1340,7 @@ const sections = [
       {
         searchProvider === 'vector' && vectorBindingsReady && (
           <div class="flex flex-wrap items-center gap-3 border-t border-gray-100 px-4 py-4">
-            <form method="POST" action="/api/admin/search/reindex" data-reindex-form>
+            <form method="POST" action={Astro.locals.urls.href('/api/admin/search/reindex')} data-reindex-form>
               <input type="hidden" name="cursor" value={reindexCursor} />
               <input type="hidden" name="processed" value={String(reindexProcessed)} />
               <button
@@ -1384,7 +1384,7 @@ const sections = [
       <div class="grid grid-cols-3 gap-4 px-4 py-4">
         <dt class="font-medium">Favicon</dt>
         <dd class="col-span-2 flex items-start gap-3">
-          <img src="/favicon.svg" alt="Current favicon" width="40" height="40" class="h-10 w-10 rounded" />
+          <img src={withMount('/favicon.svg')} alt="Current favicon" width="40" height="40" class="h-10 w-10 rounded" />
           <p class="text-sm text-gray-500">
             Replace <code>public/favicon.svg</code> and regenerate <code>public/favicon.ico</code>
             for clients that still request the legacy icon.

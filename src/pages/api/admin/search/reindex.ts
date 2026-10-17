@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import {
@@ -31,7 +32,8 @@ function nonNegativeInteger(value: FormDataEntryValue | null): number {
 // The wire-format cursor is the LAST PROCESSED product's prod_ public ID ('' =
 // start): admin output never carries a numeric row id, while the keyset itself
 // stays on the integer id internally.
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const wantsJson =
     request.headers.get('x-requested-with') === 'fetch' ||
     request.headers.get('accept')?.includes('application/json');

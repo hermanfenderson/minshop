@@ -10,7 +10,7 @@ import {
   resolveI18nSettings,
   type LocaleUrls,
 } from '../../i18n';
-import { MOUNT } from '../../deployment';
+import { MOUNT, withMount } from '../../deployment';
 
 // No language settings are read yet: the default (one language, no prefix)
 // makes every URL just mount + logical path.
@@ -30,4 +30,16 @@ export function storeUrls(origin: string, current?: { path: string; search?: str
     currentPath: current?.path,
     currentSearch: current?.search,
   });
+}
+
+type RedirectStatus = 300 | 301 | 302 | 303 | 304 | 307 | 308;
+
+/**
+ * Wraps Astro's `redirect` for handlers whose targets are admin paths (never a
+ * language): every logical path they name gains the mount.
+ */
+export function mountedRedirect(
+  redirect: (path: string, status?: RedirectStatus) => Response,
+): (path: string, status?: RedirectStatus) => Response {
+  return (path, status) => redirect(withMount(path), status);
 }

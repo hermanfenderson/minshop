@@ -55,13 +55,13 @@ const tools = [
 ---
 
 <AdminLayout title={`Edit ${page.title}`} active="pages">
-  <a href="/admin/pages" class="text-sm text-gray-500 hover:text-brand">&larr; Back to pages</a>
+  <a href={Astro.locals.urls.href('/admin/pages')} class="text-sm text-gray-500 hover:text-brand">&larr; Back to pages</a>
   <div class="mt-4 mb-6 flex flex-wrap items-center justify-between gap-4">
     <h1 class="font-serif text-3xl tracking-tight">Edit page</h1>
     {
       page.published !== 0 && (
         <a
-          href={`/pages/${page.slug}`}
+          href={Astro.locals.urls.href(`/pages/${page.slug}`)}
           target="_blank"
           rel="noopener"
           class="text-sm text-accent hover:underline"
@@ -94,7 +94,7 @@ const tools = [
     )
   }
 
-  <form method="POST" action={`/api/admin/pages/${page.public_id}`} data-page-form>
+  <form method="POST" action={Astro.locals.urls.href(`/api/admin/pages/${page.public_id}`)} data-page-form>
     <div class="flex flex-wrap gap-4">
       <label class="block flex-1 text-xs uppercase tracking-widest text-gray-400">
         Title
@@ -275,6 +275,7 @@ const tools = [
 </AdminLayout>
 
 <script>
+  import { withMount } from '../../../../deployment';
   const form = document.querySelector<HTMLFormElement>('[data-page-form]');
   const editor = form?.querySelector<HTMLTextAreaElement>('[data-editor]');
   const preview = form?.querySelector<HTMLElement>('[data-preview]');
@@ -370,7 +371,7 @@ const tools = [
       // alignment the storefront will.
       if (layoutSelect) body.append('layout', layoutSelect.value);
       try {
-        const res = await fetch('/api/admin/pages/preview', {
+        const res = await fetch(withMount('/api/admin/pages/preview'), {
           method: 'POST',
           body,
           signal: controller.signal,

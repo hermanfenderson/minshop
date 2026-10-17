@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import {
@@ -62,7 +63,8 @@ async function resolveTargetId(
 //   _action=reorder → set the whole order of one menu (drag-and-drop)
 //   _action=remove  → delete an item
 //   _action=label   → set or clear the label override
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const form = await request.formData();
   const action = String(form.get('_action'));
 

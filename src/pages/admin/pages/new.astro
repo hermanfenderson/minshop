@@ -5,7 +5,7 @@ const error = Astro.url.searchParams.get('error');
 ---
 
 <AdminLayout title="New page" active="pages">
-  <a href="/admin/pages" class="text-sm text-gray-500 hover:text-brand">&larr; Back to pages</a>
+  <a href={Astro.locals.urls.href('/admin/pages')} class="text-sm text-gray-500 hover:text-brand">&larr; Back to pages</a>
   <h1 class="mt-4 mb-6 font-serif text-3xl tracking-tight">New page</h1>
 
   {
@@ -18,7 +18,7 @@ const error = Astro.url.searchParams.get('error');
 
   {/* Step one of two: this creates an unpublished draft and redirects to the
       editor. Media can only be attached to a page that already has an id. */}
-  <form method="POST" action="/api/admin/pages" class="max-w-xl">
+  <form method="POST" action={Astro.locals.urls.href('/api/admin/pages')} class="max-w-xl">
     <label class="block text-xs uppercase tracking-widest text-gray-400">
       Title
       <input

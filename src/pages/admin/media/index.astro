@@ -15,7 +15,7 @@ const error = Astro.url.searchParams.get('error');
 const total = await countMedia(env.DB);
 const { page, offset, totalPages } = paginate(Astro.url.searchParams, total, MEDIA_PAGE_SIZE);
 const { items, usage, baseUrl } = await loadMediaPage(MEDIA_PAGE_SIZE, offset);
-const hrefFor = (p: number) => queryHref('/admin/media', { page: p > 1 ? p : undefined });
+const hrefFor = (p: number) => queryHref(Astro.locals.urls.href('/admin/media'), { page: p > 1 ? p : undefined });
 
 const dateFmt = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
 const formatDate = (iso: string) => dateFmt.format(new Date(`${iso.replace(' ', 'T')}Z`));
@@ -50,7 +50,7 @@ function formatSize(bytes: number | null): string | null {
 
   <form
     method="post"
-    action="/api/admin/media"
+    action={Astro.locals.urls.href('/api/admin/media')}
     enctype="multipart/form-data"
     class="mb-8 flex flex-wrap items-center gap-3 rounded-md border border-line p-4"
   >
@@ -136,7 +136,7 @@ function formatSize(bytes: number | null): string | null {
                   Copy URL
                 </button>
                 {unused && (
-                  <form method="post" action={`/api/admin/media/${m.public_id}`}>
+                  <form method="post" action={Astro.locals.urls.href(`/api/admin/media/${m.public_id}`)}>
                     <input type="hidden" name="_action" value="delete" />
                     <button
                       type="submit"

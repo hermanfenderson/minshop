@@ -55,6 +55,6 @@ const inputClass =
     <button type="submit" class="rounded-md bg-brand px-5 py-2 font-medium text-on-brand hover:bg-brand-hover">
       {submitLabel}
     </button>
-    <a href="/admin/categories" class="rounded-md border border-line px-5 py-2 hover:bg-surface">Cancel</a>
+    <a href={Astro.locals.urls.href('/admin/categories')} class="rounded-md border border-line px-5 py-2 hover:bg-surface">Cancel</a>
   </div>
 </form>

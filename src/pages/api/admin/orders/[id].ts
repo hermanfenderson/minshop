@@ -1,3 +1,4 @@
+import { mountedRedirect } from '../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import {
@@ -56,7 +57,8 @@ export const prerender = false;
 // POST /api/admin/orders/:id — fulfill, unfulfill, refund, or reissue the guest
 // link. :id is the order public ID (ord_ or a preserved legacy shape); numeric
 // row ids are not accepted.
-export const POST: APIRoute = async ({ request, params, redirect }) => {
+export const POST: APIRoute = async ({ request, params, redirect: astroRedirect }) => {
+  const redirect = mountedRedirect(astroRedirect);
   const publicId = parseOrderOrLegacyPublicId(params.id, 'order');
   const existing = publicId ? await getOrderByPublicId(env.DB, publicId) : null;
   if (!existing) return new Response('Not found', { status: 404 });
