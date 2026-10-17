@@ -20,3 +20,19 @@ export { createI18n, enI18n } from './translator';
 export type { I18n, I18nOptions } from './translator';
 export { checkCatalog, checkSourceCatalog, placeholders } from './check';
 export type { CatalogReport } from './check';
+export { joinMount, mountToBase, normalizeMountPath, stripMount } from './mount';
+export {
+  DEFAULT_I18N_SETTINGS,
+  RESERVED_SEGMENTS,
+  checkContentSourceChange,
+  describeDefaultLocaleChange,
+  resolveI18nSettings,
+  validateI18nSettings,
+} from './settings';
+export type {
+  DefaultLocaleChange,
+  I18nSettings,
+  RoutingStrategy,
+  SettingsIssue,
+  ValidateOptions,
+} from './settings';
