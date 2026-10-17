@@ -37,24 +37,48 @@ export function toMajorUnits(minor: number, currency: string): number {
   return minor / minorUnitsPerMajor(currency);
 }
 
+/**
+ * The Intl locale every formatter here defaults to. Output before i18n was
+ * en-US everywhere, so the default keeps existing pages byte-identical.
+ */
+export const DEFAULT_INTL = 'en-US';
+
 // `new Intl.NumberFormat` is expensive to construct, so cache one formatter per
-// currency and reuse it (a product listing calls this once per item).
+// locale + currency and reuse it (a product listing calls this once per item).
 const priceFormatters = new Map<string, Intl.NumberFormat>();
+const numberFormatters = new Map<string, Intl.NumberFormat>();
 
 /**
- * Format minor units for display, in an EXPLICIT currency.
+ * Format minor units for display, in an EXPLICIT currency and an optional Intl
+ * locale tag ('it-IT' → "12,00 €"; default en-US → "€12.00").
  *
  * The currency is required on purpose. `config.formatPrice` defaults it to the
  * store's configured currency, which reads deployment vars — harmless in a
  * route, but it makes any caller binding-aware. Presentation builders take the
  * currency from their caller instead, so they stay pure and unit-testable.
  */
-export function formatMoney(cents: number, currency: string): string {
+export function formatMoney(cents: number, currency: string, intl: string = DEFAULT_INTL): string {
   const code = currency.toUpperCase();
-  let formatter = priceFormatters.get(code);
+  const cacheKey = `${intl}|${code}`;
+  let formatter = priceFormatters.get(cacheKey);
   if (!formatter) {
-    formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: code });
-    priceFormatters.set(code, formatter);
+    formatter = new Intl.NumberFormat(intl, { style: 'currency', currency: code });
+    priceFormatters.set(cacheKey, formatter);
   }
   return formatter.format(toMajorUnits(cents, currency));
+}
+
+/** Format a plain number (grouping, decimals) in an Intl locale tag. */
+export function formatNumber(
+  value: number,
+  intl: string = DEFAULT_INTL,
+  opts: Intl.NumberFormatOptions = {},
+): string {
+  const cacheKey = `${intl}|${JSON.stringify(opts)}`;
+  let formatter = numberFormatters.get(cacheKey);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(intl, opts);
+    numberFormatters.set(cacheKey, formatter);
+  }
+  return formatter.format(value);
 }

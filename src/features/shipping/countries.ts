@@ -29,24 +29,33 @@ export function isCountryCode(value: unknown): value is string {
   return typeof value === 'string' && CODE_SET.has(value.toUpperCase());
 }
 
-let displayNames: Intl.DisplayNames | null | undefined;
+// One Intl.DisplayNames per language (null = ICU has no data for it), built lazily.
+const displayNames = new Map<string, Intl.DisplayNames | null>();
 
-/** Human label for a code, falling back to the code itself if ICU has no name. */
-export function countryName(code: string): string {
+/**
+ * Human label for a code in a language (English by default), falling back to
+ * the code itself if ICU has no name.
+ */
+export function countryName(code: string, locale = 'en'): string {
   const cc = code.toUpperCase();
-  if (displayNames === undefined) {
+  let names = displayNames.get(locale);
+  if (names === undefined) {
     try {
-      displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+      names = new Intl.DisplayNames([locale], { type: 'region' });
     } catch {
-      displayNames = null;
+      names = null;
     }
+    displayNames.set(locale, names);
   }
-  return displayNames?.of(cc) ?? cc;
+  return names?.of(cc) ?? cc;
 }
 
-/** Codes with names, sorted for a picker. Built on demand; callers may cache. */
-export function countryOptions(): Array<{ code: string; name: string }> {
-  return COUNTRY_CODES.map((code) => ({ code, name: countryName(code) })).sort((a, b) =>
-    a.name.localeCompare(b.name),
+/**
+ * Codes with names in a language (English by default), sorted for a picker in
+ * that language's collation. Built on demand; callers may cache.
+ */
+export function countryOptions(locale = 'en'): Array<{ code: string; name: string }> {
+  return COUNTRY_CODES.map((code) => ({ code, name: countryName(code, locale) })).sort((a, b) =>
+    a.name.localeCompare(b.name, locale),
   );
 }

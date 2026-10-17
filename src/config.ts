@@ -272,8 +272,15 @@ export function getConfig(): SiteConfig {
 // Currency scaling lives in the dependency-free ./money module (so unit-tested
 // code can use it without the Cloudflare runtime). Re-exported here as the app's
 // single money entry point.
-export { currencyDecimals, minorUnitsPerMajor, toMinorUnits, toMajorUnits } from './money';
+export {
+  currencyDecimals,
+  minorUnitsPerMajor,
+  toMinorUnits,
+  toMajorUnits,
+  formatNumber,
+} from './money';
 import { formatMoney } from './money';
+import { formatTimestamp } from './dates';
 
 /**
  * Format integer minor units as a localized price string. Defaults to the store
@@ -283,31 +290,24 @@ import { formatMoney } from './money';
 // Formatting itself lives in money.ts, which has no imports and so can be used
 // from pure code. This wrapper adds only the store-currency default, which is
 // the part that reads deployment vars.
-export function formatPrice(cents: number, currency: string = getConfig().currency): string {
-  return formatMoney(cents, currency);
+export function formatPrice(
+  cents: number,
+  currency: string = getConfig().currency,
+  intl?: string,
+): string {
+  return formatMoney(cents, currency, intl);
 }
 
 /**
- * Format a stored UTC timestamp in the configured time zone. Accepts SQLite's
- * `datetime('now')` format ("YYYY-MM-DD HH:MM:SS", UTC) or any ISO string;
- * returns '' for null/empty and the raw input if it can't be parsed. Single
- * source of truth for date display in the admin.
+ * Format a stored UTC timestamp in the configured time zone and an optional
+ * Intl locale tag (en-US by default). Single source of truth for date display
+ * in the admin; the parsing and formatting live in the pure ./dates module.
  */
 export function formatDate(
   value: string | null | undefined,
   opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' },
   timeZone: string = getConfig().timeZone,
+  intl?: string,
 ): string {
-  if (!value) return '';
-  // SQLite stores UTC without a zone marker; make it explicit so it isn't parsed
-  // as local time. (Our timestamps never contain 'T' or 'Z'.)
-  const iso = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return value;
-  try {
-    return new Intl.DateTimeFormat('en-US', { timeZone, ...opts }).format(d);
-  } catch {
-    // A bad deployment override should never break an order/admin page.
-    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...opts }).format(d);
-  }
+  return formatTimestamp(value, opts, timeZone, intl);
 }

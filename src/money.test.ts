@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { currencyDecimals, minorUnitsPerMajor, toMinorUnits, toMajorUnits } from './money';
+import {
+  currencyDecimals,
+  formatMoney,
+  formatNumber,
+  minorUnitsPerMajor,
+  toMinorUnits,
+  toMajorUnits,
+} from './money';
 
 describe('currency scaling', () => {
   it('knows decimal places per currency (ISO 4217)', () => {
@@ -52,5 +59,34 @@ describe('currency scaling', () => {
 
   it('falls back to 2 decimals for an unknown currency code', () => {
     expect(currencyDecimals('zzz')).toBe(2);
+  });
+});
+
+describe('localized formatting', () => {
+  it('keeps the en-US output when no locale is given', () => {
+    expect(formatMoney(1999, 'usd')).toBe('$19.99');
+    expect(formatMoney(1999, 'eur')).toBe('€19.99');
+    expect(formatMoney(1000, 'jpy')).toBe('¥1,000');
+  });
+
+  it('formats prices in the given Intl locale', () => {
+    // Intl separates the amount and the symbol with a no-break space.
+    expect(formatMoney(123456, 'eur', 'it-IT')).toBe('1234,56 €');
+    expect(formatMoney(1999, 'eur', 'de-DE')).toBe('19,99 €');
+    expect(formatMoney(1000, 'jpy', 'ja-JP')).toBe('￥1,000');
+    expect(formatMoney(2500, 'bhd', 'en-US')).toBe('BHD 2.500');
+  });
+
+  it('caches per locale and currency without mixing them up', () => {
+    expect(formatMoney(100, 'eur', 'it-IT')).toBe('1,00 €');
+    expect(formatMoney(100, 'eur')).toBe('€1.00');
+    expect(formatMoney(100, 'usd', 'it-IT')).toBe('1,00 USD');
+  });
+
+  it('formats plain numbers in a locale, with options', () => {
+    expect(formatNumber(1234.5)).toBe('1,234.5');
+    expect(formatNumber(1234.5, 'it-IT')).toBe('1234,5');
+    expect(formatNumber(12345.5, 'it-IT')).toBe('12.345,5');
+    expect(formatNumber(0.25, 'it-IT', { style: 'percent' })).toBe('25%');
   });
 });
