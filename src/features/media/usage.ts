@@ -1,4 +1,5 @@
-import { withMount } from '../../deployment';
+// Explicit .ts: the D1 integration suite loads this module under plain Node.
+import { withMount } from '../../deployment.ts';
 import type { D1Database } from '@cloudflare/workers-types';
 
 /** Everywhere one media item is currently used. Empty everywhere = deletable. */

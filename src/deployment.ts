@@ -8,12 +8,14 @@
  * disagree with the asset URLs Astro emitted. Under vitest neither is set, so
  * tests see a root mount and unprefixed cookies, exactly as before.
  */
-import { joinMount, normalizeMountPath, stripMount } from './i18n/mount';
+// Explicit .ts and an optional import.meta.env: the D1 integration suite loads
+// modules that import this one under plain Node, where neither is resolved.
+import { joinMount, normalizeMountPath, stripMount } from './i18n/mount.ts';
 
 declare const __MINSHOP_COOKIE_PREFIX__: string | undefined;
 
 /** '' (root) or '/shop' — the engine's internal mount form. */
-export const MOUNT: string = normalizeMountPath(import.meta.env.BASE_URL ?? '/');
+export const MOUNT: string = normalizeMountPath(import.meta.env?.BASE_URL ?? '/');
 
 export const COOKIE_PREFIX: string =
   typeof __MINSHOP_COOKIE_PREFIX__ === 'string' ? __MINSHOP_COOKIE_PREFIX__ : '';

@@ -1,4 +1,5 @@
-import { withMount } from '../../deployment';
+// Explicit .ts: the D1 integration suite loads this module under plain Node.
+import { withMount } from '../../deployment.ts';
 
 /**
  * Public URL for a stored object. The single place that knows how a media key
