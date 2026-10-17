@@ -1,4 +1,5 @@
 ---
+import { readForm } from '../features/http/form';
 export const prerender = false;
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
@@ -19,7 +20,7 @@ import ProductImage from '../features/products/ProductImage.astro';
 // or the whole cart (no product_id → reads the cart cookie). Skips the full cart
 // page; the chosen method posts to /api/checkout, carrying the same source.
 const isPost = Astro.request.method === 'POST';
-const form = isPost ? await Astro.request.formData() : null;
+const form = isPost ? await readForm(Astro.request) : null;
 const fld = (n: string) => (form?.get(n) ?? Astro.url.searchParams.get(n) ?? '').toString().trim();
 
 interface DisplayLine {

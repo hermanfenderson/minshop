@@ -1,3 +1,4 @@
+import { readForm } from '../../features/http/form';
 import type { APIRoute } from 'astro';
 import type { LocaleUrls } from '../../i18n';
 import { env } from 'cloudflare:workers';
@@ -125,7 +126,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   const redirect = (path: string, status: 301 | 302 | 303 | 307 | 308 = 303) =>
     astroRedirect(urls.href(path), status);
 
-  const form = await request.formData();
+  const form = await readForm(request);
   const origin = url.origin;
 
   let lines: LineDraft[] = [];

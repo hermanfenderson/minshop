@@ -1,3 +1,4 @@
+import { readForm } from '../../features/http/form';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { readCart, writeCart, CART_QTY_MAX } from '../../features/cart/cart';
@@ -14,7 +15,7 @@ export const prerender = false;
 // the chosen variant + extras (validated against D1); `update`/`remove` act on
 // the line key. Numeric row IDs are never accepted.
 export const POST: APIRoute = async ({ request, cookies, url, redirect, locals }) => {
-  const form = await request.formData();
+  const form = await readForm(request);
   const action = String(form.get('_action'));
   const cart = readCart(cookies);
   const partial = request.headers.get('x-partial') === '1';

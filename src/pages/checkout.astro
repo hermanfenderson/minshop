@@ -1,4 +1,5 @@
 ---
+import { readForm } from '../features/http/form';
 export const prerender = false;
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
@@ -32,7 +33,7 @@ import { purgeStockProductCache } from '../features/cache/purge';
 
 const cfg = getConfig();
 const isPost = Astro.request.method === 'POST';
-const form = isPost ? await Astro.request.formData() : null;
+const form = isPost ? await readForm(Astro.request) : null;
 const fld = (name: string) => (form?.get(name) ?? '').toString().trim();
 
 /**

@@ -162,6 +162,15 @@ await check('a POST body survives the rewrite (form and multipart)', async () =>
   equal(location(res), `${IT}/cart`, 'control without a body');
 });
 
+await check('a POST with no body and no Content-Type is not a server error', async () => {
+  // Read as an empty form: the endpoints answer with their normal redirect.
+  for (const path of [`${EN}/api/cart`, `${EN}/api/checkout?lang=it`, `${IT}/express`, `${IT}/checkout`, `${EN}/express`]) {
+    const res = await get(path, { method: 'POST', headers: { origin } });
+    assert(res.status === 303, `${path}: ${res.status}`);
+    assert(location(res).startsWith(path.startsWith(IT) || path.includes('lang=it') ? `${IT}/` : `${EN}/`), `${path} → ${location(res)}`);
+  }
+});
+
 let cart = '';
 await check('add to cart from an Italian page returns to the Italian cart', async () => {
   const res = await get(`${EN}/api/cart?lang=it`, form({ _action: 'add', product_id: productId, variant_id: variantId, qty: '1' }));
