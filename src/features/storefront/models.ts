@@ -67,6 +67,16 @@ export interface StorefrontLink {
  * Admin login too. So this model is deliberately inert — links, labels, and
  * flags. Nothing here can start a request or change state.
  */
+/** One language the store offers, linking to the CURRENT page in it. */
+export interface StorefrontLanguage {
+  /** BCP 47 code ('en', 'it'), for lang/hreflang. */
+  code: string;
+  /** The language's own name ("Italiano"). */
+  label: string;
+  href: string;
+  current: boolean;
+}
+
 export interface StorefrontShellModel {
   storeName: string;
   /** The store's home ('/', or '/shop/' under a mount). Link the logo here, never to "/". */
@@ -81,6 +91,8 @@ export interface StorefrontShellModel {
   search: { action: string; query: string };
   cart: { enabled: boolean; href: string };
   account: { enabled: boolean; href: string };
+  /** The language switcher, or null when the store has one language. */
+  languages: { label: string; items: StorefrontLanguage[] } | null;
 }
 
 /** One sort control. `current` marks the field the list is ordered by; clicking

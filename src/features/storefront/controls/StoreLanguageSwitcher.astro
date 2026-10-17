@@ -1,0 +1,42 @@
+---
+import type { StorefrontShellModel } from '../models';
+
+/**
+ * The language switcher: plain links to the current page in each language, so
+ * it works with no JavaScript. The cart is a cookie shared by every language,
+ * so switching never touches it.
+ *
+ * Each name is written in its own language and marked so (lang/hreflang), and
+ * the current one is text with aria-current, not a link to itself. Renders
+ * nothing for a store with one language.
+ */
+interface Props {
+  languages: StorefrontShellModel['languages'];
+  class?: string;
+  linkClass?: string;
+}
+
+const {
+  languages,
+  class: navClass = 'flex flex-wrap items-center gap-x-4 gap-y-2',
+  linkClass = 'hover:text-brand',
+} = Astro.props;
+---
+
+{
+  languages && (
+    <nav aria-label={languages.label} class={navClass} data-language-switcher>
+      {languages.items.map((item) =>
+        item.current ? (
+          <span lang={item.code} aria-current="true" class="font-semibold">
+            {item.label}
+          </span>
+        ) : (
+          <a href={item.href} lang={item.code} hreflang={item.code} class={linkClass}>
+            {item.label}
+          </a>
+        ),
+      )}
+    </nav>
+  )
+}

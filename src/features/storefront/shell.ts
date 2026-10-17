@@ -1,7 +1,7 @@
 import type { MenuItem } from '../navigation/db';
 import { rootHref, type Href } from '../../i18n/urls';
 import { mediaUrl } from '../media/url';
-import type { StorefrontLink, StorefrontShellModel } from './models';
+import type { StorefrontLanguage, StorefrontLink, StorefrontShellModel } from './models';
 
 /**
  * Builds the header/footer model.
@@ -31,6 +31,8 @@ export interface ShellInput {
   accountsEnabled: boolean;
   /** Logical path → public URL (mount, later language). Root by default. */
   href?: Href;
+  /** The switcher's label and the store's languages; omit or null for one language. */
+  languages?: { label: string; items: StorefrontLanguage[] } | null;
 }
 
 export function buildShellModel(input: ShellInput): StorefrontShellModel {
@@ -58,5 +60,7 @@ export function buildShellModel(input: ShellInput): StorefrontShellModel {
     search: { action: href('/search'), query: input.searchQuery },
     cart: { enabled: input.cartEnabled, href: href('/cart') },
     account: { enabled: input.accountsEnabled, href: href('/account') },
+    // A switcher with one language would offer nothing: render none.
+    languages: input.languages && input.languages.items.length > 1 ? input.languages : null,
   };
 }

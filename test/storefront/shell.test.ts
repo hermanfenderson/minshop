@@ -260,3 +260,31 @@ describe('an independently authored shell', () => {
     expect(html).toContain('data-nav-disclosure');
   });
 });
+
+describe('language switcher', () => {
+  const languages = {
+    label: 'Language',
+    items: [
+      { code: 'en', label: 'English', href: '/shop/products/mug', current: false },
+      { code: 'it', label: 'Italiano', href: '/it/shop/products/mug', current: true },
+    ],
+  };
+
+  it('is absent for a store with one language', async () => {
+    expect(buildShellModel(input()).languages).toBeNull();
+    const single = { label: 'Language', items: [languages.items[0]] };
+    expect(buildShellModel(input({ languages: single })).languages).toBeNull();
+    const html = await render(Footer, buildShellModel(input()));
+    expect(html).not.toContain('data-language-switcher');
+  });
+
+  it('links to the current page in every other language, with no JavaScript', async () => {
+    const html = await render(Footer, buildShellModel(input({ languages })));
+    expect(html).toContain('data-language-switcher');
+    expect(html).toMatch(/<a href="\/shop\/products\/mug" lang="en" hreflang="en"[^>]*>English<\/a>/);
+    // The current language is text, not a link to itself.
+    expect(html).toMatch(/<span lang="it" aria-current="true"[^>]*>Italiano<\/span>/);
+    expect(html).not.toContain('href="/it/shop/products/mug"');
+    expect(html).not.toMatch(/<script/);
+  });
+});

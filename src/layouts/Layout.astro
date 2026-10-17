@@ -1,4 +1,5 @@
 ---
+import { LOCALE_REGISTRY, languageSettings } from '../features/i18n/settings';
 import { withMount } from '../deployment';
 import { COUNT_COOKIE } from '../features/cart/cart';
 import { env } from 'cloudflare:workers';
@@ -60,6 +61,7 @@ const announcement = Astro.locals.settings?.announcement ?? '';
 const announcementHref = Astro.locals.settings?.announcementHref ?? '';
 const pageTitle = title ? `${title} — ${storeName}` : storeName;
 const { urls, path } = Astro.locals;
+const languages = languageSettings(Astro.locals.settings);
 const query =
   path === '/search'
     ? normalizeSearchQuery(Astro.url.searchParams.get('q') ?? '')
@@ -85,6 +87,15 @@ const shell = buildShellModel({
   cartEnabled,
   accountsEnabled: accountsOn,
   href: urls.href,
+  languages: {
+    label: Astro.locals.i18n.t('common.language.label'),
+    items: languages.enabledLocales.map((code) => ({
+      code,
+      label: LOCALE_REGISTRY[code]?.label ?? code,
+      href: urls.switchTo(code),
+      current: code === Astro.locals.locale,
+    })),
+  },
 });
 ---
 
