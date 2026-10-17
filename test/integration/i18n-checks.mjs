@@ -237,6 +237,19 @@ await check('customer sign-in posts through the rewrite and stays Italian', asyn
   assert(location(res).startsWith(`${IT}/`), location(res));
 });
 
+// ── The interface speaks the page language ───────────────────────────────────
+await check('interface text and prices follow the page language', async () => {
+  const itCart = await html(`${IT}/cart`, { headers: { cookie: cart } });
+  const enCart = await html(`${EN}/cart`, { headers: { cookie: cart } });
+  assert(itCart.includes('Il tuo carrello') && !itCart.includes('>Your cart<'), 'Italian cart heading');
+  assert(enCart.includes('Your cart'), 'English cart heading');
+  assert(/24,00\s*USD/.test(itCart), 'Italian price format');
+  assert(enCart.includes('$24.00'), 'English price format');
+  const itProduct = await html(`${IT}/products/sample-tee`);
+  assert(/Aggiungi al carrello/i.test(itProduct), 'Italian add-to-cart button');
+  assert(/Add to cart/i.test(await html(`${EN}/products/sample-tee`)), 'English add-to-cart button');
+});
+
 // ── APIs, webhooks, admin: no language in the path, no rewrite ───────────────
 await check('public APIs answer without a rewrite, in the language they name', async () => {
   const res = await get(`${EN}/api/products?limit=1&lang=it`);
