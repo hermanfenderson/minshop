@@ -36,3 +36,17 @@ export type {
   SettingsIssue,
   ValidateOptions,
 } from './settings';
+export { createRouting } from './routing';
+export type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from './routing';
+export { negotiateLocale, parseAcceptLanguage } from './negotiate';
+export type { LanguageRange } from './negotiate';
+export {
+  UNLOCALIZED_FILES,
+  UNLOCALIZED_SEGMENTS,
+  isLocalizedPath,
+  locationToString,
+  resolveRequestLocale,
+} from './resolve';
+export type { Resolution, ResolveOptions } from './resolve';
+export { createLocaleUrls, hreflangTag } from './urls';
+export type { Alternate, LocaleUrls, LocaleUrlsInput, UrlOptions } from './urls';
