@@ -14,6 +14,7 @@
  */
 import { joinMount } from './mount';
 import { negotiateLocale } from './negotiate';
+import { normalizeLocaleCode } from './locales';
 import type { LocaleRouting, PublicLocation } from './routing/strategy';
 import type { I18nSettings } from './settings';
 
@@ -31,6 +32,18 @@ export const UNLOCALIZED_SEGMENTS: ReadonlySet<string> = new Set([
 
 /** Single files under the mount that never carry a language. */
 export const UNLOCALIZED_FILES: ReadonlySet<string> = new Set(['/robots.txt', '/sitemap.xml', '/favicon.svg']);
+
+/**
+ * The query parameter public API endpoints read their language from
+ * (`/shop/api/cart?lang=it`): an API has no language in its path, but its
+ * redirects, messages and, later, content answer in the caller's language.
+ */
+export const API_LANGUAGE_PARAM = 'lang';
+
+/** Public API endpoints that take `?lang=`. Admin, webhooks and internal ones never do. */
+export function isLanguageAwareApi(path: string): boolean {
+  return path.startsWith('/api/') && !/^\/api\/(admin|webhook|internal)(\/|$)/.test(path);
+}
 
 /** Whether a logical path has a language (pages, partials) or not (admin, API, assets). */
 export function isLocalizedPath(path: string): boolean {
@@ -112,17 +125,39 @@ export function resolveRequestLocale(
     rewrite: routing.kind === 'prefix' && named !== null,
   });
 
-  if (named !== null) {
+  const enabled = (code: string | null): string | null =>
+    code !== null && settings.enabledLocales.includes(code) ? code : null;
+
+  if (!localized) {
+    // No language in the path. A public API may still answer in one, named by
+    // ?lang= (never rewritten: no body is ever touched on these routes).
+    const api = isLanguageAwareApi(path);
+    const asked = api ? enabled(normalizeLocaleCode(url.searchParams.get(API_LANGUAGE_PARAM))) : null;
+    if (named === null) return serve(asked ?? def);
     // A host names its language: unlocalized surfaces simply live on every host.
-    if (routing.kind === 'domain' && !localized) return serve(def);
-    if (!localized) return redirect(def, false);
+    if (routing.kind === 'domain') return serve(asked ?? enabled(named) ?? def);
+    // Query strategy on an API: its own parameter is a language too.
+    if (routing.kind === 'query' && api) return serve(asked ?? enabled(named) ?? def);
+    // A prefix (or a query language) on a surface that has none: drop it,
+    // carrying an API's language over as ?lang=.
+    const carry = api ? enabled(named) : null;
+    const search = new URLSearchParams(url.searchParams);
+    if (carry && carry !== def) search.set(API_LANGUAGE_PARAM, carry);
+    return {
+      action: 'redirect',
+      status: permanent,
+      location: locationToString(routing.locate(path, def, false), url, routing.param, search),
+      negotiated: false,
+    };
+  }
+
+  if (named !== null) {
     if (!settings.enabledLocales.includes(named)) return redirect(def, true);
     if (routing.kind === 'domain') return serve(named);
     if (named === def && !(routing.kind === 'prefix' && settings.prefixDefault)) return redirect(def, true);
     return serve(named);
   }
 
-  if (!localized) return serve(def);
   if (routing.kind === 'prefix' && settings.prefixDefault) return redirect(def, true);
 
   if (settings.detect === 'root' && path === '/' && safe && options.preferred) {

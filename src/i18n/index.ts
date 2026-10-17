@@ -41,8 +41,10 @@ export type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from 
 export { negotiateLocale, parseAcceptLanguage } from './negotiate';
 export type { LanguageRange } from './negotiate';
 export {
+  API_LANGUAGE_PARAM,
   UNLOCALIZED_FILES,
   UNLOCALIZED_SEGMENTS,
+  isLanguageAwareApi,
   isLocalizedPath,
   locationToString,
   resolveRequestLocale,

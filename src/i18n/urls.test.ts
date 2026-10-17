@@ -23,8 +23,11 @@ describe('LocaleUrls, prefix strategy under /shop', () => {
     expect(it_.order('tok_1')).toBe('/it/shop/order/tok_1');
   });
 
-  it('never prefixes surfaces with no language', () => {
-    expect(it_.href('/api/cart')).toBe('/shop/api/cart');
+  it('never prefixes surfaces with no language; public APIs carry ?lang=', () => {
+    expect(it_.href('/api/cart')).toBe('/shop/api/cart?lang=it');
+    expect(en.href('/api/cart')).toBe('/shop/api/cart');
+    expect(it_.href('/api/admin/products')).toBe('/shop/api/admin/products');
+    expect(it_.absolute('/api/webhook/stripe')).toBe('https://monopolele.com/shop/api/webhook/stripe');
     expect(it_.href('/images/a/b.jpg')).toBe('/shop/images/a/b.jpg');
     expect(it_.href('/admin')).toBe('/shop/admin');
   });
@@ -68,7 +71,7 @@ describe('LocaleUrls, standalone and other strategies', () => {
   it('works at the root mount', () => {
     expect(urls('it', {}, '').home()).toBe('/it/');
     expect(urls('en', {}, '').home()).toBe('/');
-    expect(urls('it', {}, '').href('/api/cart')).toBe('/api/cart');
+    expect(urls('it', {}, '').href('/api/cart')).toBe('/api/cart?lang=it');
   });
 
   it('query strategy: carries the parameter and replaces a stale one', () => {
@@ -77,7 +80,8 @@ describe('LocaleUrls, standalone and other strategies', () => {
     expect(q.search('uke')).toBe('/shop/search?q=uke&lang=it');
     expect(q.href('/cart?lang=en')).toBe('/shop/cart?lang=it');
     expect(q.href('/cart', { locale: 'en' })).toBe('/shop/cart');
-    expect(q.href('/api/products')).toBe('/shop/api/products');
+    expect(q.href('/api/products')).toBe('/shop/api/products?lang=it');
+    expect(q.href('/api/products?lang=en', { locale: 'en' })).toBe('/shop/api/products');
   });
 
   it('domain strategy: absolute URLs across hosts', () => {

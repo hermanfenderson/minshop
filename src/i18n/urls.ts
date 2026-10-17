@@ -7,7 +7,7 @@
  * prototype), and Astro.url shows the internal path after a rewrite, so
  * neither may be used to build a public URL.
  */
-import { isLocalizedPath, locationToString } from './resolve';
+import { API_LANGUAGE_PARAM, isLanguageAwareApi, isLocalizedPath, locationToString } from './resolve';
 import type { LocaleRouting } from './routing/strategy';
 import type { I18nSettings } from './settings';
 
@@ -92,7 +92,15 @@ export function createLocaleUrls(input: LocaleUrlsInput): LocaleUrls {
     const search = new URLSearchParams(query);
     for (const [k, v] of new URLSearchParams(options.search ?? {})) search.set(k, v);
     const target = options.locale ?? locale;
-    const loc = routing.locate(pathname, target, isLocalizedPath(pathname));
+    const located = routing.locate(pathname, target, isLocalizedPath(pathname));
+    // A public API carries the caller's language as ?lang= (none for the default).
+    // Added after the strategy so a query strategy using 'lang' can't strip it.
+    const api = isLanguageAwareApi(pathname);
+    if (api) search.delete(API_LANGUAGE_PARAM);
+    const loc =
+      api && target !== settings.defaultLocale
+        ? { ...located, params: [...located.params, [API_LANGUAGE_PARAM, target] as [string, string]] }
+        : located;
     const href = locationToString(loc, base, routing.param, search) + hash;
     return absolute && href.startsWith('/') ? base.origin + href : href;
   };

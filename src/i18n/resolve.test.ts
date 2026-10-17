@@ -53,7 +53,7 @@ describe('prefix strategy under /shop (Monopolele)', () => {
 
   it('keeps the method and body: 308 for non-GET redirects', () => {
     expect(resolve('/it/shop/api/cart', {}, '/shop', { method: 'POST' })).toEqual({
-      action: 'redirect', status: 308, location: '/shop/api/cart', negotiated: false,
+      action: 'redirect', status: 308, location: '/shop/api/cart?lang=it', negotiated: false,
     });
     expect(resolve('/it/shop/cart', {}, '/shop', { method: 'POST' })).toMatchObject({ action: 'serve', rewrite: true });
   });
@@ -80,7 +80,7 @@ describe('prefix strategy standalone (mount /)', () => {
     expect(resolve('/', {}, '')).toMatchObject({ action: 'serve', locale: 'en', internalPath: '/' });
     expect(resolve('/it/', {}, '')).toMatchObject({ action: 'serve', locale: 'it', internalPath: '/', rewrite: true });
     expect(resolve('/it', {}, '')).toMatchObject({ action: 'serve', locale: 'it', path: '/' });
-    expect(resolve('/it/api/cart', {}, '')).toMatchObject({ action: 'redirect', location: '/api/cart' });
+    expect(resolve('/it/api/cart', {}, '')).toMatchObject({ action: 'redirect', location: '/api/cart?lang=it' });
   });
 });
 
@@ -118,7 +118,7 @@ describe('query strategy', () => {
   it('removes a default, unknown or disabled parameter, keeping the rest', () => {
     expect(resolve('/shop/search?q=uke&lang=en', q)).toMatchObject({ action: 'redirect', location: '/shop/search?q=uke' });
     expect(resolve('/shop/cart?lang=xx', q)).toMatchObject({ action: 'redirect', location: '/shop/cart' });
-    expect(resolve('/shop/api/cart?lang=it', q)).toMatchObject({ action: 'redirect', location: '/shop/api/cart' });
+    expect(resolve('/shop/admin?lang=it', q)).toMatchObject({ action: 'redirect', location: '/shop/admin' });
   });
 });
 
@@ -139,5 +139,38 @@ describe('domain strategy (engine only)', () => {
     const s = monopolele({ ...d, enabledLocales: ['en'] });
     const r = resolveRequestLocale(new URL('https://monopolele.it/shop/cart?x=1'), createRouting(s, '/shop'), s, { mount: '/shop' });
     expect(r).toEqual({ action: 'redirect', status: 301, location: 'https://monopolele.com/shop/cart?x=1', negotiated: false });
+  });
+});
+
+describe('public API language (?lang=)', () => {
+  it('serves an API in the language it names, without a rewrite', () => {
+    expect(resolve('/shop/api/cart?lang=it')).toEqual({
+      action: 'serve', locale: 'it', path: '/api/cart', localized: false, internalPath: '/shop/api/cart', rewrite: false,
+    });
+    expect(resolve('/shop/api/products?lang=IT&limit=1')).toMatchObject({ action: 'serve', locale: 'it' });
+  });
+
+  it('falls back to the default for a missing, unknown or disabled language', () => {
+    expect(resolve('/shop/api/cart')).toMatchObject({ action: 'serve', locale: 'en' });
+    expect(resolve('/shop/api/cart?lang=xx')).toMatchObject({ action: 'serve', locale: 'en' });
+    expect(resolve('/shop/api/cart?lang=it', { enabledLocales: ['en'] })).toMatchObject({ action: 'serve', locale: 'en' });
+  });
+
+  it('never gives admin, webhook or internal endpoints a language', () => {
+    for (const path of ['/shop/api/admin/products?lang=it', '/shop/api/webhook/stripe?lang=it', '/shop/api/internal/cache-purge?lang=it']) {
+      expect(resolve(path), path).toMatchObject({ action: 'serve', locale: 'en', localized: false, rewrite: false });
+    }
+  });
+
+  it('keeps the language when a prefix lands on an API, and drops it elsewhere', () => {
+    expect(resolve('/it/shop/api/products?limit=1')).toMatchObject({ status: 301, location: '/shop/api/products?limit=1&lang=it' });
+    expect(resolve('/it/shop/api/webhook/stripe', {}, '/shop', { method: 'POST' })).toMatchObject({
+      status: 308, location: '/shop/api/webhook/stripe',
+    });
+  });
+
+  it('query strategy: the API reads the strategy parameter too', () => {
+    expect(resolve('/shop/api/cart?lang=it', { routing: 'query' })).toMatchObject({ action: 'serve', locale: 'it', rewrite: false });
+    expect(resolve('/shop/api/cart?hl=it', { routing: 'query', queryParam: 'hl' })).toMatchObject({ action: 'serve', locale: 'it' });
   });
 });
