@@ -1,4 +1,13 @@
 ---
+import {
+  checkContentSourceChange,
+  describeDefaultLocaleChange,
+  resolveI18nSettings,
+  validateI18nSettings,
+  type I18nSettings,
+} from '../../i18n';
+import { LOCALE_REGISTRY, languageRows, languageSettings } from '../../features/i18n/settings';
+import { MOUNT } from '../../deployment';
 import { cookieName, withMount } from '../../deployment';
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
@@ -298,6 +307,34 @@ if (Astro.request.method === 'POST') {
     }
   } else if (action === 'save_shippo') {
     await applySecrets(['shippo_api_key']);
+  } else if (action === 'save_languages') {
+    const current = languageSettings(Astro.locals.settings);
+    const next: I18nSettings = {
+      ...current,
+      defaultLocale: String(form.get('default_locale') ?? current.defaultLocale),
+      contentSourceLocale: String(form.get('content_source_locale') ?? current.contentSourceLocale),
+      enabledLocales: form.getAll('enabled_locales').map(String),
+      routing: form.get('routing') === 'query' ? 'query' : 'prefix',
+      prefixDefault: form.get('prefix_default') === '1',
+      detect: form.get('detect') === 'root' ? 'root' : 'off',
+    };
+    const issues = validateI18nSettings(next, { registry: LOCALE_REGISTRY, mount: MOUNT });
+    // No editorial translations exist yet, so relabeling the source can't collide.
+    const sourceIssue = checkContentSourceChange(current, next, []);
+    const defaultChange = describeDefaultLocaleChange(current, next);
+    if (issues.length > 0 || sourceIssue) {
+      validationError = [...issues, ...(sourceIssue ? [sourceIssue] : [])].map((i) => i.message).join(' ');
+    } else if (defaultChange && form.get('confirm_default_change') !== '1') {
+      // A controlled procedure, never a silent toggle: the URLs without a
+      // language prefix start serving another language.
+      validationError =
+        'Changing the default language changes what every URL without a language prefix serves. ' +
+        'Confirm the change to continue, then resubmit your sitemap.';
+    } else {
+      for (const [key, value] of languageRows(resolveI18nSettings(next, LOCALE_REGISTRY))) {
+        await setSetting(env.DB, key, value);
+      }
+    }
   } else if (action === 'save_opennode') {
     await setSetting(env.DB, 'opennode_api_url', String(form.get('opennode_api_url') ?? '').trim() || null);
     await applySecrets(['opennode_api_key']);
@@ -505,9 +542,19 @@ const turnstileSecretReady = !!(await getSecret(env.DB, 'turnstile_secret_key'))
 const turnstileReady =
   turnstileConfigured(settings, capabilities) && turnstileSecretReady;
 
+// Languages card.
+const languages = languageSettings(settings);
+const languageCodes = Object.keys(LOCALE_REGISTRY);
+const languageExamples = languages.enabledLocales.map((code) => ({
+  code,
+  label: LOCALE_REGISTRY[code]?.label ?? code,
+  home: Astro.locals.urls.absolute('/', { locale: code }),
+}));
+
 // Jump sub-nav targets.
 const sections = [
   { id: 'general', label: 'General' },
+  { id: 'languages', label: 'Languages' },
   { id: 'images', label: 'Images' },
   { id: 'payments', label: 'Payments' },
   { id: 'email', label: 'Email' },
@@ -847,6 +894,108 @@ const sections = [
         ))
       }
     </ul>
+  </section>
+
+  {/* ── Languages ─────────────────────────────────────────────────────────── */}
+  <section id="languages" class="mt-10 scroll-mt-16">
+    <h2 class="mb-2 text-lg font-bold">Languages</h2>
+    <p class="mb-4 text-sm text-gray-500">
+      The languages the storefront is served in. Each page's language comes from its URL; the
+      cart is shared by all of them. Interface text that has no translation yet shows in English.
+    </p>
+
+    <form method="POST" class="mb-4 rounded-lg border border-gray-200 bg-white p-4" data-languages-form>
+      <input type="hidden" name="_action" value="save_languages" />
+      <fieldset class="mb-4">
+        <legend class="mb-2 text-xs uppercase tracking-widest text-gray-400">Enabled languages</legend>
+        <div class="flex flex-wrap gap-4">
+          {
+            languageCodes.map((code) => (
+              <label class="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="enabled_locales"
+                  value={code}
+                  checked={languages.enabledLocales.includes(code)}
+                />
+                <span lang={code}>{LOCALE_REGISTRY[code].label}</span>
+                <span class="text-xs text-gray-400">{code}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="flex flex-col gap-1 text-xs uppercase tracking-widest text-gray-400">
+          Default language
+          <select
+            name="default_locale"
+            class="rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900"
+          >
+            {languageCodes.map((code) => (
+              <option value={code} selected={code === languages.defaultLocale}>{LOCALE_REGISTRY[code].label}</option>
+            ))}
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs uppercase tracking-widest text-gray-400">
+          Content written in
+          <select
+            name="content_source_locale"
+            class="rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900"
+          >
+            {languageCodes.map((code) => (
+              <option value={code} selected={code === languages.contentSourceLocale}>{LOCALE_REGISTRY[code].label}</option>
+            ))}
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs uppercase tracking-widest text-gray-400">
+          Language in URLs
+          <select
+            name="routing"
+            class="rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900"
+          >
+            <option value="prefix" selected={languages.routing === 'prefix'}>Path prefix (/it/…)</option>
+            <option value="query" selected={languages.routing === 'query'}>Parameter (?lang=it)</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs uppercase tracking-widest text-gray-400">
+          Home-page suggestion
+          <select
+            name="detect"
+            class="rounded-md border border-gray-300 px-3 py-2 text-sm normal-case tracking-normal text-gray-900"
+          >
+            <option value="off" selected={languages.detect === 'off'}>Off</option>
+            <option value="root" selected={languages.detect === 'root'}>From the browser's language</option>
+          </select>
+        </label>
+      </div>
+      <label class="mt-4 flex items-center gap-2 text-sm">
+        <input type="checkbox" name="prefix_default" value="1" checked={languages.prefixDefault} />
+        Prefix the default language too (/en/…)
+      </label>
+      <label class="mt-2 flex items-start gap-2 text-sm">
+        <input type="checkbox" name="confirm_default_change" value="1" class="mt-1" />
+        <span>
+          I am changing the default language. I understand that every URL without a language
+          prefix will serve the new default, and that the sitemap must be resubmitted.
+        </span>
+      </label>
+      <p class="mt-3 text-xs text-gray-400">
+        "Content written in" is the language of your products, categories and pages as entered.
+        Changing the default language never moves or translates that content.
+      </p>
+      <ul class="mt-3 space-y-1 text-xs text-gray-500" data-language-urls>
+        {languageExamples.map((l) => (
+          <li><span lang={l.code}>{l.label}</span>: <code>{l.home}</code></li>
+        ))}
+      </ul>
+      <button
+        type="submit"
+        class="mt-4 rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover"
+      >
+        Save
+      </button>
+    </form>
   </section>
 
   {/* ── Images (runtime delivery selector) ───────────────────────────────── */}
