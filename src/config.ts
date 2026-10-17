@@ -18,6 +18,20 @@ export interface SiteConfig {
   storeName: string;
   currency: string;
   /**
+   * Path the whole store is mounted under on its host: '/' for a standalone
+   * store, '/shop' when another site owns the rest of the host. Build-time: it
+   * becomes Astro's `base` (asset URLs) and must match the Worker routes. The
+   * MINSHOP_MOUNT_PATH build variable overrides it (see scripts/deployment.mjs).
+   */
+  mountPath: string;
+  /**
+   * Prefix for every cookie the store sets ('minshop_' → `minshop_cart`), so a
+   * store sharing its host with another app can't collide with that app's
+   * cookies. Empty by default: existing carts and sessions keep their names.
+   * Build-time; MINSHOP_COOKIE_PREFIX overrides it.
+   */
+  cookiePrefix: string;
+  /**
    * IANA time zone (e.g. 'America/Los_Angeles', 'Europe/London', 'UTC') used to
    * display stored timestamps in the admin. Dates are stored as UTC; this only
    * changes how they're formatted for the store owner. The first-run wizard
@@ -189,6 +203,8 @@ function defaultConfig(): SiteConfig {
   return {
     storeName: env.STORE_NAME ?? 'My Shop',
     currency: 'usd', // store-wide currency (ISO 4217, lowercase)
+    mountPath: '/', // standalone; '/shop' to live under another site (build-time)
+    cookiePrefix: '', // e.g. 'minshop_' on a shared host (build-time)
     timeZone: env.TIME_ZONE ?? 'UTC', // setup/admin settings can override this at runtime
     features: {
       accounts: false, // magic-link customer login; needs AUTH_SECRET + email

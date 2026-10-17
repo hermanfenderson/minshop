@@ -3,6 +3,8 @@ import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
 import { resolveTheme } from './scripts/themes.mjs';
 import { themeCssPath, writeThemeArtifacts } from './scripts/theme-css.mjs';
+import { resolveDeployment } from './scripts/deployment.mjs';
+import { storeOverrides } from './src/store.config.ts';
 
 // SSR on Cloudflare Workers. platformProxy lets `astro dev` read bindings
 // (D1, R2, vars) from wrangler.jsonc locally.
@@ -18,6 +20,11 @@ import { themeCssPath, writeThemeArtifacts } from './scripts/theme-css.mjs';
 // them (see the design rule in scripts/theme-css.mjs).
 const theme = resolveTheme();
 writeThemeArtifacts();
+
+// Where the store is mounted ('/' or e.g. '/shop') and its cookie prefix. Both
+// are build-time: the mount is baked into asset URLs, so it becomes Astro's
+// `base`; the prefix reaches src/deployment.ts as a compile-time constant.
+const deployment = resolveDeployment(process.env, storeOverrides);
 
 // Stamp every build with the theme it was compiled for. The deploy scripts
 // refuse to ship an artifact whose stamp disagrees with the current
@@ -39,6 +46,7 @@ const themeStamp = {
 
 export default defineConfig({
   output: 'server',
+  base: deployment.mountPath,
   integrations: [themeStamp],
   // Replaced by the equivalent middleware guard so the bearer-capability
   // /pay/otk_… form can support clients that omit Origin without weakening
@@ -52,6 +60,7 @@ export default defineConfig({
   }),
   vite: {
     plugins: [tailwindcss()],
+    define: { __MINSHOP_COOKIE_PREFIX__: JSON.stringify(deployment.cookiePrefix) },
     resolve: {
       alias: {
         '#theme': theme.dir,

@@ -12,6 +12,15 @@ import type { DeepPartial, SiteConfig } from './config';
 export const storeOverrides: DeepPartial<SiteConfig> = {
   // currency: 'usd',                // ISO 4217, lowercase
   //
+  // Mounting under another site (build-time; also MINSHOP_MOUNT_PATH /
+  // MINSHOP_COOKIE_PREFIX at build). Monopolele, for example, serves its own
+  // site at / and /it/, and the store at /shop/:
+  // mountPath: '/shop',              // Worker routes must match: <host>/shop*
+  // cookiePrefix: 'minshop_',        // avoid colliding with the host site's cookies
+  //   Changing cookiePrefix on a live store renames its cookies: open carts and
+  //   sessions are dropped once. With a mount, robots.txt belongs to the host
+  //   site, which should list <host>/shop/sitemap.xml.
+  //
   // features: { accounts: false },  // magic-link customer login
   //
   // images: { maxWidth: 1000 },      // optimization on/off lives in Admin
