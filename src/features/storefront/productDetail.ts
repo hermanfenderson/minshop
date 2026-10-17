@@ -205,7 +205,7 @@ export async function loadProductDetail(
       name: product.name,
       description: product.description,
       descriptionHtml: product.description
-        ? renderMarkdown(product.description, { baseUrl: options.imageBaseUrl })
+        ? renderMarkdown(product.description, { baseUrl: options.imageBaseUrl, href })
         : null,
       formattedPrice: formatMoney(displayPriceCents, options.currency),
       priceCents: product.price_cents,

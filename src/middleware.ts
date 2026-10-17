@@ -227,9 +227,17 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
 
 async function route(context: APIContext, next: MiddlewareNext): Promise<Response> {
   // The store may be mounted under a path ('/shop'). Route, auth, rate-limit and
-  // cache decisions all compare the path UNDER the mount; a request outside it
-  // isn't the store's (Astro answers 404) and is matched as-is.
-  const path = logicalPath(context.url.pathname) ?? context.url.pathname;
+  // cache decisions all compare the path UNDER the mount.
+  const logical = logicalPath(context.url.pathname);
+  if (logical === null) {
+    // Astro would still match '/cart' against the routes under a mount; the
+    // store must answer only under its own path, never as a second copy.
+    return new Response('Not found', {
+      status: 404,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+  const path = logical;
   context.locals.path = path;
   context.locals.urls = storeUrls(context.url.origin, { path, search: context.url.search });
   const productError = path.startsWith('/products/') && context.url.searchParams.has('error');

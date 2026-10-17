@@ -1,6 +1,8 @@
 import MarkdownIt from 'markdown-it';
 import type { MarkdownIt as MarkdownItInstance, Token } from 'markdown-it';
 import { mediaUrl } from '../media/url.ts';
+// Type-only: this module also loads under plain Node (D1 integration suite).
+import type { Href } from '../../i18n/urls.ts';
 
 /**
  * Server-only Markdown renderer, shared by the storefront route and the admin
@@ -76,6 +78,24 @@ export interface RenderOptions {
    * behaviour, so a page mixing measured and unmeasured images still works.
    */
   dimensions?: Map<string, { width: number; height: number }>;
+  /**
+   * Logical path → public URL for root-relative links an author writes
+   * (`[Shop](/products)`), so they follow the store's mount (and, later, the
+   * page's language). Bodies keep the portable logical path.
+   */
+  href?: Href;
+}
+
+/** Route root-relative link targets through `href`; leave external and `//` links alone. */
+function installLinkRule(instance: MarkdownItInstance, href: Href): void {
+  const fallback: NonNullable<typeof instance.renderer.rules.link_open> = (tokens, idx, options, _env, self) =>
+    self.renderToken(tokens, idx, options);
+  const original = instance.renderer.rules.link_open ?? fallback;
+  instance.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+    const target = String(tokens[idx].attrGet('href') ?? '');
+    if (target.startsWith('/') && !target.startsWith('//')) tokens[idx].attrSet('href', href(target));
+    return original(tokens, idx, options, env, self);
+  };
 }
 
 /**
@@ -125,6 +145,7 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): s
     typographer: false,
   });
   installImageRule(instance, baseUrl, options.dimensions);
+  if (options.href) installLinkRule(instance, options.href);
 
   if (options.sourceMap) {
     // Block tokens carry `map: [startLine, endLine]`. Stamping the start line on

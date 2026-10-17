@@ -22,12 +22,13 @@ const MAX_BODY = 100_000; // same bound the page form enforces
  * A static filename beats the sibling [id].ts route, so this never collides
  * with a page whose id is "preview".
  */
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const form = await request.formData();
   const markdown = String(form.get('body_markdown') ?? '').slice(0, MAX_BODY);
   // sourceMap is admin-only: it stamps data-source-line so a click in the
   // preview can jump to the matching line in the editor.
   const html = renderMarkdown(markdown, {
+    href: locals.urls.href,
     baseUrl: getConfig().images.baseUrl,
     sourceMap: true,
   });

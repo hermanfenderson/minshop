@@ -255,3 +255,24 @@ describe('renderMarkdown — block extent', () => {
     expect(html).toMatch(/<p [^>]*data-source-line="4"[^>]*data-source-end="5"/);
   });
 });
+
+describe('renderMarkdown — internal links under a mount', () => {
+  const href = (path: string) => `/shop${path}`;
+
+  it('routes root-relative links through href, keeping the stored body portable', () => {
+    const html = renderMarkdown('[Shop](/products) and [About](/pages/about#team)', { href });
+    expect(html).toContain('href="/shop/products"');
+    expect(html).toContain('href="/shop/pages/about#team"');
+  });
+
+  it('leaves external, protocol-relative and fragment links alone', () => {
+    const html = renderMarkdown('[a](https://example.com/x) [b](//cdn.example/x) [c](#top)', { href });
+    expect(html).toContain('href="https://example.com/x"');
+    expect(html).toContain('href="//cdn.example/x"');
+    expect(html).toContain('href="#top"');
+  });
+
+  it('keeps links unchanged without href (root mount)', () => {
+    expect(renderMarkdown('[Shop](/products)')).toContain('href="/products"');
+  });
+});

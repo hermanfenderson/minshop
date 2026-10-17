@@ -27,6 +27,7 @@ if (!page) {
 // intrinsic size and stop shifting the layout when they load.
 const dimensions = await pageImageDimensions(env.DB, page.id);
 const html = renderMarkdown(page.body_markdown, {
+  href: Astro.locals.urls.href,
   baseUrl: getConfig().images.baseUrl,
   dimensions,
 });
