@@ -1,4 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import type { I18nSettings } from '../../i18n/settings';
 import { normalizeTimeZone } from './timeZone';
 import {
   parseRuntimeShippingConfig,
@@ -28,6 +29,15 @@ export type SettingKey =
   | 'accounts_enabled' // overrides config.features.accounts
   | 'image_optimize' // overrides config.images.optimizeOnUpload
   | 'image_delivery' // 'cloudflare' = responsive on-demand transforms; absent = originals
+  // Languages (Admin → Settings → Languages). Absent = one language, today's URLs.
+  | 'i18n_default_locale' // language of the interface and of unprefixed URLs
+  | 'i18n_content_source_locale' // language the main tables are written in
+  | 'i18n_enabled_locales' // CSV of language codes
+  | 'i18n_routing' // 'prefix' | 'query' ('domain' is engine-only for now)
+  | 'i18n_prefix_default' // '1' = prefix the default language too
+  | 'i18n_query_param' // query strategy's parameter name
+  | 'i18n_detect' // 'root' = suggest a language on the home page
+  | 'i18n_admin_locale' // the admin's default language
   | 'shipping_enabled' // LEGACY: overrides config.shipping.enabled. Only consulted while no shipping_config document exists.
   | 'shipping_config' // the merchant-managed shipping document (JSON; see features/shipping/settings.ts)
   | 'weight_unit' // 'g' | 'kg' | 'oz' | 'lb' — Admin input/display unit; storage is always grams
@@ -60,6 +70,8 @@ export type FeatureKey = 'cart_enabled' | 'buy_now_enabled';
 
 export interface StoreSettings {
   setupComplete: boolean;
+  /** Stored language settings, unvalidated; the i18n engine resolves them. */
+  i18n: Partial<I18nSettings>;
   storeName: string | null;
   /** Runtime IANA time zone, or null to use TIME_ZONE / UTC. */
   timeZone: string | null;
@@ -179,6 +191,7 @@ export function parseStoreSettings(
   const map = new Map((results ?? []).map((r) => [r.key, r.value]));
   return {
     setupComplete: map.get('setup_complete') === '1',
+    i18n: parseI18nRows(map),
     storeName: map.get('store_name') ?? null,
     timeZone: normalizeTimeZone(map.get('time_zone')),
     stripeWebhookSecret: map.get('stripe_webhook_secret') ?? null,
@@ -227,6 +240,26 @@ export function parseStoreSettings(
     phoenixdUrl: map.get('phoenixd_url') ?? null,
     opennodeApiUrl: map.get('opennode_api_url') ?? null,
   };
+}
+
+/** Stored language rows → partial settings; only what is present (absent = default). */
+function parseI18nRows(map: Map<string, string>): Partial<I18nSettings> {
+  const out: Partial<I18nSettings> = {};
+  const def = map.get('i18n_default_locale');
+  if (def) out.defaultLocale = def;
+  const source = map.get('i18n_content_source_locale');
+  if (source) out.contentSourceLocale = source;
+  const enabled = map.get('i18n_enabled_locales');
+  if (enabled) out.enabledLocales = enabled.split(',').map((s) => s.trim()).filter(Boolean);
+  const routing = map.get('i18n_routing');
+  if (routing === 'prefix' || routing === 'query' || routing === 'domain') out.routing = routing;
+  if (map.has('i18n_prefix_default')) out.prefixDefault = map.get('i18n_prefix_default') === '1';
+  const param = map.get('i18n_query_param');
+  if (param) out.queryParam = param;
+  if (map.get('i18n_detect') === 'root') out.detect = 'root';
+  const admin = map.get('i18n_admin_locale');
+  if (admin) out.adminLocale = admin;
+  return out;
 }
 
 /**
