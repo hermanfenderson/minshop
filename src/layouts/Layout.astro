@@ -89,7 +89,7 @@ const shell = buildShellModel({
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={Astro.locals.locale} dir={Astro.locals.i18n.dir === 'rtl' ? 'rtl' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

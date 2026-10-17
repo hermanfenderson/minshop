@@ -34,8 +34,12 @@ declare namespace App {
   interface Locals extends CloudflareRuntime {
     /** The request path under the mount ('/shop/cart' → '/cart'), set first by middleware. */
     path: string;
-    /** The request's URL builder (mount-aware), set first by middleware. */
+    /** The request's URL builder (mount- and language-aware), set first by middleware. */
     urls: import('./i18n').LocaleUrls;
+    /** The request's language ('en', 'it'), from its URL. */
+    locale: string;
+    /** The request's translator (UI dictionaries). */
+    i18n: import('./i18n').I18n;
     adminEmail?: string;
     /** Runtime settings overlay (store name etc.), loaded once per request. */
     settings?: import('./features/settings/db').StoreSettings;

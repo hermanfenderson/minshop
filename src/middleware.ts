@@ -27,8 +27,10 @@ import {
 import { addCacheTags, responseCacheTags } from './features/cache/tags';
 import { normalizeSearchQuery } from './features/search/query';
 import { isForbiddenFormOrigin } from './features/auth/formOrigin';
-import { cookieName, logicalPath } from './deployment';
-import { storeUrls } from './features/i18n/urls';
+import { MOUNT, cookieName } from './deployment';
+import { createRouting, resolveRequestLocale } from './i18n';
+import { LOCALE_REGISTRY, languageSettings } from './features/i18n/settings';
+import { namesLanguage, preParsePath, requestLanguage } from './features/i18n/request';
 
 /**
  * Admin auth gate. Protects BOTH the admin UI (`/admin/*`) and the admin API
@@ -66,52 +68,77 @@ function isProtected(pathname: string): boolean {
   );
 }
 
-async function gate(context: APIContext, next: MiddlewareNext): Promise<Response> {
-  // Runtime settings overlay (store name etc.) — only for HTML page requests, so
-  // the storefront/admin can reflect wizard-set values without a redeploy. APIs and
-  // static assets skip it (one indexed D1 read per page, not per asset/API call).
-  // Every decision below compares the LOGICAL path (no mount), set by route().
-  const path = context.locals.path;
-  const urls = context.locals.urls;
-  const isDocument =
-    !path.startsWith('/api/') &&
-    !path.startsWith('/_') &&
-    !path.startsWith('/partials/');
-  if (isDocument) {
-    // Storefront documents also need the header/footer menus. Both reads go in
-    // ONE batch so /cart, /checkout, /account, /order, and /pay — which are never
-    // edge-cached — don't pay a second D1 round trip.
-    const wantsMenus = !path.startsWith('/admin');
+/**
+ * HTML documents (pages, admin), as opposed to APIs, assets and fragments. They
+ * load the runtime settings overlay and the menus.
+ */
+function isDocumentPath(path: string): boolean {
+  return !path.startsWith('/api/') && !path.startsWith('/_') && !path.startsWith('/partials/');
+}
+
+/**
+ * Runtime settings overlay (store name, languages, …): ONE read per request,
+ * only where it is needed. HTML documents batch it with the menus; the cart
+ * fragment and any request that names a language read settings alone (the
+ * language must be checked against the enabled ones). Other APIs and assets
+ * read nothing.
+ */
+async function loadSettings(context: APIContext, path: string): Promise<void> {
+  const isDocument = isDocumentPath(path);
+  const wantsSettings =
+    isDocument ||
+    path.startsWith('/partials/') ||
+    namesLanguage(context.url, MOUNT, LOCALE_REGISTRY, 'lang');
+  if (!wantsSettings) return;
+  if (!isDocument) {
     try {
-      if (wantsMenus) {
-        const [settings, menus] = await env.DB.batch<Record<string, string>>([
-          env.DB.prepare(STORE_SETTINGS_SQL),
-          env.DB.prepare(MENU_ITEMS_SQL),
-        ]);
-        context.locals.settings = parseStoreSettings(
-          (settings.results ?? []) as Array<{ key: string; value: string }>,
-        );
-        context.locals.menus = groupMenus(
-          (menus.results ?? []) as unknown as MenuItemRow[],
-          context.locals.settings.homePage,
-        );
-      } else {
-        context.locals.settings = await getStoreSettings(env.DB);
-      }
+      context.locals.settings = await getStoreSettings(env.DB);
     } catch {
-      // A batch is all-or-nothing, so a missing `menu_items` table (pre-migration)
-      // would take settings down with it — and losing settings silently
-      // disables the first-run setup funnel below. Retry settings alone.
-      // Empty menus render a bare header and a copyright-only footer: degraded
-      // but navigable. Losing settings is not.
-      try {
-        context.locals.settings = await getStoreSettings(env.DB);
-        context.locals.menus = EMPTY_MENUS;
-      } catch {
-        // Settings table missing too → fall back to build-time defaults.
-      }
+      // Settings table missing → build-time defaults (one language).
+    }
+    return;
+  }
+  // Storefront documents also need the header/footer menus. Both reads go in
+  // ONE batch so /cart, /checkout, /account, /order, and /pay — which are never
+  // edge-cached — don't pay a second D1 round trip.
+  const wantsMenus = !path.startsWith('/admin');
+  try {
+    if (wantsMenus) {
+      const [settings, menus] = await env.DB.batch<Record<string, string>>([
+        env.DB.prepare(STORE_SETTINGS_SQL),
+        env.DB.prepare(MENU_ITEMS_SQL),
+      ]);
+      context.locals.settings = parseStoreSettings(
+        (settings.results ?? []) as Array<{ key: string; value: string }>,
+      );
+      context.locals.menus = groupMenus(
+        (menus.results ?? []) as unknown as MenuItemRow[],
+        context.locals.settings.homePage,
+      );
+    } else {
+      context.locals.settings = await getStoreSettings(env.DB);
+    }
+  } catch {
+    // A batch is all-or-nothing, so a missing `menu_items` table (pre-migration)
+    // would take settings down with it — and losing settings silently
+    // disables the first-run setup funnel. Retry settings alone.
+    // Empty menus render a bare header and a copyright-only footer: degraded
+    // but navigable. Losing settings is not.
+    try {
+      context.locals.settings = await getStoreSettings(env.DB);
+      context.locals.menus = EMPTY_MENUS;
+    } catch {
+      // Settings table missing too → fall back to build-time defaults.
     }
   }
+}
+
+async function gate(context: APIContext, next: MiddlewareNext): Promise<Response> {
+  // Every decision below compares the LOGICAL path (no mount, no language), set
+  // by route(), which has also loaded the settings this request needs.
+  const path = context.locals.path;
+  const urls = context.locals.urls;
+  const isDocument = isDocumentPath(path);
 
   // First-run funnel: until the setup wizard is finished, send the STOREFRONT to it
   // too — the admin already redirects /admin → /admin/setup the same way. Skips
@@ -225,28 +252,83 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   return context.redirect(urls.href('/admin/setup'), 303);
 }
 
-async function route(context: APIContext, next: MiddlewareNext): Promise<Response> {
-  // The store may be mounted under a path ('/shop'). Route, auth, rate-limit and
-  // cache decisions all compare the path UNDER the mount.
-  const logical = logicalPath(context.url.pathname);
-  if (logical === null) {
-    // Astro would still match '/cart' against the routes under a mount; the
-    // store must answer only under its own path, never as a second copy.
-    return new Response('Not found', {
-      status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
-    });
-  }
-  const path = logical;
-  context.locals.path = path;
-  context.locals.urls = storeUrls(context.url.origin, { path, search: context.url.search });
-  const productError = path.startsWith('/products/') && context.url.searchParams.has('error');
+const notFound = (): Response =>
+  new Response('Not found', {
+    status: 404,
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+  });
 
-  let response = isForbiddenFormOrigin(context.request, context.url, path)
-    ? new Response(`Cross-site ${context.request.method} form submissions are forbidden`, {
-        status: 403,
-      })
-    : await gate(context, next);
+async function route(context: APIContext, next: MiddlewareNext): Promise<Response> {
+  const url = context.url;
+  // A page-level Astro.rewrite (index.astro's home-page override) runs the
+  // middleware again on the internal URL. The language was resolved from the
+  // public URL on the first pass: keep it, and only follow the new path.
+  const reentry = context.locals.locale !== undefined;
+
+  // The logical path: no mount ('/shop'), no language prefix ('/it'). Outside
+  // the mount the store doesn't answer at all — Astro would otherwise match
+  // '/cart' against the routes under '/shop' and serve a second copy.
+  const pre = preParsePath(url.pathname, MOUNT, LOCALE_REGISTRY);
+  if (pre === null) return notFound();
+  if (!reentry) await loadSettings(context, pre);
+  const languages = languageSettings(context.locals.settings);
+
+  // On re-entry Astro has normalized the internal URL with a trailing slash
+  // (build.format 'directory'); logical paths never end in one but the root.
+  let path = reentry && pre.length > 1 && pre.endsWith('/') ? pre.slice(0, -1) : pre;
+  let locale = reentry ? context.locals.locale : languages.defaultLocale;
+  let proceed: MiddlewareNext = next;
+  let redirect: Response | null = null;
+  if (!reentry) {
+    // The language comes from the URL only. Cookie and Accept-Language are read
+    // solely for the opt-in home-page suggestion (i18n_detect = root).
+    const resolution = resolveRequestLocale(url, createRouting(languages, MOUNT, LOCALE_REGISTRY), languages, {
+      mount: MOUNT,
+      method: context.request.method,
+      preferred: {
+        cookie: context.cookies.get(cookieName('lang'))?.value ?? null,
+        acceptLanguage: context.request.headers.get('accept-language'),
+      },
+    });
+    if (resolution.action === 'outside') return notFound();
+    if (resolution.action === 'redirect') {
+      redirect = new Response(null, { status: resolution.status, headers: { location: resolution.location } });
+      if (resolution.negotiated) {
+        // Chosen from the visitor's preferences: never shared by a cache.
+        redirect.headers.set('cache-control', 'private, no-store');
+        redirect.headers.set('vary', 'cookie, accept-language');
+      }
+    } else {
+      path = resolution.path;
+      locale = resolution.locale;
+      // '/it/shop/cart' renders the '/shop/cart' route. next(url) rewrites in
+      // the same request; the body stream travels with it, so nothing before
+      // this point may read the body (nothing does: route and gate only read
+      // headers and the URL).
+      if (resolution.rewrite) {
+        const internal = new URL(resolution.internalPath + url.search, url);
+        proceed = () => next(internal);
+      }
+    }
+  }
+
+  const language = requestLanguage(languages, LOCALE_REGISTRY, MOUNT, locale, url.origin, {
+    path,
+    search: url.search,
+  });
+  context.locals.path = path;
+  context.locals.locale = language.locale;
+  context.locals.i18n = language.i18n;
+  context.locals.urls = language.urls;
+  const productError = path.startsWith('/products/') && url.searchParams.has('error');
+
+  let response =
+    redirect ??
+    (isForbiddenFormOrigin(context.request, url, path)
+      ? new Response(`Cross-site ${context.request.method} form submissions are forbidden`, {
+          status: 403,
+        })
+      : await gate(context, proceed));
 
   // Workers Caching heuristically stores headerless responses, so make every
   // response explicit: only allowlisted public successes/301s are shared.
