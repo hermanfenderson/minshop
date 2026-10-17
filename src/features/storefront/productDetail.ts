@@ -60,6 +60,9 @@ export interface ProductDetailOptions {
   imageBaseUrl: string;
   delivery: ImageDelivery | undefined;
   currency: string;
+  /** Intl locale tag prices are formatted in (the store's: `i18n.intl`).
+   *  Defaults to en-US, the pre-i18n output. */
+  intl?: string;
   /** Absolute origin for SEO URLs. */
   origin: string;
   /** The page's public path (mount and, later, language included), for JSON-LD. */
@@ -207,7 +210,7 @@ export async function loadProductDetail(
       descriptionHtml: product.description
         ? renderMarkdown(product.description, { baseUrl: options.imageBaseUrl, href })
         : null,
-      formattedPrice: formatMoney(displayPriceCents, options.currency),
+      formattedPrice: formatMoney(displayPriceCents, options.currency, options.intl),
       priceCents: product.price_cents,
       currency: options.currency,
       priceVaries,
@@ -228,6 +231,7 @@ export async function loadProductDetail(
           baseUrl: options.imageBaseUrl,
           delivery: options.delivery,
           currency: options.currency,
+          intl: options.intl,
           sizes: RELATED_CARD_SIZES,
         }),
       ),
@@ -248,7 +252,7 @@ export async function loadProductDetail(
       variants: variants.map((variant, index) => ({
         id: requirePublicId(variant.public_id, variant.id, 'variant'),
         label: variant.label,
-        formattedPrice: formatMoney(variant.price_cents, options.currency),
+        formattedPrice: formatMoney(variant.price_cents, options.currency, options.intl),
         priceCents: variant.price_cents,
         soldOut: variant.stock <= 0,
         defaultSelected: index === firstInStockIndex,
@@ -257,7 +261,7 @@ export async function loadProductDetail(
       extras: extras.map((extra) => ({
         id: requirePublicId(extra.public_id, extra.id, 'extra'),
         label: extra.label,
-        formattedPriceDelta: formatMoney(extra.price_delta_cents, options.currency),
+        formattedPriceDelta: formatMoney(extra.price_delta_cents, options.currency, options.intl),
         priceDeltaCents: extra.price_delta_cents,
       })),
     },

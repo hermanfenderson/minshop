@@ -13,6 +13,7 @@
  */
 
 import type { StoreSettings } from '../settings/db';
+import { enI18n, type I18n } from '../../i18n/translator.ts';
 import { enabledMethods } from '../payments';
 import { stripeAllowedCountries } from '../payments/stripeCountries.ts';
 import { allowedCountries, hasCatchAllZone, type ShippingConfig } from './calculator';
@@ -36,7 +37,9 @@ export function stripeDestination(
   effectiveShipping: ShippingConfig,
   shippingRequired: boolean,
   geoCountry?: string | null,
+  i18n: I18n = enI18n,
 ): StripeDestination {
+  const name = (code: string) => countryName(code, i18n.intl);
   // `enabledMethods`, not `isMethodAvailable`: a merchant who DISABLED their
   // configured Stripe rail gets no card button, so a card-only selector would be
   // furniture for a flow that cannot happen.
@@ -47,7 +50,7 @@ export function stripeDestination(
       ? stripeAllowedCountries(
           anywhere ? [...COUNTRY_CODES] : allowedCountries(effectiveShipping),
           false,
-        ).sort((a, b) => countryName(a).localeCompare(countryName(b)))
+        ).sort((a, b) => name(a).localeCompare(name(b), i18n.intl))
       : [];
   // GeoIP is a guess: it only seeds the selection, never restricts it.
   const geo = String(geoCountry ?? '').toUpperCase();
@@ -57,6 +60,6 @@ export function stripeDestination(
     defaultCountry,
     showSelect: countries.length > 1,
     hiddenOnly: countries.length === 1,
-    label: (code) => `${countryName(code)} (${code})`,
+    label: (code) => `${name(code)} (${code})`,
   };
 }

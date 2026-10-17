@@ -1,4 +1,6 @@
 ---
+import { storefrontI18n, type I18n } from './i18n';
+
 /**
  * The storefront search form. Owns the GET method, the `q` field name, the
  * search landmark role, and the accessible label — the parts that make search
@@ -16,6 +18,7 @@ interface Props {
   query: string;
   class?: string;
   inputClass?: string;
+  i18n?: I18n;
 }
 
 const DEFAULT_INPUT_CLASS =
@@ -26,7 +29,9 @@ const {
   query,
   class: className = '',
   inputClass = DEFAULT_INPUT_CLASS,
+  i18n,
 } = Astro.props;
+const { t } = storefrontI18n(i18n);
 ---
 
 <form method="GET" action={action} class={className} role="search">
@@ -34,8 +39,8 @@ const {
     type="search"
     name="q"
     value={query}
-    placeholder="Search"
-    aria-label="Search products"
+    placeholder={t('storefront.header.search')}
+    aria-label={t('storefront.search.label')}
     class={inputClass}
   />
 </form>

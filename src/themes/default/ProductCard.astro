@@ -1,6 +1,7 @@
 ---
 import type { ProductCardModel } from '../../features/storefront/models';
 import StoreImage from '../../features/storefront/controls/StoreImage.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * STORE-OWNED. Edit freely — this file belongs to your store, and upstream will
@@ -23,9 +24,12 @@ interface Props {
   /** Heading level for the card title, so cards nested under a section heading
    *  keep the document outline correct. */
   headingLevel?: 'h2' | 'h3';
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { card, index = 0, headingLevel = 'h2' } = Astro.props;
+const { t } = storefrontI18n(Astro.props.i18n);
 const Heading = headingLevel;
 ---
 
@@ -40,7 +44,7 @@ const Heading = headingLevel;
       {
         !card.inStock && (
           <span class="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs uppercase tracking-widest text-muted ring-1 ring-line">
-            Sold out
+            {t('storefront.product.soldOut')}
           </span>
         )
       }

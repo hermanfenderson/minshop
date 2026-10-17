@@ -4,6 +4,7 @@ import StoreNav from '../../features/storefront/controls/StoreNav.astro';
 import StoreSearch from '../../features/storefront/controls/StoreSearch.astro';
 import StoreCartControl from '../../features/storefront/controls/StoreCartControl.astro';
 import StoreAccountControl from '../../features/storefront/controls/StoreAccountControl.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * Studio — a masthead that gets out of the way.
@@ -18,9 +19,13 @@ import StoreAccountControl from '../../features/storefront/controls/StoreAccount
  */
 interface Props {
   model: StorefrontShellModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
 const small =
   'text-[10px] font-medium uppercase tracking-[0.24em] text-[color:var(--studio-muted)] hover:text-[color:var(--studio-bone)]';
 ---
@@ -51,19 +56,27 @@ const small =
       }
     </a>
 
-    <nav aria-label="Store" class="ml-auto flex min-w-0 items-center gap-6">
+    <nav aria-label={t('storefront.header.storeNav')} class="ml-auto flex min-w-0 items-center gap-6">
       <StoreNav
         links={model.headerLinks}
         class={`hidden min-w-0 items-center gap-6 xl:flex ${small}`}
         disclosureClass={`relative order-last xl:hidden ${small}`}
+        i18n={i18n}
       />
-      <a href={model.search.action} class={`${small} sm:hidden`}>Search</a>
-      {model.account.enabled && <StoreAccountControl href={model.account.href} class={small} />}
+      <a href={model.search.action} class={`${small} sm:hidden`}>
+        {t('storefront.header.search')}
+      </a>
+      {
+        model.account.enabled && (
+          <StoreAccountControl href={model.account.href} class={small} i18n={i18n} />
+        )
+      }
       {
         model.cart.enabled && (
           <StoreCartControl
             href={model.cart.href}
             class="inline-flex items-center text-[10px] font-medium uppercase tracking-[0.24em] text-[color:var(--studio-bone)] hover:text-brand"
+            i18n={i18n}
           />
         )
       }
@@ -74,6 +87,7 @@ const small =
       query={model.search.query}
       class="hidden w-full border-b border-line pb-1 focus-within:border-brand sm:block sm:w-56"
       inputClass="w-full bg-transparent px-0 py-0.5 text-sm focus:outline-none"
+      i18n={i18n}
     />
   </div>
 </header>

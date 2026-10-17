@@ -2,10 +2,11 @@ import { rootHref, type Href } from '../../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import { listProducts, countProducts } from '../products/db';
 import { listCategories, childrenOf } from '../categories/db';
-import { orderByClause, parseStoreSortQuery, STORE_SORTS } from '../products/sort';
+import { orderByClause, parseStoreSortQuery, storeSorts } from '../products/sort';
 import { MAX_PUBLIC_PAGE, paginate, queryHref } from '../../pagination';
 import { addCacheTags, productCacheTags } from '../cache/tags';
 import type { ImageDelivery } from '../products/image';
+import { enI18n, type I18n } from '../../i18n/translator.ts';
 import { buildProductCard } from './productCard';
 import type {
   CatalogPageModel,
@@ -38,9 +39,14 @@ const CARD_SIZES = '(min-width: 1024px) 352px, calc(50vw - 36px)';
  * path renders the same list, which is a duplicate-URL question worth revisiting
  * separately rather than changing inside an extraction.
  */
-export function buildSortModel(base: string, sort: string, dir: 'asc' | 'desc'): StorefrontSortModel {
+export function buildSortModel(
+  base: string,
+  sort: string,
+  dir: 'asc' | 'desc',
+  i18n: I18n = enI18n,
+): StorefrontSortModel {
   return {
-    options: STORE_SORTS.map((option) => {
+    options: storeSorts(i18n).map((option) => {
       const current = sort === option.sort;
       // Re-clicking the active field flips it; an inactive field applies its own
       // natural direction (price ascending, newest descending).
@@ -118,6 +124,8 @@ export interface CatalogPageOptions {
   heading: string;
   /** Logical path → public URL. Root by default. */
   href?: Href;
+  /** The request's translator, for the sort labels. English when omitted. */
+  i18n?: I18n;
 }
 
 export async function loadCatalogPage(
@@ -157,12 +165,13 @@ export async function loadCatalogPage(
         baseUrl: options.imageBaseUrl,
         delivery: options.delivery,
         currency: options.currency,
+        intl: options.i18n?.intl,
         sizes: CARD_SIZES,
         // Only the first card is the page's likely LCP image.
         priority: index === 0,
       }),
     ),
-    sort: buildSortModel(options.base, sort, dir),
+    sort: buildSortModel(options.base, sort, dir, options.i18n),
     pagination: buildPaginationModel(options.base, page, totalPages, sort, dir),
   };
 }

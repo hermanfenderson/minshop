@@ -4,6 +4,7 @@ import StoreNav from '../../features/storefront/controls/StoreNav.astro';
 import StoreSearch from '../../features/storefront/controls/StoreSearch.astro';
 import StoreCartControl from '../../features/storefront/controls/StoreCartControl.astro';
 import StoreAccountControl from '../../features/storefront/controls/StoreAccountControl.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * STORE-OWNED. Edit freely — this file belongs to your store.
@@ -16,9 +17,13 @@ import StoreAccountControl from '../../features/storefront/controls/StoreAccount
  */
 interface Props {
   model: StorefrontShellModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
 ---
 
 {/* Announcement bar. Deliberately NOT fixed: the header below is sticky, so a
@@ -59,6 +64,7 @@ const { model } = Astro.props;
       action={model.search.action}
       query={model.search.query}
       class="ml-auto hidden flex-1 justify-end sm:flex"
+      i18n={i18n}
     />
     {/* ml-auto pins the whole nav to the right edge of the header row, so it
         stays flush right no matter how few items a merchant has.
@@ -67,14 +73,16 @@ const { model } = Astro.props;
         shrink stops at this level and the row grows past the viewport —
         putting min-w-0 only on the links themselves is not enough. */}
     <nav
-      aria-label="Primary"
+      aria-label={t('storefront.header.primaryNav')}
       class="ml-auto flex min-w-0 items-center gap-4 text-xs uppercase tracking-widest text-muted sm:gap-6"
     >
-      <StoreNav links={model.headerLinks} />
+      <StoreNav links={model.headerLinks} i18n={i18n} />
       {/* Search input is desktop-only; give mobile a link to the search page. */}
-      <a href={model.search.action} class="hover:text-brand sm:hidden">Search</a>
-      {model.cart.enabled && <StoreCartControl href={model.cart.href} />}
-      {model.account.enabled && <StoreAccountControl href={model.account.href} />}
+      <a href={model.search.action} class="hover:text-brand sm:hidden">
+        {t('storefront.header.search')}
+      </a>
+      {model.cart.enabled && <StoreCartControl href={model.cart.href} i18n={i18n} />}
+      {model.account.enabled && <StoreAccountControl href={model.account.href} i18n={i18n} />}
     </nav>
   </div>
 </header>

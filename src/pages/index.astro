@@ -13,8 +13,9 @@ import { resolveHomePath } from '../features/settings/home';
 // through to the catalog: a 404 homepage would be edge-cached for everyone.
 const homePath = await resolveHomePath(env.DB, Astro.locals.settings?.homePage);
 if (homePath) return Astro.rewrite(withMount(homePath));
+const { t } = Astro.locals.i18n;
 ---
 
 <Layout>
-  <ProductList />
+  <ProductList eyebrow={t('storefront.catalog.eyebrow')} heading={t('storefront.catalog.heading')} />
 </Layout>

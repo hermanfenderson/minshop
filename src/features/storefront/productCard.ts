@@ -66,6 +66,9 @@ export interface ProductCardOptions extends StorefrontImageOptions {
    * pass the store's configured currency.
    */
   currency: string;
+  /** Intl locale tag the price is formatted in (the store's: `i18n.intl`).
+   *  Defaults to en-US, the pre-i18n output. */
+  intl?: string;
 }
 
 /**
@@ -84,7 +87,7 @@ export function buildProductCard(
     image: buildStorefrontImage(product.image_key, product.name, options),
     // The store's currency, not the row's: a product row can carry a legacy
     // currency, and the catalog has always displayed one consistent currency.
-    formattedPrice: formatMoney(product.price_cents, options.currency),
+    formattedPrice: formatMoney(product.price_cents, options.currency, options.intl),
     // Availability only — never the count. `stockState` is the authoritative
     // classification; re-deriving `stock > 0` here would fork that rule.
     inStock: stockState(product.stock) !== 'out',

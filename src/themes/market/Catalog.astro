@@ -3,6 +3,7 @@ import type { CatalogPageModel } from '../../features/storefront/models';
 import ProductCard from './ProductCard.astro';
 import CatalogSort from '../../features/storefront/controls/CatalogSort.astro';
 import CatalogPagination from '../../features/storefront/controls/CatalogPagination.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * Market — the catalogue as a working surface.
@@ -18,9 +19,21 @@ import CatalogPagination from '../../features/storefront/controls/CatalogPaginat
  */
 interface Props {
   model: CatalogPageModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
+const shown =
+  model.pagination.totalPages > 1
+    ? t('storefront.catalog.shownPaged', {
+        count: model.products.length,
+        page: model.pagination.page,
+        totalPages: model.pagination.totalPages,
+      })
+    : t('storefront.catalog.shown', { count: model.products.length });
 const chip =
   'border border-line bg-paper px-2.5 py-1 text-[11px] font-semibold text-[color:var(--market-muted)] hover:border-gray-900 hover:text-gray-900';
 ---
@@ -32,15 +45,13 @@ const chip =
   <CatalogSort
     model={model.sort}
     class="ml-auto flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--market-muted)]"
+    i18n={i18n}
   />
 </div>
 
 <div class="flex flex-wrap items-baseline gap-3 py-4">
   <h1 class="text-[22px] font-extrabold tracking-tight">{model.heading}</h1>
-  <p class="font-serif text-xs text-[color:var(--market-muted)]">
-    {model.products.length} shown
-    {model.pagination.totalPages > 1 && ` · page ${model.pagination.page}/${model.pagination.totalPages}`}
-  </p>
+  <p class="font-serif text-xs text-[color:var(--market-muted)]">{shown}</p>
 </div>
 
 {
@@ -48,7 +59,7 @@ const chip =
      announce itself rather than rendering a blank grid. */
   model.products.length === 0 && (
     <p role="status" class="border border-line bg-[color:var(--market-surface)] p-6 text-sm">
-      Nothing here yet. Check back shortly.
+      {t('storefront.catalog.emptyMarket')}
     </p>
   )
 }
@@ -57,7 +68,7 @@ const chip =
   model.products.length > 0 && (
     <ul class="-mx-4 grid grid-cols-2 gap-px border-y border-line bg-line sm:grid-cols-3 lg:grid-cols-5">
       {model.products.map((card, i) => (
-        <ProductCard card={card} index={i} />
+        <ProductCard card={card} index={i} i18n={i18n} />
       ))}
     </ul>
   )
@@ -66,4 +77,5 @@ const chip =
 <CatalogPagination
   model={model.pagination}
   class="mt-6 flex items-center justify-center gap-1 font-serif text-xs"
+  i18n={i18n}
 />

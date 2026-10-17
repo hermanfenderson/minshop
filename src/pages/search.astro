@@ -11,6 +11,8 @@ import Pagination from '../components/Pagination.astro';
 import { normalizeSearchQuery } from '../features/search/query';
 import { addCacheTags, productCacheTags } from '../features/cache/tags';
 
+const { i18n } = Astro.locals;
+const { t, th } = i18n;
 const q = normalizeSearchQuery(Astro.url.searchParams.get('q') ?? '');
 const PAGE_SIZE = 24;
 const requested = requestedPage(Astro.url.searchParams, MAX_PUBLIC_PAGE);
@@ -55,6 +57,7 @@ const cardOptions = {
   href: Astro.locals.urls.href,
   baseUrl: getConfig().images.baseUrl,
   currency: getConfig().currency,
+  intl: Astro.locals.i18n.intl,
   delivery: Astro.locals.settings?.imageDelivery,
   sizes: '(min-width: 1024px) 352px, calc(50vw - 36px)',
 };
@@ -62,13 +65,14 @@ const cards = products.map((product, i) =>
   buildProductCard(product, { ...cardOptions, priority: i === 0 }),
 );
 const fillerCards = fillers.map((product) => buildProductCard(product, cardOptions));
+const title = q ? t('storefront.search.titleWithQuery', { query: q }) : t('storefront.search.title');
 ---
 
-<Layout title={q ? `Search: ${q}` : 'Search'}>
+<Layout title={title}>
   <div class="mb-8">
-    <p class="text-xs uppercase tracking-[0.25em] text-muted">Search</p>
+    <p class="text-xs uppercase tracking-[0.25em] text-muted">{t('storefront.search.title')}</p>
     <h1 class="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
-      {q ? q : 'Find something'}
+      {q ? q : t('storefront.search.heading')}
     </h1>
   </div>
 
@@ -77,8 +81,8 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
       type="search"
       name="q"
       value={q}
-      placeholder="Search products…"
-      aria-label="Search products"
+      placeholder={t('storefront.search.placeholder')}
+      aria-label={t('storefront.search.label')}
       autofocus={!q}
       class="w-full border-0 border-b border-line bg-transparent px-1 py-2 text-base transition-colors focus:border-brand focus:outline-none"
     />
@@ -88,12 +92,13 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
     q &&
       (autoCorrected ? (
         <p class="mb-8 text-sm text-muted">
-          No matches for “{q}” — showing results for{' '}
-          <strong class="font-medium text-ink">{suggestion}</strong>.
+          <Fragment
+            set:html={th('storefront.search.corrected', { query: q, suggestion: suggestion ?? '' })}
+          />
         </p>
       ) : products.length > 0 ? (
         <p class="mb-8 text-xs uppercase tracking-widest text-muted">
-          {total} result{total === 1 ? '' : 's'} for “{q}”
+          {t('storefront.search.resultCount', { count: total, query: q })}
         </p>
       ) : null)
   }
@@ -102,7 +107,7 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
     products.length > 0 && (
       <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-3">
         {cards.map((card, i) => (
-          <ProductCard card={card} index={i} />
+          <ProductCard card={card} index={i} i18n={i18n} />
         ))}
       </ul>
     )
@@ -112,11 +117,11 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
     fillers.length > 0 && (
       <>
         <p class="mb-8 mt-16 text-xs uppercase tracking-widest text-muted">
-          More from these categories
+          {t('storefront.search.moreFromCategories')}
         </p>
         <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-3">
           {fillerCards.map((card, i) => (
-            <ProductCard card={card} index={i} />
+            <ProductCard card={card} index={i} i18n={i18n} />
           ))}
         </ul>
       </>
@@ -125,7 +130,7 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
 
   {
     q && products.length === 0 && (
-      <p class="text-muted">No products match “{q}”. Try a different word.</p>
+      <p class="text-muted">{t('storefront.search.noResults', { query: q })}</p>
     )
   }
 

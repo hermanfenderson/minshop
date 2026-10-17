@@ -4,6 +4,7 @@ import StoreNav from '../../features/storefront/controls/StoreNav.astro';
 import StoreSearch from '../../features/storefront/controls/StoreSearch.astro';
 import StoreCartControl from '../../features/storefront/controls/StoreCartControl.astro';
 import StoreAccountControl from '../../features/storefront/controls/StoreAccountControl.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * Market — a compact toolbar, not a masthead.
@@ -19,9 +20,13 @@ import StoreAccountControl from '../../features/storefront/controls/StoreAccount
  */
 interface Props {
   model: StorefrontShellModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
 const link = 'text-xs font-semibold text-[color:var(--market-muted)] hover:text-gray-900';
 ---
 
@@ -56,23 +61,30 @@ const link = 'text-xs font-semibold text-[color:var(--market-muted)] hover:text-
       query={model.search.query}
       class="order-3 flex w-full min-w-0 border border-line bg-[color:var(--market-surface)] focus-within:border-brand sm:order-none sm:ml-auto sm:w-56 lg:w-72"
       inputClass="w-full min-w-0 bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+      i18n={i18n}
     />
 
     <nav
-      aria-label="Store"
+      aria-label={t('storefront.header.storeNav')}
       class="flex min-w-0 items-center gap-3 text-xs font-semibold text-[color:var(--market-muted)] sm:gap-4"
     >
       <StoreNav
         links={model.headerLinks}
         class="hidden min-w-0 items-center gap-4 lg:flex"
         disclosureClass="relative order-last lg:hidden"
+        i18n={i18n}
       />
-      {model.account.enabled && <StoreAccountControl href={model.account.href} class={link} />}
+      {
+        model.account.enabled && (
+          <StoreAccountControl href={model.account.href} class={link} i18n={i18n} />
+        )
+      }
       {
         model.cart.enabled && (
           <StoreCartControl
             href={model.cart.href}
             class="inline-flex items-center border border-gray-900 px-2.5 py-1.5 font-serif text-xs font-bold uppercase text-gray-900 hover:bg-gray-900 hover:text-white"
+            i18n={i18n}
           />
         )
       }

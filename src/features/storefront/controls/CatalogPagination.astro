@@ -1,5 +1,6 @@
 ---
 import type { StorefrontPaginationModel } from '../models';
+import { storefrontI18n, type I18n } from './i18n';
 
 /**
  * Page links. Owns the navigation landmark, `aria-current="page"`, and the
@@ -9,18 +10,24 @@ import type { StorefrontPaginationModel } from '../models';
 interface Props {
   model: StorefrontPaginationModel;
   class?: string;
+  i18n?: I18n;
 }
 
-const { model, class: className = 'mt-14 flex items-center justify-center gap-1' } = Astro.props;
+const {
+  model,
+  class: className = 'mt-14 flex items-center justify-center gap-1',
+  i18n,
+} = Astro.props;
+const { t } = storefrontI18n(i18n);
 const linkCls = 'px-3 py-1.5 text-xs uppercase tracking-widest text-muted hover:text-brand';
 ---
 
 {
   model.totalPages > 1 && (
-    <nav class={className} aria-label="Pagination">
+    <nav class={className} aria-label={t('common.pagination.label')}>
       {model.prevHref && (
         <a href={model.prevHref} class={linkCls} rel="prev">
-          Prev
+          {t('common.pagination.prev')}
         </a>
       )}
       {model.items.map((item) =>
@@ -38,7 +45,7 @@ const linkCls = 'px-3 py-1.5 text-xs uppercase tracking-widest text-muted hover:
       )}
       {model.nextHref && (
         <a href={model.nextHref} class={linkCls} rel="next">
-          Next
+          {t('common.pagination.next')}
         </a>
       )}
     </nav>

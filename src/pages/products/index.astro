@@ -19,8 +19,9 @@ const homeIsOverridden = !!Astro.locals.settings?.homePage;
 const canonical = homeIsOverridden
   ? undefined
   : new URL(Astro.locals.urls.home(), publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN)).href;
+const { t } = Astro.locals.i18n;
 ---
 
-<Layout title="All products" canonical={canonical}>
-  <ProductList />
+<Layout title={t('storefront.catalog.heading')} canonical={canonical}>
+  <ProductList eyebrow={t('storefront.catalog.eyebrow')} heading={t('storefront.catalog.heading')} />
 </Layout>

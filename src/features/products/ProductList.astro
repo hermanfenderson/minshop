@@ -20,7 +20,9 @@ interface Props {
   heading?: string;
 }
 
-const { eyebrow = 'Shop', heading = 'All products' } = Astro.props;
+const { i18n } = Astro.locals;
+const { t } = i18n;
+const { eyebrow = t('catalog.list.eyebrow'), heading = t('catalog.list.heading') } = Astro.props;
 
 const model = await loadCatalogPage(env.DB, {
   base: Astro.locals.urls.href(Astro.locals.path),
@@ -32,7 +34,8 @@ const model = await loadCatalogPage(env.DB, {
   delivery: Astro.locals.settings?.imageDelivery,
   eyebrow,
   heading,
+  i18n,
 });
 ---
 
-<Catalog model={model} />
+<Catalog model={model} i18n={i18n} />

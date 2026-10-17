@@ -12,6 +12,7 @@ import { catalogPath } from '../features/settings/home';
 
 // Cart switched off in Settings → browse-only catalog, no cart page.
 if (!(Astro.locals.settings?.cartEnabled ?? true)) return Astro.redirect(Astro.locals.urls.home(), 302);
+const { t } = Astro.locals.i18n;
 
 // Show only the methods that can actually take a payment right now — the
 // configured real rails plus the always-on demo, minus any the admin disabled.
@@ -24,10 +25,22 @@ const ready = (m: string) => m === "demo" || (!!settings && isMethodAvailable(m 
 const firstReady = methods.find(ready);
 const methodRows = methods.map((m) => ({ m, ready: ready(m), primary: m === firstReady }));
 const METHOD: Record<string, { label: string; hint: string; setupHint: string }> = {
-  stripe: { label: 'Pay with card', hint: 'Visa, Mastercard, Apple Pay & more', setupHint: 'Set up card payments' },
-  lightning: { label: 'Pay with Lightning ⚡', hint: 'Instant — from any Lightning wallet', setupHint: 'Set up Lightning' },
-  opennode: { label: 'Pay with Bitcoin', hint: 'On-chain or Lightning (OpenNode)', setupHint: 'Set up OpenNode' },
-  demo: { label: 'Demo checkout', hint: 'Simulated — places a real test order, no charge', setupHint: '' },
+  stripe: {
+    label: t('checkout.method.stripe.label'),
+    hint: t('checkout.method.stripe.hint'),
+    setupHint: t('checkout.method.stripe.setup'),
+  },
+  lightning: {
+    label: t('checkout.method.lightning.label'),
+    hint: t('checkout.method.lightning.hint'),
+    setupHint: t('checkout.method.lightning.setup'),
+  },
+  opennode: {
+    label: t('checkout.method.opennode.label'),
+    hint: t('checkout.method.opennode.hint'),
+    setupHint: t('checkout.method.opennode.setup'),
+  },
+  demo: { label: t('checkout.method.demo.label'), hint: t('checkout.method.demo.hint'), setupHint: '' },
 };
 
 const cart = readCart(Astro.cookies);
@@ -48,13 +61,14 @@ const destination = stripeDestination(
   effectiveShipping,
   shipmentWeightFor(lines).shippingRequired,
   Astro.request.headers.get('cf-ipcountry'),
+  Astro.locals.i18n,
 );
 // The catalog is at / until the home page is pointed elsewhere.
 const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 ---
 
-<Layout title="Cart">
-  <h1 class="mb-10 font-serif text-4xl tracking-tight">Your cart</h1>
+<Layout title={t('cart.page.title')}>
+  <h1 class="mb-10 font-serif text-4xl tracking-tight">{t('cart.page.heading')}</h1>
 
   {
     error && (
@@ -67,9 +81,9 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
   {
     lines.length === 0 ? (
       <p class="text-muted">
-        Your cart is empty.{' '}
+        {t('cart.page.empty')}{' '}
         <a href={shopHref} class="border-b border-brand text-brand">
-          Continue shopping
+          {t('cart.page.continueShopping')}
         </a>
         .
       </p>
@@ -101,15 +115,15 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                     </span>
                   )}
                   <span class="block text-xs tabular-nums text-muted">
-                    {formatPrice(l.unitPriceCents)} each
+                    {t('cart.line.each', { price: formatPrice(l.unitPriceCents, undefined, Astro.locals.i18n.intl) })}
                   </span>
                   {l.availableStock <= 0 ? (
                     <span class="mt-1 block text-xs uppercase tracking-widest text-red-600">
-                      Out of stock
+                      {t('cart.line.outOfStock')}
                     </span>
                   ) : l.qty > l.availableStock ? (
                     <span class="mt-1 block text-xs text-amber-700">
-                      Only {l.availableStock} available
+                      {t('cart.line.onlyAvailable', { count: l.availableStock })}
                     </span>
                   ) : null}
                 </span>
@@ -125,26 +139,26 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                     min="0"
                     max="99"
                     value={l.qty}
-                    aria-label="Quantity"
+                    aria-label={t('cart.line.quantity')}
                     class="w-14 border-b border-line bg-transparent py-1 text-center tabular-nums focus:border-brand focus:outline-none"
                   />
                   <button
                     type="submit"
                     class="text-xs uppercase tracking-widest text-faint hover:text-brand"
                   >
-                    Update
+                    {t('cart.line.update')}
                   </button>
                 </form>
-                <span class="w-20 text-right tabular-nums">{formatPrice(l.lineTotalCents)}</span>
+                <span class="w-20 text-right tabular-nums">{formatPrice(l.lineTotalCents, undefined, Astro.locals.i18n.intl)}</span>
                 <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center">
                   <input type="hidden" name="_action" value="remove" />
                   <input type="hidden" name="key" value={l.key} />
                   <button
                     type="submit"
-                    aria-label="Remove"
+                    aria-label={t('cart.line.remove')}
                     class="text-xs uppercase tracking-widest text-faint hover:text-red-600"
                   >
-                    Remove
+                    {t('cart.line.remove')}
                   </button>
                 </form>
               </div>
@@ -157,20 +171,20 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
         <div class="mt-10 flex justify-end">
           <div class="w-full sm:max-w-sm">
             <div class="flex items-center justify-between">
-              <span class="text-xs uppercase tracking-widest text-muted">Subtotal</span>
-              <span class="text-lg tabular-nums">{formatPrice(subtotalCents)}</span>
+              <span class="text-xs uppercase tracking-widest text-muted">{t('cart.summary.subtotal')}</span>
+              <span class="text-lg tabular-nums">{formatPrice(subtotalCents, undefined, Astro.locals.i18n.intl)}</span>
             </div>
 
             {methods.length === 0 ? (
               <p class="mt-4 rounded-lg border border-dashed border-line px-5 py-4 text-center text-sm text-muted">
-                Checkout is currently unavailable.
+                {t('cart.summary.unavailable')}
               </p>
             ) : (
             <form method="POST" action={Astro.locals.urls.href('/api/checkout')} class="mt-4 space-y-2">
               <input type="hidden" name="source" value="cart" />
               {destination.showSelect && (
                 <label class="mb-2 flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
-                  Ship to
+                  {t('cart.summary.shipTo')}
                   <select
                     name="country"
                     class="rounded-md border border-line px-2 py-1.5 text-sm normal-case tracking-normal text-ink"
@@ -222,7 +236,7 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                   >
                     <span>
                       <span class="block text-sm font-medium">{METHOD[m]?.label ?? m}</span>
-                      <span class="block text-xs">{METHOD[m]?.setupHint ?? 'Set up'}</span>
+                      <span class="block text-xs">{METHOD[m]?.setupHint ?? t('cart.summary.setUp')}</span>
                     </span>
                     <span aria-hidden="true">&rarr;</span>
                   </a>

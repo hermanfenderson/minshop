@@ -7,6 +7,7 @@ import { getConfig } from '../../config';
 import { publicOrigin } from '../../features/http/origin';
 import { addCacheTags, productCacheTags } from '../../features/cache/tags';
 
+const { i18n } = Astro.locals;
 const loaded = await loadProductDetail(env.DB, {
   slug: Astro.params.slug,
   searchParams: Astro.url.searchParams,
@@ -14,6 +15,7 @@ const loaded = await loadProductDetail(env.DB, {
   imageBaseUrl: getConfig().images.baseUrl,
   delivery: Astro.locals.settings?.imageDelivery,
   currency: getConfig().currency,
+  intl: i18n.intl,
   origin: publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN),
   pathname: Astro.locals.urls.href(Astro.locals.path),
   href: Astro.locals.urls.href,
@@ -22,7 +24,7 @@ const loaded = await loadProductDetail(env.DB, {
 // Status, metadata, JSON-LD, and cache tagging stay with the route: none of
 // them is a presentation decision, and all of them are easy to break silently.
 if (loaded.status === 'not_found') {
-  return new Response('Not found', { status: 404 });
+  return new Response(i18n.t('storefront.error.notFound'), { status: 404 });
 }
 
 const { model, purchase, seo } = loaded;
@@ -34,7 +36,7 @@ if (loaded.backfillRelated) {
 ---
 
 <Layout title={seo.title} description={seo.description ?? undefined} image={seo.imagePath}>
-  <ProductDetail model={model} purchase={purchase} />
+  <ProductDetail model={model} purchase={purchase} i18n={i18n} />
 
   <script is:inline type="application/ld+json" set:html={seo.jsonLd} />
 
@@ -49,7 +51,9 @@ if (loaded.backfillRelated) {
     if (form instanceof HTMLFormElement && out instanceof HTMLElement) {
       const currency = (out.dataset.currency || 'usd').toUpperCase();
       const base = Number(out.dataset.base || '0');
-      const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency });
+      // The page's language (<html lang>) formats the live price like the server
+      // did: '24,00 USD' in Italian; 'en' formats exactly as 'en-US'.
+      const fmt = new Intl.NumberFormat(document.documentElement.lang || 'en-US', { style: 'currency', currency });
       const divisor = 10 ** (fmt.resolvedOptions().maximumFractionDigits ?? 2);
 
       // Scroll the gallery carousel to the variant's linked image (if any). The
@@ -105,7 +109,8 @@ if (loaded.backfillRelated) {
           await navigator.clipboard.writeText(url);
           if (label) {
             const prev = label.textContent;
-            label.textContent = 'Link copied';
+            // The theme renders the translated text; English if it predates that.
+            label.textContent = btn.dataset.shareCopied || 'Link copied';
             setTimeout(() => {
               label.textContent = prev;
             }, 1500);

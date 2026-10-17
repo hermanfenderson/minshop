@@ -1,4 +1,6 @@
 ---
+import { storefrontI18n, type I18n } from './i18n';
+
 /**
  * The header cart link and its live count badge.
  *
@@ -13,13 +15,15 @@
 interface Props {
   href: string;
   class?: string;
+  i18n?: I18n;
 }
 
-const { href, class: className = 'inline-flex items-center hover:text-brand' } = Astro.props;
+const { href, class: className = 'inline-flex items-center hover:text-brand', i18n } = Astro.props;
+const { t } = storefrontI18n(i18n);
 ---
 
 <a href={href} data-cart-open class={className}>
-  Cart
+  {t('storefront.header.cart')}
   <span
     data-cart-count-label
     class="inline-block min-w-[4ch] tabular-nums"

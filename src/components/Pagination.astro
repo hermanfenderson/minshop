@@ -7,6 +7,9 @@ interface Props {
 }
 
 const { page, totalPages, hrefFor } = Astro.props;
+// Shared by the storefront and the admin, so it speaks whichever language the
+// request does.
+const { t } = Astro.locals.i18n;
 
 // Compact page list with … gaps, e.g. 1 … 4 5 6 … 20
 function windowed(cur: number, total: number): (number | '…')[] {
@@ -28,10 +31,13 @@ const linkCls = 'px-3 py-1.5 text-xs uppercase tracking-widest text-muted hover:
 
 {
   totalPages > 1 && (
-    <nav class="mt-14 flex items-center justify-center gap-1" aria-label="Pagination">
+    <nav
+      class="mt-14 flex items-center justify-center gap-1"
+      aria-label={t('common.pagination.label')}
+    >
       {page > 1 && (
         <a href={hrefFor(page - 1)} class={linkCls} rel="prev">
-          Prev
+          {t('common.pagination.prev')}
         </a>
       )}
       {items.map((it) =>
@@ -49,7 +55,7 @@ const linkCls = 'px-3 py-1.5 text-xs uppercase tracking-widest text-muted hover:
       )}
       {page < totalPages && (
         <a href={hrefFor(page + 1)} class={linkCls} rel="next">
-          Next
+          {t('common.pagination.next')}
         </a>
       )}
     </nav>

@@ -1,6 +1,7 @@
 ---
 import type { StorefrontShellModel } from '../../features/storefront/models';
 import StoreLanguageSwitcher from '../../features/storefront/controls/StoreLanguageSwitcher.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * Studio — the colophon. Set small and quiet at the foot of the page, the way a
@@ -8,9 +9,12 @@ import StoreLanguageSwitcher from '../../features/storefront/controls/StoreLangu
  */
 interface Props {
   model: StorefrontShellModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const { t } = storefrontI18n(Astro.props.i18n);
 ---
 
 <footer class="border-t border-line">
@@ -22,7 +26,7 @@ const { model } = Astro.props;
     </span>
     {
       model.footerLinks.length > 0 && (
-        <nav aria-label="Footer" class="flex flex-wrap items-center gap-x-8 gap-y-3">
+        <nav aria-label={t('storefront.footer.nav')} class="flex flex-wrap items-center gap-x-8 gap-y-3">
           {model.footerLinks.map((link) => (
             <a href={link.href} class="hover:text-[color:var(--studio-bone)]">
               {link.text}

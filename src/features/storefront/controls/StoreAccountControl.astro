@@ -1,4 +1,6 @@
 ---
+import { storefrontI18n, type I18n } from './i18n';
+
 /**
  * The account link. Thin, but it keeps the destination upstream: account URLs
  * are guarded by middleware, and a template inventing its own path would send
@@ -7,9 +9,11 @@
 interface Props {
   href: string;
   class?: string;
+  i18n?: I18n;
 }
 
-const { href, class: className = 'hover:text-brand' } = Astro.props;
+const { href, class: className = 'hover:text-brand', i18n } = Astro.props;
+const { t } = storefrontI18n(i18n);
 ---
 
-<a href={href} class={className}>Account</a>
+<a href={href} class={className}>{t('storefront.header.account')}</a>

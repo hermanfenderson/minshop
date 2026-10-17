@@ -1,5 +1,6 @@
 ---
 import type { StorefrontLink } from '../models';
+import { storefrontI18n, type I18n } from './i18n';
 
 /**
  * Merchant navigation: the inline row and its mobile disclosure.
@@ -19,13 +20,16 @@ interface Props {
    */
   class?: string;
   disclosureClass?: string;
+  i18n?: I18n;
 }
 
 const {
   links,
   class: inlineClass = 'hidden min-w-0 items-center gap-4 xl:flex xl:gap-6',
   disclosureClass = 'relative order-last xl:hidden',
+  i18n,
 } = Astro.props;
+const { t } = storefrontI18n(i18n);
 ---
 
 {/* Merchant navigation, inline only at xl. Below that the row also holds
@@ -57,7 +61,7 @@ const {
        visually it belongs at the edge, past the store controls. */
     <details data-nav-disclosure class={disclosureClass}>
       <summary
-        aria-label="Menu"
+        aria-label={t('storefront.header.menu')}
         class="flex cursor-pointer list-none items-center hover:text-brand"
       >
         <svg

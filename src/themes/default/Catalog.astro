@@ -3,6 +3,7 @@ import type { CatalogPageModel } from '../../features/storefront/models';
 import ProductCard from './ProductCard.astro';
 import CatalogSort from '../../features/storefront/controls/CatalogSort.astro';
 import CatalogPagination from '../../features/storefront/controls/CatalogPagination.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * STORE-OWNED. Edit freely — this file belongs to your store.
@@ -19,9 +20,13 @@ import CatalogPagination from '../../features/storefront/controls/CatalogPaginat
  */
 interface Props {
   model: CatalogPageModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
 ---
 
 <div class="mb-10">
@@ -44,7 +49,7 @@ const { model } = Astro.props;
   )
 }
 
-<CatalogSort model={model.sort} />
+<CatalogSort model={model.sort} i18n={i18n} />
 
 {
   /* role="status" is the contract, not the wording: an empty catalog must
@@ -52,13 +57,13 @@ const { model } = Astro.props;
      grid. Reword it freely; keep the role and keep it non-empty. */
   model.products.length === 0 && (
     <p role="status" class="text-muted">
-      No products yet.
+      {t('storefront.catalog.empty')}
     </p>
   )
 }
 
 <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-3">
-  {model.products.map((card, i) => <ProductCard card={card} index={i} />)}
+  {model.products.map((card, i) => <ProductCard card={card} index={i} i18n={i18n} />)}
 </ul>
 
-<CatalogPagination model={model.pagination} />
+<CatalogPagination model={model.pagination} i18n={i18n} />

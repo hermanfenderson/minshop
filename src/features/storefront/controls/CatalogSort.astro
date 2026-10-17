@@ -1,5 +1,6 @@
 ---
 import type { StorefrontSortModel } from '../models';
+import { storefrontI18n, type I18n } from './i18n';
 
 /**
  * Sort controls. The hrefs arrive already built — including the direction flip
@@ -10,17 +11,20 @@ import type { StorefrontSortModel } from '../models';
 interface Props {
   model: StorefrontSortModel;
   class?: string;
+  i18n?: I18n;
 }
 
 const {
   model,
   class: className =
     'mb-8 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-xs uppercase tracking-widest text-muted',
+  i18n,
 } = Astro.props;
+const { t } = storefrontI18n(i18n);
 ---
 
 <div class={className}>
-  <span>Sort</span>
+  <span>{t('storefront.catalog.sort')}</span>
   {
     model.options.map((option) => (
       <a

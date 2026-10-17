@@ -3,6 +3,7 @@ import type { ProductDetailModel, ProductPurchaseModel } from '../../features/st
 import ProductCard from './ProductCard.astro';
 import ProductGallery from '../../features/storefront/controls/ProductGallery.astro';
 import ProductPurchaseForm from '../../features/storefront/controls/ProductPurchaseForm.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * STORE-OWNED. Edit freely — this file belongs to your store.
@@ -20,13 +21,17 @@ import ProductPurchaseForm from '../../features/storefront/controls/ProductPurch
 interface Props {
   model: ProductDetailModel;
   purchase: ProductPurchaseModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model, purchase } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
 ---
 
 <a href={model.backHref} class="text-xs uppercase tracking-widest text-faint hover:text-brand">
-  &larr; Back to shop
+  &larr; {t('storefront.nav.backToShop')}
 </a>
 
 {
@@ -44,6 +49,7 @@ const { model, purchase } = Astro.props;
     hero={model.heroImage}
     soldOut={model.soldOut}
     class="reveal"
+    i18n={i18n}
   />
 
   <div class="reveal flex flex-col" style="animation-delay:90ms">
@@ -60,14 +66,24 @@ const { model, purchase } = Astro.props;
     }
 
     <h1 class="font-serif text-4xl tracking-tight">{model.name}</h1>
-    {model.digitalDelivery && <p class="mt-2 text-xs uppercase tracking-widest text-brand">Digital download</p>}
+    {
+      model.digitalDelivery && (
+        <p class="mt-2 text-xs uppercase tracking-widest text-brand">
+          {t('storefront.product.digitalDownload')}
+        </p>
+      )
+    }
     <p
       class="mt-4 text-2xl tabular-nums text-muted"
       data-price-display
       data-base={model.priceCents}
       data-currency={model.currency}
     >
-      {model.priceVaries && <span class="text-base text-faint">from </span>}
+      {
+        model.priceVaries && (
+          <span class="text-base text-faint">{t('storefront.product.priceFrom')} </span>
+        )
+      }
       {model.formattedPrice}
     </p>
     {
@@ -76,7 +92,7 @@ const { model, purchase } = Astro.props;
          availability without pinning copy. */
       model.lowStock && (
         <p data-low-stock class="mt-2 text-sm text-amber-700">
-          Low stock
+          {t('storefront.product.lowStock')}
         </p>
       )
     }
@@ -86,7 +102,7 @@ const { model, purchase } = Astro.props;
       )
     }
 
-    <ProductPurchaseForm model={purchase} />
+    <ProductPurchaseForm model={purchase} i18n={i18n} />
 
     {/* Share — hidden until JS confirms the browser can share or copy. Uses the
         Web Share API (mobile/native sheet) with a clipboard-copy fallback. */}
@@ -94,6 +110,7 @@ const { model, purchase } = Astro.props;
       type="button"
       data-share
       data-share-title={model.name}
+      data-share-copied={t('storefront.product.linkCopied')}
       class="mt-6 hidden w-fit items-center gap-2 text-xs uppercase tracking-widest text-faint transition hover:text-brand"
     >
       <svg
@@ -113,7 +130,7 @@ const { model, purchase } = Astro.props;
         <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
         <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
       </svg>
-      <span data-share-label>Share</span>
+      <span data-share-label>{t('storefront.product.share')}</span>
     </button>
   </div>
 </div>
@@ -121,10 +138,12 @@ const { model, purchase } = Astro.props;
 {
   model.related.length > 0 && (
     <section class="mt-20 border-t border-line pt-12">
-      <h2 class="mb-8 text-xs uppercase tracking-[0.25em] text-faint">You may also like</h2>
+      <h2 class="mb-8 text-xs uppercase tracking-[0.25em] text-faint">
+        {t('storefront.product.youMayAlsoLike')}
+      </h2>
       <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-4">
         {model.related.map((card, i) => (
-          <ProductCard card={card} index={i} headingLevel="h3" />
+          <ProductCard card={card} index={i} headingLevel="h3" i18n={i18n} />
         ))}
       </ul>
     </section>

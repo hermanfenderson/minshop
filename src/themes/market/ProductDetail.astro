@@ -3,6 +3,7 @@ import type { ProductDetailModel, ProductPurchaseModel } from '../../features/st
 import ProductCard from './ProductCard.astro';
 import ProductGallery from '../../features/storefront/controls/ProductGallery.astro';
 import ProductPurchaseForm from '../../features/storefront/controls/ProductPurchaseForm.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * Market — purchase hierarchy first.
@@ -21,13 +22,20 @@ import ProductPurchaseForm from '../../features/storefront/controls/ProductPurch
 interface Props {
   model: ProductDetailModel;
   purchase: ProductPurchaseModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model, purchase } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
 ---
 
-<nav aria-label="Breadcrumb" class="py-3 font-serif text-[11px] text-[color:var(--market-muted)]">
-  <a href={model.backHref} class="hover:text-brand">Shop</a>
+<nav
+  aria-label={t('storefront.nav.breadcrumb')}
+  class="py-3 font-serif text-[11px] text-[color:var(--market-muted)]"
+>
+  <a href={model.backHref} class="hover:text-brand">{t('storefront.nav.shop')}</a>
   {model.categories.map((category) => (
     <>
       <span aria-hidden="true"> / </span>
@@ -59,11 +67,18 @@ const { model, purchase } = Astro.props;
     hero={model.heroImage}
     soldOut={model.soldOut}
     class="border border-line lg:order-1"
+    i18n={i18n}
   />
 
   <aside class="border border-line p-4 lg:order-3 lg:sticky lg:top-16">
     <h1 class="text-[19px] font-extrabold leading-snug tracking-tight">{model.name}</h1>
-    {model.digitalDelivery && <p class="mt-2 text-xs font-bold uppercase tracking-wide text-brand">Digital download</p>}
+    {
+      model.digitalDelivery && (
+        <p class="mt-2 text-xs font-bold uppercase tracking-wide text-brand">
+          {t('storefront.product.digitalDownload')}
+        </p>
+      )
+    }
     <p class="mt-1 font-serif text-[11px] uppercase text-[color:var(--market-muted)]">
       {model.id}
     </p>
@@ -74,7 +89,11 @@ const { model, purchase } = Astro.props;
       data-base={model.priceCents}
       data-currency={model.currency}
     >
-      {model.priceVaries && <span class="text-sm font-normal">from </span>}
+      {
+        model.priceVaries && (
+          <span class="text-sm font-normal">{t('storefront.product.priceFrom')} </span>
+        )
+      }
       {model.formattedPrice}
     </p>
 
@@ -85,7 +104,7 @@ const { model, purchase } = Astro.props;
           class="mt-2 inline-block px-2 py-1 text-[11px] font-bold uppercase tracking-wide"
           style="background:#fdf1e0;color:var(--market-stock-low)"
         >
-          Low stock
+          {t('storefront.product.lowStock')}
         </p>
       )
     }
@@ -95,24 +114,25 @@ const { model, purchase } = Astro.props;
           class="mt-2 inline-block px-2 py-1 text-[11px] font-bold uppercase tracking-wide"
           style="background:#e6f4ea;color:var(--market-stock-in)"
         >
-          In stock
+          {t('storefront.product.inStock')}
         </p>
       )
     }
 
-    <ProductPurchaseForm model={purchase} />
+    <ProductPurchaseForm model={purchase} i18n={i18n} />
 
     <button
       type="button"
       data-share
       data-share-title={model.name}
+      data-share-copied={t('storefront.product.linkCopied')}
       class="mt-4 hidden w-fit items-center gap-1.5 text-[11px] font-semibold text-[color:var(--market-muted)] hover:text-brand"
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
         <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /><line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
       </svg>
-      <span data-share-label>Share</span>
+      <span data-share-label>{t('storefront.product.share')}</span>
     </button>
   </aside>
 
@@ -120,7 +140,7 @@ const { model, purchase } = Astro.props;
     model.descriptionHtml && (
       <section class="lg:order-2">
         <h2 class="mb-2 text-xs font-bold uppercase tracking-wider text-[color:var(--market-muted)]">
-          Details
+          {t('storefront.product.details')}
         </h2>
         <div class="markdown-content text-sm leading-relaxed" set:html={model.descriptionHtml} />
       </section>
@@ -134,11 +154,11 @@ const { model, purchase } = Astro.props;
   model.related.length > 0 && (
     <section class="mt-8 border-t border-line pt-6">
       <h2 class="mb-3 text-xs font-bold uppercase tracking-wider text-[color:var(--market-muted)]">
-        Related
+        {t('storefront.product.related')}
       </h2>
       <ul class="-mx-4 grid grid-cols-2 gap-px border-y border-line bg-line sm:grid-cols-4">
         {model.related.map((card, i) => (
-          <ProductCard card={card} index={i} headingLevel="h3" />
+          <ProductCard card={card} index={i} headingLevel="h3" i18n={i18n} />
         ))}
       </ul>
     </section>

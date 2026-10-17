@@ -1,3 +1,5 @@
+import { enI18n, type I18n } from '../../i18n/translator.ts';
+
 // Whitelisted sort columns. The query param `sort` maps to a fixed column name
 // here, so user input is never interpolated into SQL.
 const COLUMNS: Record<string, string> = {
@@ -32,12 +34,20 @@ export function orderByClause(
  * Preset storefront sort options (rendered as links). One entry per field — `dir`
  * is the DEFAULT direction applied when you first pick that field; clicking an
  * already-active field toggles it (the arrow flips), so a field never appears twice.
+ * Labels are in `i18n`'s language (the storefront passes the store translator).
  */
-export const STORE_SORTS: { sort: string; dir: 'asc' | 'desc'; label: string }[] = [
-  { sort: 'newest', dir: 'desc', label: 'Newest' },
-  { sort: 'price', dir: 'asc', label: 'Price' },
-  { sort: 'name', dir: 'asc', label: 'Name' },
-];
+export function storeSorts(
+  i18n: I18n = enI18n,
+): { sort: string; dir: 'asc' | 'desc'; label: string }[] {
+  return [
+    { sort: 'newest', dir: 'desc', label: i18n.t('catalog.sort.newest') },
+    { sort: 'price', dir: 'asc', label: i18n.t('catalog.sort.price') },
+    { sort: 'name', dir: 'asc', label: i18n.t('catalog.sort.name') },
+  ];
+}
+
+/** The sort options with English labels. Prefer storeSorts(i18n) for display. */
+export const STORE_SORTS = storeSorts();
 
 export type StoreSort = 'newest' | 'price' | 'name';
 

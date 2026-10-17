@@ -1,6 +1,7 @@
 ---
 import type { StorefrontShellModel } from '../../features/storefront/models';
 import StoreLanguageSwitcher from '../../features/storefront/controls/StoreLanguageSwitcher.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * STORE-OWNED. Edit freely — this file belongs to your store.
@@ -11,9 +12,12 @@ import StoreLanguageSwitcher from '../../features/storefront/controls/StoreLangu
  */
 interface Props {
   model: StorefrontShellModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const { t } = storefrontI18n(Astro.props.i18n);
 ---
 
 <footer class="border-t border-line">
@@ -23,7 +27,7 @@ const { model } = Astro.props;
     <span>&copy; {model.storeName}</span>
     {
       model.footerLinks.length > 0 && (
-        <nav aria-label="Footer" class="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <nav aria-label={t('storefront.footer.nav')} class="flex flex-wrap items-center gap-x-6 gap-y-3">
           {model.footerLinks.map((link) => (
             <a href={link.href} class="hover:text-brand">
               {link.text}

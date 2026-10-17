@@ -1,6 +1,7 @@
 ---
 import type { StorefrontShellModel } from '../../features/storefront/models';
 import StoreLanguageSwitcher from '../../features/storefront/controls/StoreLanguageSwitcher.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
  * Market — a compact footer strip.
@@ -10,9 +11,12 @@ import StoreLanguageSwitcher from '../../features/storefront/controls/StoreLangu
  */
 interface Props {
   model: StorefrontShellModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
 }
 
 const { model } = Astro.props;
+const { t } = storefrontI18n(Astro.props.i18n);
 ---
 
 <footer class="mt-10 border-t-2 border-gray-900 bg-[color:var(--market-surface)]">
@@ -22,7 +26,7 @@ const { model } = Astro.props;
     <span class="font-serif uppercase tracking-wide text-gray-900">&copy; {model.storeName}</span>
     {
       model.footerLinks.length > 0 && (
-        <nav aria-label="Footer" class="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <nav aria-label={t('storefront.footer.nav')} class="flex flex-wrap items-center gap-x-5 gap-y-2">
           {model.footerLinks.map((link) => (
             <a href={link.href} class="hover:text-gray-900">
               {link.text}
