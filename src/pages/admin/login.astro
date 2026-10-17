@@ -1,4 +1,5 @@
 ---
+import { cookieName } from '../../deployment';
 export const prerender = false;
 import { env } from 'cloudflare:workers';
 import Layout from '../../layouts/Layout.astro';
@@ -22,7 +23,7 @@ const signingKey = env.AUTH_SECRET || cred.tagSource;
 const now = Date.now() / 1000;
 // Already signed in → straight to the admin.
 if (
-  await verifySession(Astro.cookies.get('admin_session')?.value ?? null, signingKey, cred.tagSource, now)
+  await verifySession(Astro.cookies.get(cookieName('admin_session'))?.value ?? null, signingKey, cred.tagSource, now)
 ) {
   return Astro.redirect('/admin', 303);
 }
@@ -51,7 +52,7 @@ if (Astro.request.method === 'POST') {
     error = 'Incorrect password.';
   } else {
     const token = await signSession(signingKey, cred.tagSource, SESSION_TTL, now);
-    Astro.cookies.set('admin_session', token, {
+    Astro.cookies.set(cookieName('admin_session'), token, {
       httpOnly: true,
       secure: Astro.url.protocol === 'https:',
       sameSite: 'lax',

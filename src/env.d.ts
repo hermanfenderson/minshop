@@ -32,6 +32,10 @@ interface ImagesBindingMin {
 type CloudflareRuntime = import('@astrojs/cloudflare').Runtime;
 declare namespace App {
   interface Locals extends CloudflareRuntime {
+    /** The request path under the mount ('/shop/cart' → '/cart'), set first by middleware. */
+    path: string;
+    /** The request's URL builder (mount-aware), set first by middleware. */
+    urls: import('./i18n').LocaleUrls;
     adminEmail?: string;
     /** Runtime settings overlay (store name etc.), loaded once per request. */
     settings?: import('./features/settings/db').StoreSettings;

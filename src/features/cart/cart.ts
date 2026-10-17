@@ -8,10 +8,11 @@ import {
   type ProductExtra,
 } from '../products/variants';
 import { parseCartKey, lineUnitPriceCents } from './key';
+import { cookieName } from '../../deployment';
 
-const COOKIE = 'cart';
+const COOKIE = cookieName('cart');
 /** Script-readable item count (see writeCart). Mirrors COOKIE's lifetime. */
-export const COUNT_COOKIE = 'cart_n';
+export const COUNT_COOKIE = cookieName('cart_n');
 const MAX_QTY = 99;
 /**
  * Cookie format version. v2 = public-ID line keys stored as {v: 2, items: {key: qty}}.

@@ -1,4 +1,5 @@
 ---
+import { cookieName } from '../../deployment';
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import MediaPicker from '../../features/media/MediaPicker.astro';
@@ -314,7 +315,7 @@ if (Astro.request.method === 'POST') {
   // Invalid timezone: render the form with the error and retain the saved zone.
   if (!validationError) {
     // No-JS path: Post/Redirect/Get with a one-time flash banner.
-    Astro.cookies.set('flash', 'Settings updated', {
+    Astro.cookies.set(cookieName('flash'), 'Settings updated', {
       path: '/admin/settings',
       maxAge: 15,
       httpOnly: true,
@@ -330,8 +331,8 @@ const { currency } = cfg;
 // One-time flash (set above) → shown once, then cleared. Also accepts ?msg for
 // redirects from other endpoints (the reindex API); the inline script strips any
 // lingering ?msg from the URL after it's shown.
-const flash = Astro.cookies.get('flash')?.value ?? null;
-if (flash) Astro.cookies.delete('flash', { path: '/admin/settings' });
+const flash = Astro.cookies.get(cookieName('flash'))?.value ?? null;
+if (flash) Astro.cookies.delete(cookieName('flash'), { path: '/admin/settings' });
 const msg = validationError || flash || Astro.url.searchParams.get('msg');
 
 const settings = await getStoreSettings(env.DB);

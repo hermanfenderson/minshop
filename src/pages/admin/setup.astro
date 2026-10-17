@@ -1,4 +1,5 @@
 ---
+import { cookieName } from '../../deployment';
 export const prerender = false;
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
@@ -56,7 +57,7 @@ if (Astro.request.method === 'POST') {
       const hash = (await adminPasswordHash(env.DB))!;
       const signingKey = env.AUTH_SECRET || hash;
       const token = await signSession(signingKey, hash, SESSION_TTL, Date.now() / 1000);
-      Astro.cookies.set('admin_session', token, {
+      Astro.cookies.set(cookieName('admin_session'), token, {
         httpOnly: true,
         secure: Astro.url.protocol === 'https:',
         sameSite: 'lax',

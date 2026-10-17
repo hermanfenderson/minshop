@@ -27,6 +27,8 @@ import {
 import { addCacheTags, responseCacheTags } from './features/cache/tags';
 import { normalizeSearchQuery } from './features/search/query';
 import { isForbiddenFormOrigin } from './features/auth/formOrigin';
+import { cookieName, logicalPath } from './deployment';
+import { storeUrls } from './features/i18n/urls';
 
 /**
  * Admin auth gate. Protects BOTH the admin UI (`/admin/*`) and the admin API
@@ -68,7 +70,9 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   // Runtime settings overlay (store name etc.) — only for HTML page requests, so
   // the storefront/admin can reflect wizard-set values without a redeploy. APIs and
   // static assets skip it (one indexed D1 read per page, not per asset/API call).
-  const path = context.url.pathname;
+  // Every decision below compares the LOGICAL path (no mount), set by route().
+  const path = context.locals.path;
+  const urls = context.locals.urls;
   const isDocument =
     !path.startsWith('/api/') &&
     !path.startsWith('/_') &&
@@ -119,7 +123,7 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
     context.locals.settings &&
     !context.locals.settings.setupComplete
   ) {
-    return context.redirect('/admin/setup', 302);
+    return context.redirect(urls.href('/admin/setup'), 302);
   }
 
   // Throttle anonymous, resource-spending mutations and cache-missing searches.
@@ -155,7 +159,7 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
     }
   }
 
-  if (!isProtected(context.url.pathname)) return next();
+  if (!isProtected(path)) return next();
 
   // 1. Localhost dev has no Access edge — don't lock yourself out.
   if (import.meta.env.DEV) return next();
@@ -167,7 +171,7 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   if (cred.enabled) {
     // The login page itself must be reachable unauthenticated (to log in).
     if (path === '/admin/login') return next();
-    const session = context.cookies.get('admin_session')?.value ?? null;
+    const session = context.cookies.get(cookieName('admin_session'))?.value ?? null;
     // Sign/verify with AUTH_SECRET (high-entropy key); the credential is the bound tag.
     const signingKey = env.AUTH_SECRET || cred.tagSource;
     if (await verifySession(session, signingKey, cred.tagSource, Date.now() / 1000)) return next();
@@ -175,7 +179,7 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
     if (path.startsWith('/api/')) {
       return new Response('Authentication required.', { status: 401 });
     }
-    return context.redirect('/admin/login', 303);
+    return context.redirect(urls.href('/admin/login'), 303);
   }
 
   // 3. Cloudflare Access. The edge injects a signed JWT into the origin request.
@@ -218,14 +222,19 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   if (path.startsWith('/api/')) {
     return new Response('Admin not set up yet — complete /admin/setup first.', { status: 401 });
   }
-  return context.redirect('/admin/setup', 303);
+  return context.redirect(urls.href('/admin/setup'), 303);
 }
 
 async function route(context: APIContext, next: MiddlewareNext): Promise<Response> {
-  const path = context.url.pathname;
+  // The store may be mounted under a path ('/shop'). Route, auth, rate-limit and
+  // cache decisions all compare the path UNDER the mount; a request outside it
+  // isn't the store's (Astro answers 404) and is matched as-is.
+  const path = logicalPath(context.url.pathname) ?? context.url.pathname;
+  context.locals.path = path;
+  context.locals.urls = storeUrls(context.url.origin, { path, search: context.url.search });
   const productError = path.startsWith('/products/') && context.url.searchParams.has('error');
 
-  let response = isForbiddenFormOrigin(context.request, context.url)
+  let response = isForbiddenFormOrigin(context.request, context.url, path)
     ? new Response(`Cross-site ${context.request.method} form submissions are forbidden`, {
         status: 403,
       })

@@ -47,4 +47,11 @@ describe('isForbiddenFormOrigin', () => {
     expect(isForbiddenFormOrigin(request('POST', URL.origin, ''), URL)).toBe(false);
     expect(isForbiddenFormOrigin(request('POST', undefined, ''), URL)).toBe(true);
   });
+
+  it('recognizes the pay capability under a mount through the logical path', () => {
+    const mounted = new globalThis.URL('https://monopolele.com/shop/pay/otk_xK3mQ9vRt2LwZa8pYc4dNQ');
+    expect(isForbiddenFormOrigin(request('POST'), mounted)).toBe(true); // raw path: not /pay/
+    expect(isForbiddenFormOrigin(request('POST'), mounted, '/pay/otk_xK3mQ9vRt2LwZa8pYc4dNQ')).toBe(false);
+    expect(isForbiddenFormOrigin(request('POST'), mounted, '/cart')).toBe(true);
+  });
 });

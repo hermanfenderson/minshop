@@ -26,7 +26,12 @@ function isCapabilityPayPath(pathname: string): boolean {
  * privacy-focused clients that omit or rewrite Origin. Every other form-like
  * mutation retains Astro's same-origin rule.
  */
-export function isForbiddenFormOrigin(request: Request, url: URL): boolean {
+export function isForbiddenFormOrigin(
+  request: Request,
+  url: URL,
+  /** The path under the mount ('/pay/otk_…'); defaults to the URL's own path. */
+  path: string = url.pathname,
+): boolean {
   if (SAFE_METHODS.has(request.method)) return false;
 
   const originMatches = request.headers.get('origin') === url.origin;
@@ -34,5 +39,5 @@ export function isForbiddenFormOrigin(request: Request, url: URL): boolean {
   if (!hasFormContentType(request.headers.get('content-type'))) return false;
   if (originMatches) return false;
 
-  return !(request.method === 'POST' && isCapabilityPayPath(url.pathname));
+  return !(request.method === 'POST' && isCapabilityPayPath(path));
 }

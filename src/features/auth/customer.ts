@@ -5,6 +5,7 @@ import { getSetting } from '../settings/db';
 import { getEmailProvider } from '../email';
 import { loginLinkEmail } from '../email/loginLink';
 import { signToken, verifyToken } from './token';
+import { cookieName } from '../../deployment';
 
 /**
  * Passwordless customer auth (magic-link). Default adapter for the storefront
@@ -15,7 +16,7 @@ import { signToken, verifyToken } from './token';
  */
 const MAGIC_TTL = 15 * 60; // login link valid 15 min
 const SESSION_TTL = 30 * 24 * 3600; // session cookie valid 30 days
-const COOKIE = 'customer_session';
+const COOKIE = cookieName('customer_session');
 
 const now = () => Date.now() / 1000;
 const normalize = (email: string) => email.trim().toLowerCase();

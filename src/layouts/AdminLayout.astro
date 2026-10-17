@@ -1,4 +1,5 @@
 ---
+import { cookieName } from '../deployment';
 import { getConfig } from '../config';
 import { paymentsInDemoMode } from '../features/payments';
 import { shippingFor } from '../features/shipping/effective';
@@ -34,7 +35,7 @@ const showSetupNudge =
   !Astro.locals.settings?.setupComplete && Astro.url.pathname !== '/admin/setup';
 // Show "Log out" only when a password-login session cookie is present. Under
 // Cloudflare Access or local dev there's no minshop session to clear.
-const showLogout = !!Astro.cookies.get('admin_session')?.value;
+const showLogout = !!Astro.cookies.get(cookieName('admin_session'))?.value;
 const pageTitle = title ? `${title} — ${storeName} admin` : `${storeName} admin`;
 // Configuration that fails closed blocks checkout for physical orders, and the only
 // other signal is a Worker log nobody is watching. Surface it on EVERY admin page,
