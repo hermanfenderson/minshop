@@ -53,7 +53,7 @@ const rail: InAppRail = (IN_APP_RAILS as readonly string[]).includes(requestedRa
   ? (requestedRail as InAppRail)
   : 'lightning';
 if (!Astro.locals.settings || !isMethodAvailable(rail, Astro.locals.settings))
-  return Astro.redirect('/cart', 303);
+  return Astro.redirect(Astro.locals.urls.cart(), 303);
 
 // Order lines: buy-now (product_id [+ variant/extras]) or the whole cart. All
 // selectors arrive as prefixed public IDs (prod_/var_/xtra_ — api/checkout.ts
@@ -122,7 +122,7 @@ if (productPublicId) {
     variant: l.variant,
   }));
 }
-if (lines.length === 0) return Astro.redirect('/cart', 303);
+if (lines.length === 0) return Astro.redirect(Astro.locals.urls.cart(), 303);
 
 const subtotalCents = lines.reduce((s, l) => s + l.unitPriceCents * l.qty, 0);
 const currency = cfg.currency;
@@ -156,7 +156,7 @@ const editAddressHref = (() => {
   if (carry) params.set('product_id', carry);
   if (carryVariantId) params.set('variant_id', carryVariantId);
   for (const id of carryExtraIds) params.append('extra', id);
-  return `/checkout?${params}`;
+  return Astro.locals.urls.href(`/checkout?${params}`);
 })();
 const RAIL_LABEL: Record<InAppRail, string> = {
   lightning: 'Pay with Lightning',
@@ -297,8 +297,8 @@ if (submitted) {
                     currency,
                     quantity: l.qty,
                   })),
-                  successUrl: `${Astro.url.origin}/order/${accessToken}`,
-                  cancelUrl: `${Astro.url.origin}/cart`,
+                  successUrl: Astro.locals.urls.absolute(`/order/${accessToken}`),
+                  cancelUrl: Astro.locals.urls.absolute('/cart'),
                   orderItemsJson: itemsJson,
                   // Provider metadata NEVER carries the access token.
                   metadata: { public_id: publicId, reservation_id: publicId },
@@ -392,7 +392,7 @@ const hasErrors = errors.length > 0;
 
     {
       showShipping ? (
-        <form method="POST" action="/checkout" class="space-y-4">
+        <form method="POST" action={Astro.locals.urls.checkout()} class="space-y-4">
           <input type="hidden" name="method" value={rail} />
           <input type="hidden" name="product_id" value={carry} />
           {carryVariantId && <input type="hidden" name="variant_id" value={carryVariantId} />}
@@ -443,7 +443,7 @@ const hasErrors = errors.length > 0;
           </button>
         </form>
       ) : (
-        <form method="POST" action="/checkout" class="space-y-3">
+        <form method="POST" action={Astro.locals.urls.checkout()} class="space-y-3">
           <input type="hidden" name="method" value={rail} />
           <input type="hidden" name="product_id" value={carry} />
           {carryVariantId && <input type="hidden" name="variant_id" value={carryVariantId} />}

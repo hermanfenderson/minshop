@@ -29,7 +29,7 @@ if (q && pageInfo.offset !== requestedOffset) {
 const { products, total, correctedTo: suggestion } = result;
 const { page, totalPages } = pageInfo;
 const hrefFor = (p: number) =>
-  queryHref('/search', { q, page: p > 1 ? p : undefined });
+  queryHref(Astro.locals.urls.search(), { q, page: p > 1 ? p : undefined });
 const autoCorrected = suggestion !== null;
 
 // Semantic search (with its relevance cutoff) can return only a handful of exact
@@ -52,6 +52,7 @@ addCacheTags(
 // Cards are built here, where the store's image settings are known; the
 // template receives resolved models. Only the first result is the LCP image.
 const cardOptions = {
+  href: Astro.locals.urls.href,
   baseUrl: getConfig().images.baseUrl,
   currency: getConfig().currency,
   delivery: Astro.locals.settings?.imageDelivery,
@@ -71,7 +72,7 @@ const fillerCards = fillers.map((product) => buildProductCard(product, cardOptio
     </h1>
   </div>
 
-  <form method="GET" action="/search" class="mb-10 max-w-md" role="search">
+  <form method="GET" action={Astro.locals.urls.search()} class="mb-10 max-w-md" role="search">
     <input
       type="search"
       name="q"

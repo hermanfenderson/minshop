@@ -69,6 +69,8 @@ export interface StorefrontLink {
  */
 export interface StorefrontShellModel {
   storeName: string;
+  /** The store's home ('/', or '/shop/' under a mount). Link the logo here, never to "/". */
+  homeHref: string;
   /** Resolved header logo, or null to fall back to the store name as text. */
   logo: StorefrontImage | null;
   /** Escaped message plus an already-validated link, or null when unset. */

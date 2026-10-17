@@ -51,7 +51,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 const paymentLabel = order?.payment_method ? PAYMENT_LABELS[order.payment_method] ?? null : null;
 // The catalog is at / until the home page is pointed elsewhere.
-const shopHref = catalogPath(Astro.locals.settings?.homePage);
+const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 ---
 
 <Layout title={order ? 'Order confirmed' : 'Confirming your order'}>
@@ -107,7 +107,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                     <span class="text-sm text-muted">Unavailable after refund</span>
                   ) : (
                     <a
-                      href={`/order/${token}/download/${item.public_id}`}
+                      href={Astro.locals.urls.href(`/order/${token}/download/${item.public_id}`)}
                       class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-hover"
                     >Download</a>
                   )}

@@ -1,4 +1,5 @@
 import type { MenuItem } from '../navigation/db';
+import { rootHref, type Href } from '../../i18n/urls';
 import { mediaUrl } from '../media/url';
 import type { StorefrontLink, StorefrontShellModel } from './models';
 
@@ -28,13 +29,17 @@ export interface ShellInput {
   searchQuery: string;
   cartEnabled: boolean;
   accountsEnabled: boolean;
+  /** Logical path → public URL (mount, later language). Root by default. */
+  href?: Href;
 }
 
-const toLink = (item: MenuItem): StorefrontLink => ({ text: item.text, href: item.href });
-
 export function buildShellModel(input: ShellInput): StorefrontShellModel {
+  const href = input.href ?? rootHref;
+  // Menu items hold logical paths (data); the URL is a presentation concern.
+  const toLink = (item: MenuItem): StorefrontLink => ({ text: item.text, href: href(item.href) });
   return {
     storeName: input.storeName,
+    homeHref: href('/'),
     logo: input.logoImageKey
       ? {
           src: mediaUrl(input.logoImageKey, input.imageBaseUrl),
@@ -50,8 +55,8 @@ export function buildShellModel(input: ShellInput): StorefrontShellModel {
       : null,
     headerLinks: input.headerItems.map(toLink),
     footerLinks: input.footerItems.map(toLink),
-    search: { action: '/search', query: input.searchQuery },
-    cart: { enabled: input.cartEnabled, href: '/cart' },
-    account: { enabled: input.accountsEnabled, href: '/account' },
+    search: { action: href('/search'), query: input.searchQuery },
+    cart: { enabled: input.cartEnabled, href: href('/cart') },
+    account: { enabled: input.accountsEnabled, href: href('/account') },
   };
 }

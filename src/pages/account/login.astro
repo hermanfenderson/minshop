@@ -12,9 +12,9 @@ import { verifyConfiguredTurnstile, TURNSTILE_FIELD } from '../../features/auth/
 import { getSecret } from '../../features/secrets/store';
 import Turnstile from '../../features/auth/Turnstile.astro';
 
-if (!(await accountsEnabled())) return Astro.redirect('/', 303);
+if (!(await accountsEnabled())) return Astro.redirect(Astro.locals.urls.home(), 303);
 // Already signed in → account.
-if (await getCustomerEmail(Astro.cookies)) return Astro.redirect('/account', 303);
+if (await getCustomerEmail(Astro.cookies)) return Astro.redirect(Astro.locals.urls.account(), 303);
 
 let sent = false;
 let error = Astro.url.searchParams.get('error') === 'expired' ? 'That link expired — request a new one.' : '';

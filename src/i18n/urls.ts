@@ -11,6 +11,14 @@ import { isLocalizedPath, locationToString } from './resolve';
 import type { LocaleRouting } from './routing/strategy';
 import type { I18nSettings } from './settings';
 
+/**
+ * A logical path → public URL function. Pure presentation builders take one
+ * instead of a whole LocaleUrls, defaulting to rootHref, so their unit tests
+ * and a store at the root mount see the logical path unchanged.
+ */
+export type Href = (path: string) => string;
+export const rootHref: Href = (path) => path;
+
 export interface UrlOptions {
   /** Another language than the current one. */
   locale?: string;

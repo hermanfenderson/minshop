@@ -5,5 +5,5 @@
 // directory. These URLs were public — in sitemaps, llms.txt, and search indexes
 // — so this stub stays indefinitely rather than being cleaned up later.
 // The query string is preserved: the product page carries ?error= and ?canceled=.
-return Astro.redirect(`/products/${Astro.params.slug}${Astro.url.search}`, 301);
+return Astro.redirect(Astro.locals.urls.href(`/products/${Astro.params.slug}${Astro.url.search}`), 301);
 ---

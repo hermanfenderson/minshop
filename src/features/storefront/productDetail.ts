@@ -1,3 +1,4 @@
+import { rootHref, type Href } from '../../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { StoreSettings } from '../settings/db';
 import { getProductBySlug, listProductImages, type Product } from '../products/db';
@@ -61,7 +62,10 @@ export interface ProductDetailOptions {
   currency: string;
   /** Absolute origin for SEO URLs. */
   origin: string;
+  /** The page's public path (mount and, later, language included), for JSON-LD. */
   pathname: string;
+  /** Logical path → public URL. Root by default. */
+  href?: Href;
 }
 
 function heroImage(
@@ -158,6 +162,7 @@ export async function loadProductDetail(
   const cartEnabled = options.settings?.cartEnabled ?? true;
   const buyNowEnabled = options.settings?.buyNowEnabled ?? true;
 
+  const href = options.href ?? rootHref;
   const imagePath = productImageUrl(product.image_key, options.imageBaseUrl);
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -213,25 +218,26 @@ export async function loadProductDetail(
       digitalDelivery: Boolean(product.file_key),
       categories: categories.map((category) => ({
         text: category.name,
-        href: `/categories/${category.slug}`,
+        href: href(`/categories/${category.slug}`),
       })),
       images,
       heroImage: heroImage(product, options),
       related: related.map((candidate) =>
         buildProductCard(candidate, {
+          href,
           baseUrl: options.imageBaseUrl,
           delivery: options.delivery,
           currency: options.currency,
           sizes: RELATED_CARD_SIZES,
         }),
       ),
-      backHref: catalogPath(options.settings?.homePage),
+      backHref: href(catalogPath(options.settings?.homePage)),
       error: options.searchParams.get('error'),
     },
     purchase: {
       productId: requirePublicId(product.public_id, product.id, 'product'),
-      cartAction: '/api/cart',
-      expressAction: '/express',
+      cartAction: href('/api/cart'),
+      expressAction: href('/express'),
       hasOptions: hasVariants || extras.length > 0,
       soldOut,
       showAddToCart: cartEnabled,

@@ -142,7 +142,7 @@ try {
     >
       Pay {total}
     </button>
-    <a href="/cart" class="block text-center text-xs uppercase tracking-widest text-faint hover:text-brand">
+    <a href={Astro.locals.urls.cart()} class="block text-center text-xs uppercase tracking-widest text-faint hover:text-brand">
       Cancel
     </a>
   </form>

@@ -11,9 +11,9 @@ import { paginate, queryHref } from '../../pagination';
 import Pagination from '../../components/Pagination.astro';
 import { catalogPath } from '../../features/settings/home';
 
-if (!(await accountsEnabled())) return Astro.redirect('/', 303);
+if (!(await accountsEnabled())) return Astro.redirect(Astro.locals.urls.home(), 303);
 const email = await getCustomerEmail(Astro.cookies);
-if (!email) return Astro.redirect('/account/login', 303);
+if (!email) return Astro.redirect(Astro.locals.urls.href('/account/login'), 303);
 
 const PAGE_SIZE = 20;
 const { page, offset, totalPages } = paginate(
@@ -30,18 +30,18 @@ const orderLinks = new Map(
     orders.map(async (o) => [o.id, await guestOrderUrl(env.DB, o.public_id, '')] as const),
   ),
 );
-const hrefFor = (p: number) => queryHref('/account', { page: p > 1 ? p : undefined });
+const hrefFor = (p: number) => queryHref(Astro.locals.urls.account(), { page: p > 1 ? p : undefined });
 const orderCfg = getConfig().orderNumber;
 const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
 // The catalog is at / until the home page is pointed elsewhere.
-const shopHref = catalogPath(Astro.locals.settings?.homePage);
+const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 ---
 
 <Layout title="Your account">
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center justify-between">
       <h1 class="font-serif text-3xl tracking-tight sm:text-4xl">Your orders</h1>
-      <a href="/account/logout" class="text-sm font-medium text-accent">Sign out</a>
+      <a href={Astro.locals.urls.href('/account/logout')} class="text-sm font-medium text-accent">Sign out</a>
     </div>
     <p class="mb-6 text-sm text-muted">Signed in as {email}</p>
 

@@ -48,5 +48,5 @@ export {
   resolveRequestLocale,
 } from './resolve';
 export type { Resolution, ResolveOptions } from './resolve';
-export { createLocaleUrls, hreflangTag } from './urls';
-export type { Alternate, LocaleUrls, LocaleUrlsInput, UrlOptions } from './urls';
+export { createLocaleUrls, hreflangTag, rootHref } from './urls';
+export type { Alternate, Href, LocaleUrls, LocaleUrlsInput, UrlOptions } from './urls';

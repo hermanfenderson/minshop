@@ -99,12 +99,12 @@ describe('digital-delivery rollout gates', () => {
     [
       'src/pages/api/checkout.ts',
       'order_status_url on the Lightning invoice response',
-      /lifecycleActive\(\)\s*\?\s*\{ order_status_url: `\$\{origin\}\/order\/\$\{lnAccessToken\}\/status` \}/,
+      /lifecycleActive\(\)\s*\?\s*\{ order_status_url: urls\.absolute\(`\/order\/\$\{lnAccessToken\}\/status`\) \}/,
     ],
     [
       'src/pages/api/checkout.ts',
       'order_status_url on the hosted/redirect response',
-      /lifecycleActive\(\) \? \{ order_status_url: `\$\{origin\}\/order\/\$\{accessToken\}\/status` \}/,
+      /lifecycleActive\(\) \? \{ order_status_url: urls\.absolute\(`\/order\/\$\{accessToken\}\/status`\) \}/,
     ],
     // Release 3 — the entitlement snapshot.
     [

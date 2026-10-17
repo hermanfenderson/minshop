@@ -1,3 +1,4 @@
+import { withMount } from '../../deployment';
 import { mediaUrl } from '../media/url';
 import { validateUpload } from '../media/upload';
 
@@ -51,7 +52,7 @@ export function onDemandImageDeliveryAvailable(baseUrl: string): boolean {
  * for an absolute URL where one is required, e.g. Stripe/email).
  */
 export function productImageUrl(imageKey: string | null, baseUrl = ''): string {
-  if (!imageKey) return '/placeholder.png';
+  if (!imageKey) return withMount('/placeholder.png');
   return mediaUrl(imageKey, baseUrl);
 }
 

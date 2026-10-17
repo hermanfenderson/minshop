@@ -1,4 +1,5 @@
 ---
+import { withMount } from '../deployment';
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import ProductList from '../features/products/ProductList.astro';
@@ -11,7 +12,7 @@ import { resolveHomePath } from '../features/settings/home';
 // Anything unresolvable (never set, unpublished, deleted, deactivated) falls
 // through to the catalog: a 404 homepage would be edge-cached for everyone.
 const homePath = await resolveHomePath(env.DB, Astro.locals.settings?.homePage);
-if (homePath) return Astro.rewrite(homePath);
+if (homePath) return Astro.rewrite(withMount(homePath));
 ---
 
 <Layout>

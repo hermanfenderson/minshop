@@ -1,4 +1,6 @@
 ---
+import { withMount } from '../deployment';
+import { COUNT_COOKIE } from '../features/cart/cart';
 import { env } from 'cloudflare:workers';
 import { getConfig } from '../config';
 import { publicOrigin } from '../features/http/origin';
@@ -57,14 +59,15 @@ const accountsOn =
 const announcement = Astro.locals.settings?.announcement ?? '';
 const announcementHref = Astro.locals.settings?.announcementHref ?? '';
 const pageTitle = title ? `${title} — ${storeName}` : storeName;
+const { urls, path } = Astro.locals;
 const query =
-  Astro.url.pathname === '/search'
+  path === '/search'
     ? normalizeSearchQuery(Astro.url.searchParams.get('q') ?? '')
     : '';
 
 const desc = (description ?? `Shop ${storeName}.`).slice(0, 160);
 const origin = publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN);
-const canonical = canonicalOverride ?? new URL(Astro.url.pathname, origin).href;
+const canonical = canonicalOverride ?? new URL(urls.href(path), origin).href;
 const ogImage = image ? new URL(image, origin).href : undefined;
 
 // The header and footer are store-owned, so they receive a model rather than
@@ -81,6 +84,7 @@ const shell = buildShellModel({
   searchQuery: query,
   cartEnabled,
   accountsEnabled: accountsOn,
+  href: urls.href,
 });
 ---
 
@@ -89,14 +93,14 @@ const shell = buildShellModel({
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href={withMount('/favicon.ico')} sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href={withMount('/favicon.svg')} />
     {/* Declared so Safari stops probing the site root for it. Those probes are
         not free here: /apple-touch-icon*.png is not excluded by the middleware's
         document check, so each 404 ran the settings+menus D1 batch and rendered
         the branded 404 page. The files are also present as static assets, which
         answers the agents that probe regardless without invoking the Worker. */}
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href={withMount('/apple-touch-icon.png')} />
     <title>{pageTitle}</title>
     <meta name="description" content={desc} />
     <link rel="canonical" href={canonical} />
@@ -143,6 +147,10 @@ const shell = buildShellModel({
         opens it; the /cart page and plain form posts are the no-JS baseline. */}
     <div
       data-cart-drawer
+      data-cart-partial={urls.href('/partials/cart')}
+      data-cart-api={urls.href('/api/cart')}
+      data-cart-page={urls.href('/cart')}
+      data-cart-count-cookie={COUNT_COOKIE}
       class="invisible pointer-events-none fixed inset-0 z-40"
       role="dialog"
       aria-modal="true"
@@ -182,6 +190,10 @@ const shell = buildShellModel({
         const body = drawer.querySelector('[data-cart-body]');
         const label = document.querySelector('[data-cart-count-label]');
         const cartCountKey = 'minshop_cart_count';
+        // URLs and the count cookie's name come from the server, so the script
+        // follows the store's mount (and cookie prefix) without knowing them.
+        const { cartPartial, cartApi, cartPage, cartCountCookie } = drawer.dataset;
+        const countPattern = new RegExp(`(?:^|;\\s*)${cartCountCookie}=(\\d+)`);
 
         const renderBadge = (n) => {
           const count = Math.max(0, Number(n) || 0);
@@ -192,7 +204,7 @@ const shell = buildShellModel({
         // cart, so the badge needs no request on page load and can't drift from the
         // real cart the way a separate localStorage copy would.
         const countFromCookie = () => {
-          const m = document.cookie.match(/(?:^|;\s*)cart_n=(\d+)/);
+          const m = document.cookie.match(countPattern);
           return m ? Number(m[1]) : 0;
         };
         const setBadge = (n) => {
@@ -234,7 +246,7 @@ const shell = buildShellModel({
           setTimeout(() => drawer.classList.add('invisible', 'pointer-events-none'), 300);
         };
         const refresh = async () => {
-          const html = await fetch('/partials/cart', { headers: { 'X-Partial': '1' } }).then((r) =>
+          const html = await fetch(cartPartial, { headers: { 'X-Partial': '1' } }).then((r) =>
             r.text(),
           );
           if (body) body.innerHTML = html;
@@ -261,16 +273,16 @@ const shell = buildShellModel({
         document.addEventListener('submit', async (e) => {
           const form = e.target;
           if (!(form instanceof HTMLFormElement)) return;
-          if ((form.getAttribute('action') || '') !== '/api/cart') return;
+          if ((form.getAttribute('action') || '') !== cartApi) return;
           // Opt-out: "Buy now" adds to cart then navigates to the full /cart page —
           // let it do the native post + redirect, no drawer. The flag can sit on the
           // form (separate buy-now form) or on the clicked button (shared options form).
           if (form.hasAttribute('data-fullpage')) return;
           if (e.submitter instanceof HTMLElement && e.submitter.hasAttribute('data-fullpage'))
             return;
-          if (location.pathname === '/cart') return;
+          if (location.pathname === cartPage) return;
           e.preventDefault();
-          await fetch('/api/cart', {
+          await fetch(cartApi, {
             method: 'POST',
             headers: { 'X-Partial': '1' },
             body: new URLSearchParams(new FormData(form)),

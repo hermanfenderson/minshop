@@ -56,6 +56,7 @@ addCacheTags(Astro.response.headers, productCacheTags(products.map((product) => 
 // known; only the first card is the LCP image.
 const cards = products.map((product, i) =>
   buildProductCard(product, {
+    href: Astro.locals.urls.href,
     baseUrl: getConfig().images.baseUrl,
     currency: getConfig().currency,
     delivery: Astro.locals.settings?.imageDelivery,
@@ -63,7 +64,7 @@ const cards = products.map((product, i) =>
     priority: i === 0,
   }),
 );
-const base = `/categories/${category.slug}`;
+const base = Astro.locals.urls.category(category.slug);
 const hrefFor = (p: number) =>
   queryHref(base, {
     sort: sort === 'newest' ? undefined : sort,
@@ -71,7 +72,7 @@ const hrefFor = (p: number) =>
     page: p > 1 ? p : undefined,
   });
 // The catalog is at / until the home page is pointed elsewhere.
-const shopHref = catalogPath(Astro.locals.settings?.homePage);
+const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 ---
 
 <Layout title={category.name}>
@@ -81,7 +82,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
       trail.map((c) => (
         <span class="flex gap-x-2">
           <span aria-hidden="true">/</span>
-          <a href={`/categories/${c.slug}`} class="hover:text-brand">
+          <a href={Astro.locals.urls.category(c.slug)} class="hover:text-brand">
             {c.name}
           </a>
         </span>
@@ -96,7 +97,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
       <div class="mb-12 flex flex-wrap gap-x-6 gap-y-2 text-xs uppercase tracking-widest text-muted">
         {subcats.map((c) => (
           <a
-            href={`/categories/${c.slug}`}
+            href={Astro.locals.urls.category(c.slug)}
             class="border-b border-transparent pb-0.5 hover:border-brand hover:text-brand"
           >
             {c.name}

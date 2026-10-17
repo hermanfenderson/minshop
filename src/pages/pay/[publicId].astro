@@ -39,7 +39,7 @@ Astro.response.headers.set('referrer-policy', 'no-referrer');
 // unconditionally — even when the original pending payment has expired.
 // Expiry gates only the unpaid flow below.
 if (await getOrderByPublicId(env.DB, orderPublicId)) {
-  return Astro.redirect(`/order/${guestParam}`, 303);
+  return Astro.redirect(Astro.locals.urls.order(guestParam), 303);
 }
 
 const pending = await getPendingByPublicId(env.DB, orderPublicId);
@@ -48,7 +48,7 @@ if (!pending) return new Response('Not found', { status: 404 });
 const isDemo = pending.backend === 'demo';
 const isLightning = pending.backend === 'lnbits' || pending.backend === 'phoenixd';
 // An unexpected backend landing here → just show the order page.
-if (!isDemo && !isLightning) return Astro.redirect(`/order/${guestParam}`, 303);
+if (!isDemo && !isLightning) return Astro.redirect(Astro.locals.urls.order(guestParam), 303);
 
 // Every self-rendered pending payment now carries an expiry (Lightning: the
 // invoice's; Demo: 24h). Past it, the unpaid flow fails closed — no rendering
@@ -74,7 +74,7 @@ if (isDemo && Astro.request.method === 'POST' && !payExpired) {
     waitUntil,
   );
   // Settled → the order page, addressed by the SAME guest param (token or legacy).
-  if (result.settled) return Astro.redirect(`/order/${guestParam}`, 303);
+  if (result.settled) return Astro.redirect(Astro.locals.urls.order(guestParam), 303);
   declined = result.declined ?? null;
 }
 
@@ -83,7 +83,7 @@ if (
   !payExpired &&
   (await settleLightningOnLoad(pending, Astro.url.origin, Astro.locals.settings, waitUntil))
 ) {
-  return Astro.redirect(`/order/${guestParam}`, 303);
+  return Astro.redirect(Astro.locals.urls.order(guestParam), 303);
 }
 
 // Past its window (Lightning: the BOLT11's expiry; Demo: 24h) the unpaid flow is

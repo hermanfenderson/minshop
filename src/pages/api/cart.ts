@@ -13,17 +13,17 @@ export const prerender = false;
 // Lines are keyed by product[:variant][#extras] public-ID tuples. `add` resolves
 // the chosen variant + extras (validated against D1); `update`/`remove` act on
 // the line key. Numeric row IDs are never accepted.
-export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies, url, redirect, locals }) => {
   const form = await request.formData();
   const action = String(form.get('_action'));
   const cart = readCart(cookies);
   const partial = request.headers.get('x-partial') === '1';
   // Cart switched off in Settings → browse-only; refuse all cart mutations.
   if (!(await getStoreSettings(env.DB)).cartEnabled) {
-    return partial ? new Response(null, { status: 204 }) : redirect('/', 303);
+    return partial ? new Response(null, { status: 204 }) : redirect(locals.urls.home(), 303);
   }
   const done = () =>
-    partial ? new Response(null, { status: 204 }) : redirect('/cart', 303);
+    partial ? new Response(null, { status: 204 }) : redirect(locals.urls.cart(), 303);
 
   // ── update / remove: operate on the exact line key ──────────────────────────
   if (action === 'update' || action === 'remove') {
@@ -56,7 +56,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
       if (partial) return new Response(null, { status: 204 });
       const label = product.variant_label || 'option';
       return redirect(
-        `/products/${product.slug}?error=${encodeURIComponent(`Please choose a ${label}.`)}`,
+        locals.urls.href(`/products/${product.slug}?error=${encodeURIComponent(`Please choose a ${label}.`)}`),
         303,
       );
     }

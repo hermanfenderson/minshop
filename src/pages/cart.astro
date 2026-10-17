@@ -11,7 +11,7 @@ import { enabledMethods, isMethodAvailable } from '../features/payments';
 import { catalogPath } from '../features/settings/home';
 
 // Cart switched off in Settings → browse-only catalog, no cart page.
-if (!(Astro.locals.settings?.cartEnabled ?? true)) return Astro.redirect('/', 302);
+if (!(Astro.locals.settings?.cartEnabled ?? true)) return Astro.redirect(Astro.locals.urls.home(), 302);
 
 // Show only the methods that can actually take a payment right now — the
 // configured real rails plus the always-on demo, minus any the admin disabled.
@@ -50,7 +50,7 @@ const destination = stripeDestination(
   Astro.request.headers.get('cf-ipcountry'),
 );
 // The catalog is at / until the home page is pointed elsewhere.
-const shopHref = catalogPath(Astro.locals.settings?.homePage);
+const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 ---
 
 <Layout title="Cart">
@@ -82,7 +82,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
           {lines.map((l) => (
             <li class="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line py-4">
               <a
-                href={`/products/${l.product.slug}`}
+                href={Astro.locals.urls.product(l.product.slug)}
                 class="flex min-w-0 flex-1 basis-64 items-center gap-4 hover:text-brand"
               >
                 <ProductImage
@@ -116,7 +116,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
               </a>
 
               <div class="ml-auto flex items-center gap-4">
-                <form method="POST" action="/api/cart" class="flex items-center gap-2">
+                <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center gap-2">
                   <input type="hidden" name="_action" value="update" />
                   <input type="hidden" name="key" value={l.key} />
                   <input
@@ -136,7 +136,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                   </button>
                 </form>
                 <span class="w-20 text-right tabular-nums">{formatPrice(l.lineTotalCents)}</span>
-                <form method="POST" action="/api/cart" class="flex items-center">
+                <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center">
                   <input type="hidden" name="_action" value="remove" />
                   <input type="hidden" name="key" value={l.key} />
                   <button
@@ -166,7 +166,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                 Checkout is currently unavailable.
               </p>
             ) : (
-            <form method="POST" action="/api/checkout" class="mt-4 space-y-2">
+            <form method="POST" action={Astro.locals.urls.href('/api/checkout')} class="mt-4 space-y-2">
               <input type="hidden" name="source" value="cart" />
               {destination.showSelect && (
                 <label class="mb-2 flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
@@ -217,7 +217,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
                   </button>
                 ) : (
                   <a
-                    href={`/payment-setup?method=${m}`}
+                    href={Astro.locals.urls.href(`/payment-setup?method=${m}`)}
                     class="flex w-full items-center justify-between gap-3 rounded-lg border border-dashed border-line px-5 py-3 text-left text-faint transition hover:border-brand hover:text-brand"
                   >
                     <span>

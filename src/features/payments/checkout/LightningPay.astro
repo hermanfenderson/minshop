@@ -33,7 +33,7 @@ const expiresAtMs = pending.expires_at ? Date.parse(pending.expires_at) : null;
         checkout to try again.
       </p>
       <a
-        href="/cart"
+        href={Astro.locals.urls.cart()}
         class="inline-block rounded-md bg-brand px-5 py-2.5 text-sm font-medium text-on-brand hover:bg-brand-hover"
       >
         Back to cart

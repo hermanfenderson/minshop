@@ -41,7 +41,7 @@ const small =
 
 <header class="border-b border-line">
   <div class="mx-auto flex max-w-[96rem] flex-wrap items-baseline gap-x-10 gap-y-4 px-12 pb-6 pt-8">
-    <a href="/" aria-label={model.storeName} class="shrink-0">
+    <a href={model.homeHref} aria-label={model.storeName} class="shrink-0">
       {
         model.logo ? (
           <img src={model.logo.src} alt={model.logo.alt} class="h-9 max-w-52 object-contain" />

@@ -15,7 +15,8 @@ const loaded = await loadProductDetail(env.DB, {
   delivery: Astro.locals.settings?.imageDelivery,
   currency: getConfig().currency,
   origin: publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN),
-  pathname: Astro.url.pathname,
+  pathname: Astro.locals.urls.href(Astro.locals.path),
+  href: Astro.locals.urls.href,
 });
 
 // Status, metadata, JSON-LD, and cache tagging stay with the route: none of

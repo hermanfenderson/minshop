@@ -1,3 +1,4 @@
+import { rootHref, type Href } from '../../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import { listProducts, countProducts } from '../products/db';
 import { listCategories, childrenOf } from '../categories/db';
@@ -115,6 +116,8 @@ export interface CatalogPageOptions {
   currency: string;
   eyebrow: string;
   heading: string;
+  /** Logical path → public URL. Root by default. */
+  href?: Href;
 }
 
 export async function loadCatalogPage(
@@ -146,10 +149,11 @@ export async function loadCatalogPage(
     heading: options.heading,
     categories: childrenOf(categories, null).map((category) => ({
       text: category.name,
-      href: `/categories/${category.slug}`,
+      href: (options.href ?? rootHref)(`/categories/${category.slug}`),
     })),
     products: products.map((product, index) =>
       buildProductCard(product, {
+        href: options.href,
         baseUrl: options.imageBaseUrl,
         delivery: options.delivery,
         currency: options.currency,

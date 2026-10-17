@@ -44,8 +44,8 @@ let backHref = '/';
 
 if (isBuyNow && productPublicId) {
   const product = await getProductByPublicId(env.DB, productPublicId);
-  if (!product || !product.active) return Astro.redirect('/', 303);
-  backHref = `/products/${product.slug}`;
+  if (!product || !product.active) return Astro.redirect(Astro.locals.urls.home(), 303);
+  backHref = Astro.locals.urls.product(product.slug);
 
   const variantPublicId = parsePublicId(fld('variant_id'), 'variant');
   const extraPublicIds = (isPost ? form!.getAll('extra') : Astro.url.searchParams.getAll('extra'))
@@ -59,7 +59,7 @@ if (isBuyNow && productPublicId) {
       : null;
   if (variants.length > 0 && !variant) {
     return Astro.redirect(
-      `/products/${product.slug}?error=${encodeURIComponent(`Please choose a ${product.variant_label || 'option'}.`)}`,
+      Astro.locals.urls.href(`/products/${product.slug}?error=${encodeURIComponent(`Please choose a ${product.variant_label || 'option'}.`)}`),
       303,
     );
   }
@@ -67,7 +67,7 @@ if (isBuyNow && productPublicId) {
     ? await getExtrasByPublicIds(env.DB, product.id, extraPublicIds)
     : [];
   if ((variant ? variant.stock : product.stock) <= 0) {
-    return Astro.redirect(`/products/${product.slug}?error=Sold+out`, 303);
+    return Astro.redirect(Astro.locals.urls.href(`/products/${product.slug}?error=Sold+out`), 303);
   }
   lines = [
     {
@@ -88,7 +88,7 @@ if (isBuyNow && productPublicId) {
   }
 } else {
   const { lines: cartLines } = await resolveCart(env.DB, readCart(Astro.cookies));
-  if (cartLines.length === 0) return Astro.redirect('/cart', 303);
+  if (cartLines.length === 0) return Astro.redirect(Astro.locals.urls.cart(), 303);
   // Stock can drop between adding to the cart and checking out. Bounce to the cart
   // rather than rendering a total the shopper can't actually buy: this page has no
   // quantity or remove controls, and /cart already flags the offending line
@@ -98,13 +98,15 @@ if (isBuyNow && productPublicId) {
   const short = cartLines.find((l) => l.qty > l.availableStock);
   if (short) {
     return Astro.redirect(
-      `/cart?error=${encodeURIComponent(
-        'Some items are no longer available in the quantity you selected. Please review your cart.',
-      )}`,
+      Astro.locals.urls.href(
+        `/cart?error=${encodeURIComponent(
+          'Some items are no longer available in the quantity you selected. Please review your cart.',
+        )}`,
+      ),
       303,
     );
   }
-  backHref = '/cart';
+  backHref = Astro.locals.urls.cart();
   lines = cartLines.map((l) => ({
     name:
       l.product.name +
@@ -177,7 +179,7 @@ const METHOD: Record<string, { label: string; hint: string }> = {
     <div class="mt-6 space-y-2">
       {
         methods.map((m, i) => (
-          <form method="POST" action="/api/checkout">
+          <form method="POST" action={Astro.locals.urls.href('/api/checkout')}>
             {carry.map((c) => (
               <input type="hidden" name={c.name} value={c.value} />
             ))}

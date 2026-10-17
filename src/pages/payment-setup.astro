@@ -20,7 +20,7 @@ const GUIDES: Record<string, Guide> = {
     steps: [
       'Create a Stripe account and grab your Secret key from dashboard.stripe.com/apikeys.',
       'Paste it in Admin → Settings → Payment keys (Stripe secret key). It’s stored encrypted in your database.',
-      `Add a webhook endpoint in Stripe pointing at ${origin}/api/webhook/stripe (events: checkout.session.completed, checkout.session.async_payment_succeeded, and charge.refunded — the last one syncs refunds you make in the Stripe Dashboard back to your orders).`,
+      `Add a webhook endpoint in Stripe pointing at ${Astro.locals.urls.absolute('/api/webhook/stripe')} (events: checkout.session.completed, checkout.session.async_payment_succeeded, and charge.refunded — the last one syncs refunds you make in the Stripe Dashboard back to your orders).`,
       'Paste the signing secret it gives you into Payment keys (Stripe webhook signing secret). The card button goes live automatically.',
     ],
   },
@@ -39,7 +39,7 @@ const GUIDES: Record<string, Guide> = {
     steps: [
       'Create an OpenNode account and an API key.',
       'Paste it in Admin → Settings → Payment keys (OpenNode API key).',
-      `Point its webhook at ${origin}/api/webhook/opennode, and set the default rail to OpenNode in Settings → Payments.`,
+      `Point its webhook at ${Astro.locals.urls.absolute('/api/webhook/opennode')}, and set the default rail to OpenNode in Settings → Payments.`,
     ],
   },
 };
@@ -48,7 +48,7 @@ const guide = GUIDES[method] ?? null;
 
 <Layout title="Set up payments" description="How to enable a payment method.">
   <div class="mx-auto max-w-xl py-8">
-    <a href="/cart" class="text-xs uppercase tracking-widest text-faint hover:text-brand">
+    <a href={Astro.locals.urls.cart()} class="text-xs uppercase tracking-widest text-faint hover:text-brand">
       &larr; Back to cart
     </a>
 

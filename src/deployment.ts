@@ -8,7 +8,7 @@
  * disagree with the asset URLs Astro emitted. Under vitest neither is set, so
  * tests see a root mount and unprefixed cookies, exactly as before.
  */
-import { normalizeMountPath, stripMount } from './i18n/mount';
+import { joinMount, normalizeMountPath, stripMount } from './i18n/mount';
 
 declare const __MINSHOP_COOKIE_PREFIX__: string | undefined;
 
@@ -21,6 +21,15 @@ export const COOKIE_PREFIX: string =
 /** The store's name for a cookie ('cart' → 'minshop_cart' with the prefix). */
 export function cookieName(name: string): string {
   return COOKIE_PREFIX + name;
+}
+
+/**
+ * Mount + path, for surfaces that never carry a language (images, build
+ * assets, the admin API from client code). Links that may carry a language
+ * go through LocaleUrls instead.
+ */
+export function withMount(path: string): string {
+  return joinMount(MOUNT, path);
 }
 
 /**

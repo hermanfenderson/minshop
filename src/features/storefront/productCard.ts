@@ -1,3 +1,4 @@
+import { rootHref, type Href } from '../../i18n/urls';
 import type { Product } from '../products/db';
 import { productImageSources, type ImageDelivery } from '../products/image';
 import { requirePublicId } from '../catalog/serialize';
@@ -56,6 +57,8 @@ export function buildStorefrontImage(
 }
 
 export interface ProductCardOptions extends StorefrontImageOptions {
+  /** Logical path → public URL. Root by default. */
+  href?: Href;
   /**
    * Currency to format the price in. Required, not defaulted: a default would
    * either read the store config — making this builder binding-aware, which is
@@ -77,7 +80,7 @@ export function buildProductCard(
   return {
     id: requirePublicId(product.public_id, product.id, 'product'),
     name: product.name,
-    href: `/products/${product.slug}`,
+    href: (options.href ?? rootHref)(`/products/${product.slug}`),
     image: buildStorefrontImage(product.image_key, product.name, options),
     // The store's currency, not the row's: a product row can carry a legacy
     // currency, and the catalog has always displayed one consistent currency.

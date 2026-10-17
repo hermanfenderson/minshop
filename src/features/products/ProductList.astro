@@ -23,7 +23,8 @@ interface Props {
 const { eyebrow = 'Shop', heading = 'All products' } = Astro.props;
 
 const model = await loadCatalogPage(env.DB, {
-  base: Astro.url.pathname,
+  base: Astro.locals.urls.href(Astro.locals.path),
+  href: Astro.locals.urls.href,
   searchParams: Astro.url.searchParams,
   responseHeaders: Astro.response.headers,
   imageBaseUrl: getConfig().images.baseUrl,

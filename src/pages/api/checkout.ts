@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import type { LocaleUrls } from '../../i18n';
 import { env } from 'cloudflare:workers';
 import { getProductByPublicId, getProductBySlug, type Product } from '../../features/products/db';
 import {
@@ -114,16 +115,21 @@ export const GET: APIRoute = async () => {
 // product_id is posted) or the whole cart. Pricing + stock come from D1.
 // JSON Content-Type → the programmatic (agent) path: returns { checkout_url }
 // instead of a redirect. Form posts keep the existing browser flow below.
-export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRedirect, locals }) => {
+  const urls = locals.urls;
   if ((request.headers.get('content-type') ?? '').includes('application/json')) {
-    return handleJsonCheckout(request, url);
+    return handleJsonCheckout(request, url, urls);
   }
+  // Every redirect below names a LOGICAL path ('/cart', '/products/x?error=…');
+  // the URL builder adds the mount. The hosted-checkout hop uses Response.redirect.
+  const redirect = (path: string, status: 301 | 302 | 303 | 307 | 308 = 303) =>
+    astroRedirect(urls.href(path), status);
 
   const form = await request.formData();
   const origin = url.origin;
 
   let lines: LineDraft[] = [];
-  let cancelUrl = `${origin}/`;
+  let cancelUrl = urls.absolute('/');
   // Where to send the shopper if a stock check fails (cart, or the product).
   let errorPath = '/cart';
 
@@ -173,7 +179,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
         variantId: variant?.id ?? null,
       },
     ];
-    cancelUrl = `${origin}/products/${product.slug}?canceled=1`;
+    cancelUrl = urls.absolute(`/products/${product.slug}?canceled=1`);
     errorPath = `/products/${product.slug}`;
   } else {
     const { lines: cartLines } = await resolveCart(env.DB, readCart(cookies));
@@ -189,7 +195,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
       availableStock: l.availableStock,
       variantId: l.variant?.id ?? null,
     }));
-    cancelUrl = `${origin}/cart?canceled=1`;
+    cancelUrl = urls.absolute('/cart?canceled=1');
   }
 
   if (lines.length === 0) return redirect('/cart', 303);
@@ -390,7 +396,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
         // Stripe can fetch it (won't render from localhost).
         imageUrl: new URL(productImageUrl(l.product.image_key, cfg.images.baseUrl), origin).href,
       })),
-      successUrl: `${origin}/order/${accessToken}`,
+      successUrl: urls.absolute(`/order/${accessToken}`),
       // Returning from a hosted checkout does not make that session unpayable,
       // so inventory remains held until its verified expiry/failure webhook.
       cancelUrl,
@@ -433,7 +439,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
  * standards aren't settled). Reuses the same createCheckout() as the browser
  * flow, so shipping/tax/discounts behave the same.
  */
-async function handleJsonCheckout(request: Request, url: URL): Promise<Response> {
+async function handleJsonCheckout(request: Request, url: URL, urls: LocaleUrls): Promise<Response> {
   const origin = url.origin;
 
   // Early reject on the declared size, then enforce the cap on the bytes we
@@ -812,7 +818,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
         flow: 'invoice',
         checkout_url: minted.payUrl,
         ...(lifecycleActive()
-          ? { order_status_url: `${origin}/order/${lnAccessToken}/status` }
+          ? { order_status_url: urls.absolute(`/order/${lnAccessToken}/status`) }
           : {}),
         lightning: {
           invoice: minted.bolt11,
@@ -883,8 +889,8 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
         quantity: l.qty,
         imageUrl: new URL(productImageUrl(l.product.image_key, cfg.images.baseUrl), origin).href,
       })),
-      successUrl: `${origin}/order/${accessToken}`,
-      cancelUrl: `${origin}/`,
+      successUrl: urls.absolute(`/order/${accessToken}`),
+      cancelUrl: urls.absolute('/'),
       shipping: method === 'stripe' ? shipping : undefined,
       ...(chosen &&
         shipTo && {
@@ -931,7 +937,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
     available_methods: available, // what else this store offers
     flow: ln ? 'invoice' : 'redirect',
     checkout_url: result.url, // human fallback (QR page for Lightning, hosted page otherwise)
-    ...(lifecycleActive() ? { order_status_url: `${origin}/order/${accessToken}/status` } : {}),
+    ...(lifecycleActive() ? { order_status_url: urls.absolute(`/order/${accessToken}/status`) } : {}),
     ...(ln && {
       lightning: {
         invoice: ln.invoice,

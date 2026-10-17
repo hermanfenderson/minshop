@@ -6,7 +6,7 @@ import { catalogPath } from '../features/settings/home';
 // responses (and crawlers) get a real 404 rather than a 200.
 Astro.response.status = 404;
 // The catalog is at / until the home page is pointed elsewhere.
-const shopHref = catalogPath(Astro.locals.settings?.homePage);
+const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 ---
 
 <Layout title="Page not found" description="The page you're looking for doesn't exist.">
@@ -24,7 +24,7 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
         Back to shop
       </a>
       <a
-        href="/search"
+        href={Astro.locals.urls.search()}
         class="border-b border-transparent pb-0.5 text-xs uppercase tracking-widest text-muted transition hover:border-brand hover:text-brand"
       >
         Search the catalog
