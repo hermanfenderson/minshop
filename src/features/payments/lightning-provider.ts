@@ -1,3 +1,4 @@
+import { storeUrls } from '../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import type {
   PaymentProvider,
@@ -61,7 +62,7 @@ export async function mintLightningOrder(
     expirySeconds,
     // Per-provider path so Lightning settlements route to the Lightning verifier
     // even when another rail (e.g. Stripe) owns the default /api/webhook.
-    webhookUrl: `${input.origin}/api/webhook/lightning`,
+    webhookUrl: storeUrls(input.origin).absolute('/api/webhook/lightning'),
   });
 
   const expiresAt = new Date(Date.now() + expirySeconds * 1000).toISOString();
@@ -85,7 +86,7 @@ export async function mintLightningOrder(
   });
 
   return {
-    payUrl: `${input.origin}/pay/${input.accessToken ?? input.publicId}`,
+    payUrl: storeUrls(input.origin).absolute(`/pay/${input.accessToken ?? input.publicId}`),
     bolt11: invoice.bolt11,
     amountSat,
     paymentHash: invoice.paymentHash,

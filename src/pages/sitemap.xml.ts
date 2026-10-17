@@ -1,3 +1,4 @@
+import { rootHref, type Href } from '../i18n/urls';
 import type { APIRoute } from 'astro';
 import { PUBLIC_CACHE_CONTROL } from '../features/cache/public';
 import { env } from 'cloudflare:workers';
@@ -28,13 +29,15 @@ export function sitemapLocs(
     products: { slug: string }[];
     pages: { slug: string }[];
   },
+  /** Logical path → public path (mount, later language). Root by default. */
+  href: Href = rootHref,
 ): string[] {
   return [
-    `${origin}${catalogPath(homePage)}`,
-    ...data.categories.map((c) => `${origin}/categories/${c.slug}`),
-    ...data.products.map((p) => `${origin}/products/${p.slug}`),
+    `${origin}${href(catalogPath(homePage))}`,
+    ...data.categories.map((c) => `${origin}${href(`/categories/${c.slug}`)}`),
+    ...data.products.map((p) => `${origin}${href(`/products/${p.slug}`)}`),
     // Published pages only — drafts must not be discoverable.
-    ...data.pages.map((p) => `${origin}/pages/${p.slug}`),
+    ...data.pages.map((p) => `${origin}${href(`/pages/${p.slug}`)}`),
   ];
 }
 
@@ -47,7 +50,12 @@ export const GET: APIRoute = async ({ url, locals }) => {
   const categories = await listCategories(env.DB);
   const pages = await listPublishedPages(env.DB);
 
-  const locs = sitemapLocs(origin, locals.settings?.homePage, { categories, products, pages });
+  const locs = sitemapLocs(
+    origin,
+    locals.settings?.homePage,
+    { categories, products, pages },
+    locals.urls.href,
+  );
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

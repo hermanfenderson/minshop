@@ -18,7 +18,7 @@ import { publicOrigin } from '../../features/http/origin';
 const homeIsOverridden = !!Astro.locals.settings?.homePage;
 const canonical = homeIsOverridden
   ? undefined
-  : new URL('/', publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN)).href;
+  : new URL(Astro.locals.urls.home(), publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN)).href;
 ---
 
 <Layout title="All products" canonical={canonical}>

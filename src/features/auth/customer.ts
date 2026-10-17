@@ -1,3 +1,4 @@
+import { storeUrls } from '../i18n/urls';
 import { env } from 'cloudflare:workers';
 import type { AstroCookies } from 'astro';
 import { getConfig } from '../../config';
@@ -48,7 +49,7 @@ export async function requestLogin(email: string, origin: string): Promise<void>
   if (!secret) return;
   const addr = normalize(email);
   const token = await signToken(addr, secret, MAGIC_TTL, now());
-  const link = `${origin}/account/verify?token=${encodeURIComponent(token)}`;
+  const link = storeUrls(origin).absolute(`/account/verify?token=${encodeURIComponent(token)}`);
 
   if (import.meta.env.DEV) console.log(`[magic-link] ${addr} → ${link}`);
 

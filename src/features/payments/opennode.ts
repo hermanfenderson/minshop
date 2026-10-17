@@ -1,3 +1,4 @@
+import { storeUrls } from '../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import type {
   PaymentProvider,
@@ -66,7 +67,7 @@ export function createOpenNodeProvider(
           // ISN'T the store's default rail (the bare /api/webhook route verifies
           // as the DEFAULT provider — would reject an OpenNode callback if e.g.
           // Stripe is default). Matches the Lightning webhook pattern.
-          callback_url: `${origin}/api/webhook/opennode`,
+          callback_url: storeUrls(origin).absolute('/api/webhook/opennode'),
           success_url: params.successUrl,
           auto_settle: false,
           ttl: Math.floor(OPENNODE_CHECKOUT_TTL_SECONDS / 60),

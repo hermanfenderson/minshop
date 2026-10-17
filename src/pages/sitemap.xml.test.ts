@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sitemapLocs } from './sitemap.xml';
+import { createLocaleUrls, createRouting, resolveI18nSettings } from '../i18n';
 
 const origin = 'https://shop.example';
 const data = {
@@ -37,5 +38,22 @@ describe('sitemapLocs', () => {
       const locs = sitemapLocs(origin, home, data);
       expect(new Set(locs).size).toBe(locs.length);
     }
+  });
+
+  it('keeps every URL under the mount', () => {
+    const settings = resolveI18nSettings();
+    const urls = createLocaleUrls({
+      routing: createRouting(settings, '/shop'),
+      settings,
+      locale: 'en',
+      origin,
+    });
+    const locs = sitemapLocs(origin, null, data, urls.href);
+    expect(locs).toEqual([
+      `${origin}/shop/`,
+      `${origin}/shop/categories/hats`,
+      `${origin}/shop/products/beanie`,
+      `${origin}/shop/pages/about`,
+    ]);
   });
 });

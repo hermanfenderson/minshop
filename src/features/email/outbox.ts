@@ -1,3 +1,4 @@
+import { storeUrls } from '../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import {
   NOTIFICATION_KINDS,
@@ -138,7 +139,7 @@ export async function deliverOrderNotifications(
         }
         // Customer email is an allowlisted token position (the ONLY delivery
         // path for a reissued credential — admin output never shows it).
-        const msg = guestLinkReissueEmail(order, storeName, `${origin}/order/${access.access_token}`);
+        const msg = guestLinkReissueEmail(order, storeName, storeUrls(origin).absolute(`/order/${access.access_token}`));
         await emailer.send({ ...msg, idempotencyKey: `${kind}/${order.public_id ?? orderId}` });
         await markSent(db, orderId, kind, attempts);
         continue;

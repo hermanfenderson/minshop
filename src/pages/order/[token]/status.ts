@@ -26,7 +26,7 @@ const headers = {
 export const OPTIONS: APIRoute = () =>
   new Response(null, { status: 204, headers: { ...CORS, 'cache-control': 'private, no-store' } });
 
-export const GET: APIRoute = async ({ params, request }) => {
+export const GET: APIRoute = async ({ params, request, locals }) => {
   const token = params.token;
   if (!token || !isAccessToken(token)) {
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
@@ -50,7 +50,7 @@ export const GET: APIRoute = async ({ params, request }) => {
           quantity: item.quantity,
           price_cents: item.price_cents,
           ...(!fullyRefunded && item.public_id && item.file_key
-            ? { download_url: `${base}/order/${token}/download/${item.public_id}` }
+            ? { download_url: locals.urls.absolute(`/order/${token}/download/${item.public_id}`) }
             : {}),
         })),
       }),

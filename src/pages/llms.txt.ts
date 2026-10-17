@@ -22,8 +22,10 @@ const oneLine = (s: string | null, max = 100) => {
 // /llms.txt — the llmstxt.org convention: a concise, link-rich map of the store
 // for LLMs/agents. Beyond the usual catalog, it documents the JSON checkout so an
 // agentic buyer can go from "what's for sale" to "place the order" without scraping.
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, locals }) => {
   const origin = publicOrigin(url.origin, env.CANONICAL_ORIGIN);
+  // Absolute public URL for a logical path: the canonical origin + mount.
+  const abs = (path: string) => `${origin}${locals.urls.href(path)}`;
   const { storeName, currency } = getConfig();
 
   const total = await countProducts(env.DB);
@@ -36,16 +38,16 @@ export const GET: APIRoute = async ({ url }) => {
     // This whole-catalog response carries coarse tags, so checkout-frequency
     // product-tag purges cannot keep stock honest here. Omit availability; the
     // catalog API and checkout resolve it through product-scoped/live reads.
-    return `- [${linkText(p.name)}](${origin}/products/${p.slug}): ${formatPrice(p.price_cents, currency)}${desc ? ` — ${desc}` : ''}`;
+    return `- [${linkText(p.name)}](${abs(`/products/${p.slug}`)}): ${formatPrice(p.price_cents, currency)}${desc ? ` — ${desc}` : ''}`;
   });
 
   const categoryLines = categories.map(
-    (c) => `- [${linkText(c.name)}](${origin}/categories/${c.slug})`,
+    (c) => `- [${linkText(c.name)}](${abs(`/categories/${c.slug}`)})`,
   );
 
   // Merchant-authored informational pages (shipping, returns, policies) — the
   // context an agent needs that the catalog itself doesn't carry.
-  const pageLines = pages.map((p) => `- [${linkText(p.title)}](${origin}/pages/${p.slug})`);
+  const pageLines = pages.map((p) => `- [${linkText(p.title)}](${abs(`/pages/${p.slug}`)})`);
 
   // Optional: this store's MCP endpoint, when one is deployed. The MCP server is
   // a SEPARATE Worker whose hostname the storefront cannot derive — they share a
@@ -68,11 +70,11 @@ ${productLines.length > 0 ? productLines.join('\n') : '- (no products listed)'}
 ${categoryLines.length > 0 ? categoryLines.join('\n') : '- (no categories)'}
 ${pageLines.length > 0 ? `\n## Pages\n${pageLines.join('\n')}\n` : ''}
 ## For agents
-- [List payment methods](${origin}/api/checkout): \`GET\` → \`{ available_methods, default }\`.
-- [Browse the catalog as JSON](${origin}/api/products): \`GET\` (\`?q=\`, \`?limit=\`, \`?offset=\`) → products with prefixed public IDs (\`id: "prod_…"\`; the detail route \`/api/products/<slug>\` adds variants \`var_…\` and extras \`xtra_…\`).
-- [Create a checkout](${origin}/api/checkout): \`POST\` with \`Content-Type: application/json\`, body \`{ "items": [{ "product_id": "prod_…", "quantity": number, "variant_id"?: "var_…", "extra_ids"?: ["xtra_…"] }], "method"?: string }\` → \`{ "checkout_url": string, "order_status_url": string }\`. IDs are the catalog's prefixed public IDs; \`slug\` is accepted in place of \`product_id\` as a convenience. Numeric IDs are rejected with 400. Pricing and stock are resolved server-side; CORS is open for browser-based callers. Poll \`order_status_url\` for \`confirming | expired | paid | refunded\`; a paid item may include a token-protected \`download_url\`. After submitting payment, keep polling through \`expired\` until \`paid\` or HTTP 410 because verified settlement can arrive late.
-- [Search the catalog](${origin}/search?q=): append a query, e.g. \`/search?q=leather\`. Keyword + semantic matching.
-- [Sitemap](${origin}/sitemap.xml): every product, category, and page URL.${mcpLine}
+- [List payment methods](${abs('/api/checkout')}): \`GET\` → \`{ available_methods, default }\`.
+- [Browse the catalog as JSON](${abs('/api/products')}): \`GET\` (\`?q=\`, \`?limit=\`, \`?offset=\`) → products with prefixed public IDs (\`id: "prod_…"\`; the detail route \`/api/products/<slug>\` adds variants \`var_…\` and extras \`xtra_…\`).
+- [Create a checkout](${abs('/api/checkout')}): \`POST\` with \`Content-Type: application/json\`, body \`{ "items": [{ "product_id": "prod_…", "quantity": number, "variant_id"?: "var_…", "extra_ids"?: ["xtra_…"] }], "method"?: string }\` → \`{ "checkout_url": string, "order_status_url": string }\`. IDs are the catalog's prefixed public IDs; \`slug\` is accepted in place of \`product_id\` as a convenience. Numeric IDs are rejected with 400. Pricing and stock are resolved server-side; CORS is open for browser-based callers. Poll \`order_status_url\` for \`confirming | expired | paid | refunded\`; a paid item may include a token-protected \`download_url\`. After submitting payment, keep polling through \`expired\` until \`paid\` or HTTP 410 because verified settlement can arrive late.
+- [Search the catalog](${abs('/search')}?q=): append a query, e.g. \`/search?q=leather\`. Keyword + semantic matching.
+- [Sitemap](${abs('/sitemap.xml')}): every product, category, and page URL.${mcpLine}
 `;
 
   return new Response(body, {

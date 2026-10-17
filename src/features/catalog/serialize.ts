@@ -1,3 +1,4 @@
+import { storeUrls } from '../i18n/urls';
 import type { Product } from '../products/db';
 import type { ProductVariant, ProductExtra } from '../products/variants';
 import { productImageUrl } from '../products/image';
@@ -85,7 +86,7 @@ export function toCatalogProduct(
     variant_label: p.variant_label,
     categories: categoryNames,
     image: new URL(productImageUrl(p.image_key, options?.imageBaseUrl ?? ''), origin).href,
-    url: new URL(`/products/${p.slug}`, origin).href,
+    url: storeUrls(origin).absolute(`/products/${p.slug}`),
   };
 
   if (variants) {
