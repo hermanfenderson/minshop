@@ -55,7 +55,11 @@ export function createDemoProvider(db: D1Database): PaymentProvider {
       // Point at the unified self-rendered pay page, absolute (origin from
       // successUrl). New checkouts address it by guest access token; the bare
       // public-id fallback only serves legacy in-flight sessions.
-      return { url: storeUrls(new URL(params.successUrl).origin).absolute(`/pay/${params.accessToken ?? publicId}`) };
+      return {
+        url:
+          params.payUrl ??
+          storeUrls(new URL(params.successUrl).origin).absolute(`/pay/${params.accessToken ?? publicId}`),
+      };
     },
 
     async verifyWebhook(): Promise<WebhookResult> {

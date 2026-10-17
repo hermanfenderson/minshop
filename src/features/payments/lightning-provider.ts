@@ -21,6 +21,8 @@ export interface MintLightningOrderInput {
   publicId: string;
   /** Guest access token — addresses the customer-facing /pay URL. */
   accessToken?: string | null;
+  /** The pay page URL in the shopper's language (see CreateCheckoutParams.payUrl). */
+  payUrl?: string;
   currency: string;
   subtotalCents: number;
   shippingCents?: number;
@@ -86,7 +88,7 @@ export async function mintLightningOrder(
   });
 
   return {
-    payUrl: storeUrls(input.origin).absolute(`/pay/${input.accessToken ?? input.publicId}`),
+    payUrl: input.payUrl ?? storeUrls(input.origin).absolute(`/pay/${input.accessToken ?? input.publicId}`),
     bolt11: invoice.bolt11,
     amountSat,
     paymentHash: invoice.paymentHash,
@@ -118,6 +120,7 @@ export function createLightningProvider(
         origin,
         publicId,
         accessToken: params.accessToken ?? null,
+        payUrl: params.payUrl,
         currency,
         subtotalCents,
         itemsJson: params.orderItemsJson ?? null,

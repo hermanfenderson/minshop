@@ -413,6 +413,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
         reservation_id: publicId,
       },
       accessToken,
+      payUrl: urls.absolute(`/pay/${accessToken}`),
     });
     checkoutUrl = result.url;
   } catch (error) {
@@ -791,6 +792,7 @@ async function handleJsonCheckout(request: Request, url: URL, urls: LocaleUrls):
         origin,
         publicId: lnPublicId,
         accessToken: lnAccessToken,
+        payUrl: urls.absolute(`/pay/${lnAccessToken}`),
         currency: storeCurrency,
         subtotalCents,
         shippingCents: chosen.amountCents,
@@ -921,6 +923,7 @@ async function handleJsonCheckout(request: Request, url: URL, urls: LocaleUrls):
         reservation_id: publicId,
       },
       accessToken,
+      payUrl: urls.absolute(`/pay/${accessToken}`),
     });
   } catch (error) {
     await releaseInventoryReservation(env.DB, publicId, purgeStockProductCache);

@@ -40,6 +40,12 @@ export interface CreateCheckoutParams {
    * — never placed in provider metadata or API fields.
    */
   accessToken?: string;
+  /**
+   * Absolute URL of the store's own pay page for this checkout, built by the
+   * caller in the shopper's language and mount. Self-rendered rails (demo,
+   * Lightning) send the shopper there; hosted rails ignore it.
+   */
+  payUrl?: string;
   /** Server-side cart snapshot for adapters that persist pending payment state. */
   orderItemsJson?: string;
   /** Show the "add promotion code" field on hosted checkout (codes live in Stripe). */

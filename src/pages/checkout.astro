@@ -303,6 +303,7 @@ if (submitted) {
                   // Provider metadata NEVER carries the access token.
                   metadata: { public_id: publicId, reservation_id: publicId },
                   accessToken,
+                  payUrl: Astro.locals.urls.absolute(`/pay/${accessToken}`),
                   selectedShipping: {
                     label: chosen.label,
                     amountCents: chosen.amountCents,
@@ -318,6 +319,7 @@ if (submitted) {
                 origin: Astro.url.origin,
                 publicId,
                 accessToken,
+                payUrl: Astro.locals.urls.absolute(`/pay/${accessToken}`),
                 currency,
                 subtotalCents,
                 shippingCents: chosen.amountCents,
