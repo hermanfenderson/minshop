@@ -5,6 +5,42 @@ export interface CachePurger {
   purge(options: CachePurgeOptions): Promise<CachePurgeResult>;
 }
 
+/**
+ * The runtime's purge API, or null where the runtime has none.
+ *
+ * Local runtimes (`astro dev`, and `wrangler dev` behind `npm run preview`)
+ * expose `cache` from cloudflare:workers as an empty object — no `purge`, no
+ * `invalidate` — whether or not Workers Caching is enabled in the config
+ * (measured). Without that API there is no Workers cache in front of the
+ * isolate, so there is nothing that could serve stale content: skipping the
+ * purge is correct, not a masked failure. Where the API exists, a rejected or
+ * throwing purge is still an error, exactly as before.
+ */
+function availablePurger(purger: Partial<CachePurger> | null | undefined): CachePurger | null {
+  return purger && typeof purger.purge === 'function' ? (purger as CachePurger) : null;
+}
+
+let unavailableReported = false;
+
+/** One structured warning per isolate, so local logs say why nothing was purged. */
+function reportUnavailable(mode: 'tags' | 'stock-tags'): void {
+  if (unavailableReported) return;
+  unavailableReported = true;
+  console.warn(
+    JSON.stringify({
+      event: 'workers_cache_purge_unavailable',
+      mode,
+      reason:
+        'this runtime has no Workers Caching purge API (local development); nothing is cached to invalidate',
+    }),
+  );
+}
+
+/** For tests: report the missing API again. */
+export function resetPurgeAvailabilityReport(): void {
+  unavailableReported = false;
+}
+
 function purgeFailure(
   mode: 'tags' | 'stock-tags' | 'everything',
   errors: CachePurgeError[] | unknown,
@@ -25,10 +61,15 @@ function purgeFailure(
  */
 export async function purgeCacheTags(
   tags: Iterable<string>,
-  purger: CachePurger = cache,
+  runtimePurger: Partial<CachePurger> | null = cache,
 ): Promise<void> {
   const normalized = normalizeCacheTags(tags);
   if (normalized.length === 0) return;
+  const purger = availablePurger(runtimePurger);
+  if (!purger) {
+    reportUnavailable('tags');
+    return;
+  }
 
   try {
     const result = await purger.purge({ tags: normalized });
@@ -51,15 +92,19 @@ export async function purgeCacheTags(
 
 export function purgeProductCache(
   productPublicIds: Iterable<string | null | undefined>,
-  purger?: CachePurger,
+  purger?: Partial<CachePurger> | null,
 ): Promise<void> {
   return purgeCacheTags(productCacheTags(productPublicIds), purger);
 }
 
 /** Purge the owning Worker entrypoint's complete cache after a deployment. */
 export async function purgeEntireCache(
-  purger: CachePurger = cache,
+  runtimePurger: Partial<CachePurger> | null = cache,
 ): Promise<void> {
+  // An explicit post-deploy purge only runs on an instance with Workers Caching
+  // on: a runtime without the API there is a real misconfiguration, not local dev.
+  const purger = availablePurger(runtimePurger);
+  if (!purger) throw new Error('The Workers cache purge API is not available in this runtime.');
   try {
     const result = await purger.purge({ purgeEverything: true });
     if (result.success) return;
@@ -77,10 +122,15 @@ export async function purgeEntireCache(
  */
 export async function purgeStockProductCache(
   productPublicIds: Iterable<string | null | undefined>,
-  purger: CachePurger = cache,
+  runtimePurger: Partial<CachePurger> | null = cache,
 ): Promise<void> {
   const tags = productCacheTags(productPublicIds);
   if (tags.length === 0) return;
+  const purger = availablePurger(runtimePurger);
+  if (!purger) {
+    reportUnavailable('stock-tags');
+    return;
+  }
 
   try {
     const result = await purger.purge({ tags });

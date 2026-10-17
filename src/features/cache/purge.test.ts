@@ -4,6 +4,7 @@ import {
   purgeEntireCache,
   purgeProductCache,
   purgeStockProductCache,
+  resetPurgeAvailabilityReport,
   type CachePurger,
 } from './purge';
 
@@ -64,5 +65,37 @@ describe('Workers cache purge', () => {
     await expect(purgeStockProductCache(['prod_a'], { purge })).resolves.toBeUndefined();
     expect(purge).toHaveBeenCalledOnce();
     expect(purge).toHaveBeenCalledWith({ tags: ['product:prod_a'] });
+  });
+});
+
+describe('runtimes without the Workers Caching purge API (astro dev, wrangler dev)', () => {
+  // Measured: locally `cache` from cloudflare:workers is an empty object.
+  const localCache = {} as Partial<CachePurger>;
+
+  it('treats a missing API as nothing to invalidate, not as a failed save', async () => {
+    resetPurgeAvailabilityReport();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(purgeCacheTags(['shell', 'catalog'], localCache)).resolves.toBeUndefined();
+    await expect(purgeProductCache(['prod_abcdefghij'], localCache)).resolves.toBeUndefined();
+    await expect(purgeStockProductCache(['prod_abcdefghij'], localCache)).resolves.toBeUndefined();
+    // Said once per isolate, as a warning; never logged as a purge failure.
+    expect(warn).toHaveBeenCalledOnce();
+    expect(String(warn.mock.calls[0][0])).toContain('workers_cache_purge_unavailable');
+    expect(error).not.toHaveBeenCalled();
+    warn.mockRestore();
+    error.mockRestore();
+  });
+
+  it('still fails loudly when the API exists and the purge fails', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const throwing = { purge: vi.fn(async () => { throw new Error('boom'); }) };
+    await expect(purgeCacheTags(['catalog'], throwing)).rejects.toThrow('could not be invalidated');
+    expect(throwing.purge).toHaveBeenCalledTimes(2);
+    error.mockRestore();
+  });
+
+  it('refuses an explicit post-deploy purge without the API', async () => {
+    await expect(purgeEntireCache(localCache)).rejects.toThrow('not available in this runtime');
   });
 });
