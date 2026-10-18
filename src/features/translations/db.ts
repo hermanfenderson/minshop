@@ -155,3 +155,21 @@ export async function translatedPurchase<
     extras: translatedAll(set, 'extra', extras),
   };
 }
+
+/**
+ * Every language that has at least one stored translation, of any entity —
+ * what the settings page needs to refuse a content-source change that would
+ * collide with existing rows.
+ */
+export async function localesWithTranslations(db: D1Database): Promise<string[]> {
+  const union = Object.values(TRANSLATABLE)
+    .map((t) => `SELECT DISTINCT locale FROM ${t.table}`)
+    .join(' UNION ');
+  try {
+    const { results } = await db.prepare(union).all<{ locale: string }>();
+    return (results ?? []).map((r) => r.locale);
+  } catch (err) {
+    console.error('Listing translated languages failed:', err);
+    return [];
+  }
+}

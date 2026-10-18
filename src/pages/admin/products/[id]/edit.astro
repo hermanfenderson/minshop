@@ -17,6 +17,8 @@ import { productImageSources } from '../../../../features/products/image';
 import { zonesRequireWeight } from '../../../../features/shipping/calculator';
 import { formatWeightValue } from '../../../../features/shipping/weight';
 import { shippingFor } from '../../../../features/shipping/effective';
+import TranslationEditor from '../../../../features/translations/TranslationEditor.astro';
+import { editorLanguages, editorRows } from '../../../../features/translations/editor';
 
 // The route param is the prod_ public ID; numeric row ids are not accepted.
 const publicId = parsePublicId(Astro.params.id, 'product');
@@ -57,6 +59,38 @@ const priceStep = 1 / minorUnitsPerMajor(product.currency);
 const major = (cents: number) => toMajorUnits(cents, product.currency);
 const weightUnit = Astro.locals.settings?.weightUnit ?? 'g';
 const weightRequired = zonesRequireWeight(shippingFor(Astro.locals.settings).config);
+
+// Translations of everything editorial on this product, one panel per language.
+const translation = editorLanguages(Astro.locals.settings);
+const translationRows = translation.languages.length
+  ? (
+      await Promise.all([
+        editorRows(env.DB, 'product', [
+          {
+            id: product.id,
+            publicId: product.public_id,
+            title: 'Product',
+            source: { name: product.name, description: product.description, variant_label: product.variant_label },
+          },
+        ]),
+        editorRows(
+          env.DB,
+          'variant',
+          variants.map((v) => ({ id: v.id, publicId: v.public_id, title: `Variant · ${v.label}`, source: { label: v.label } })),
+        ),
+        editorRows(
+          env.DB,
+          'extra',
+          extras.map((e) => ({ id: e.id, publicId: e.public_id, title: `Extra · ${e.label}`, source: { label: e.label } })),
+        ),
+        editorRows(
+          env.DB,
+          'image',
+          images.map((img, i) => ({ id: img.id, publicId: img.public_id, title: `Image ${i + 1}`, source: { alt: img.alt } })),
+        ),
+      ])
+    ).flat()
+  : [];
 ---
 
 <AdminLayout title={`Edit ${product.name}`} active="products">
@@ -503,6 +537,15 @@ const weightRequired = zonesRequireWeight(shippingFor(Astro.locals.settings).con
       </button>
     </div>
   </section>
+
+  <TranslationEditor
+    scope="product"
+    id={product.public_id ?? undefined}
+    returnTo={`/admin/products/${product.public_id}/edit`}
+    source={translation.source}
+    languages={translation.languages}
+    rows={translationRows}
+  />
 
   {/* Progressive enhancement: every gallery action runs via fetch (no reload, no
       jump). The plain form POSTs are the no-JS fallback (they redirect to

@@ -10,6 +10,8 @@ import {
   descendantIds,
 } from '../../../../features/categories/db';
 import { parsePublicId } from '../../../../features/ids/publicId';
+import TranslationEditor from '../../../../features/translations/TranslationEditor.astro';
+import { editorLanguages, editorRows } from '../../../../features/translations/editor';
 
 // The route param is the cat_ public ID; numeric row ids are not accepted.
 const publicId = parsePublicId(Astro.params.id, 'category');
@@ -25,6 +27,10 @@ const parentOptions = flattenTree(buildTree(await listCategories(env.DB))).filte
   (o) => !blocked.has(o.id),
 );
 const error = Astro.url.searchParams.get('error');
+const translation = editorLanguages(Astro.locals.settings);
+const translationRows = translation.languages.length
+  ? await editorRows(env.DB, 'category', [{ id: category.id, publicId: category.public_id, source: { name: category.name } }])
+  : [];
 ---
 
 <AdminLayout title={`Edit ${category.name}`} active="categories">
@@ -36,5 +42,13 @@ const error = Astro.url.searchParams.get('error');
     category={category}
     parentOptions={parentOptions}
     error={error}
+  />
+  <TranslationEditor
+    scope="category"
+    id={category.public_id ?? undefined}
+    returnTo={`/admin/categories/${category.public_id}/edit`}
+    source={translation.source}
+    languages={translation.languages}
+    rows={translationRows}
   />
 </AdminLayout>

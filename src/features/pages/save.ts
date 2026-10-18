@@ -1,4 +1,4 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { findMediaByKeys, pageMediaClaimStatements } from '../media/db.ts';
 import { extractMediaKeys } from './markdown.ts';
 import { type Page } from './db.ts';
@@ -40,7 +40,15 @@ export async function savePageBody(
   },
   options: { baseUrl?: string } = {},
 ): Promise<SaveResult> {
-  const referenced = extractMediaKeys(fields.body_markdown, { baseUrl: options.baseUrl });
+  // Translated bodies use media too, and page_media is the one record of that
+  // use: rebuilding it from the source body alone would let the library delete
+  // an image only the Italian page shows.
+  const referenced = [
+    ...new Set([
+      ...extractMediaKeys(fields.body_markdown, { baseUrl: options.baseUrl }),
+      ...(await translatedBodyKeys(db, existing.id, null, options.baseUrl)),
+    ]),
+  ];
   const resolved = await findMediaByKeys(db, referenced);
   const resolvedKeys = new Set(resolved.map((m) => m.image_key));
   const unresolved = referenced.filter((key) => !resolvedKeys.has(key));
@@ -93,6 +101,56 @@ export async function savePageBody(
     unresolved,
     publishRefused: wantsPublish && published !== 1,
     published,
+  };
+}
+
+/**
+ * Media keys referenced by a page's translated bodies, leaving out `skipLocale`
+ * (the one being replaced in the same save).
+ */
+async function translatedBodyKeys(
+  db: D1Database,
+  pageId: number,
+  skipLocale: string | null,
+  baseUrl: string | undefined,
+): Promise<string[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT body_markdown FROM page_translations
+        WHERE page_id = ? AND body_markdown IS NOT NULL AND locale IS NOT ?`,
+    )
+    .bind(pageId, skipLocale)
+    .all<{ body_markdown: string }>();
+  return (results ?? []).flatMap((r) => extractMediaKeys(r.body_markdown, { baseUrl }));
+}
+
+/**
+ * The statements that save one page translation and rebuild the page's media
+ * associations from every body it now has — source, the other translations
+ * and this one — for the caller to run in one batch with the write itself.
+ * Returns the keys no media row exists for, so the admin can be warned.
+ */
+export async function pageTranslationMediaStatements(
+  db: D1Database,
+  page: Page,
+  locale: string,
+  body: string | null,
+  options: { baseUrl?: string } = {},
+): Promise<{ statements: D1PreparedStatement[]; unresolved: string[] }> {
+  const referenced = [
+    ...new Set([
+      ...extractMediaKeys(page.body_markdown, { baseUrl: options.baseUrl }),
+      ...(await translatedBodyKeys(db, page.id, locale, options.baseUrl)),
+      ...(body ? extractMediaKeys(body, { baseUrl: options.baseUrl }) : []),
+    ]),
+  ];
+  const resolved = await findMediaByKeys(db, referenced);
+  const resolvedKeys = new Set(resolved.map((m) => m.image_key));
+  return {
+    statements: pageMediaClaimStatements(db, page.id, resolved.map((m) => m.id)),
+    unresolved: (body ? extractMediaKeys(body, { baseUrl: options.baseUrl }) : []).filter(
+      (key) => !resolvedKeys.has(key),
+    ),
   };
 }
 

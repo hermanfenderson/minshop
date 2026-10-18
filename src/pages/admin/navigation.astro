@@ -1,4 +1,6 @@
 ---
+import TranslationEditor from '../../features/translations/TranslationEditor.astro';
+import { editorLanguages, editorRows } from '../../features/translations/editor';
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import {
@@ -83,6 +85,24 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
   },
   { key: 'footer', title: 'Footer', note: `Up to ${MENU_CAPS.footer} items.` },
 ];
+
+// Menu labels per language. A blank translation falls back to the item's own
+// label, or — for an unlabelled item — to its target's translated name.
+const translation = editorLanguages(Astro.locals.settings);
+const translationRows = translation.languages.length
+  ? await editorRows(
+      env.DB,
+      'menuItem',
+      locations.flatMap((loc) =>
+        menus[loc.key].map((item) => ({
+          id: item.id,
+          publicId: item.publicId,
+          title: `${loc.title} · ${item.text || item.targetType}`,
+          source: { label: item.text || null },
+        })),
+      ),
+    )
+  : [];
 ---
 
 <AdminLayout title="Navigation" active="navigation">
@@ -416,6 +436,17 @@ const locations: { key: MenuLocation; title: string; note: string }[] = [
       ))
     }
   </div>
+
+  {translationRows.length > 0 && (
+    <TranslationEditor
+      scope="menu"
+      returnTo="/admin/navigation"
+      source={translation.source}
+      languages={translation.languages}
+      rows={translationRows}
+      intro="A blank label shows the original label, or for an item without one, the translated name of the page, product or category it links to."
+    />
+  )}
 
 
 <script>

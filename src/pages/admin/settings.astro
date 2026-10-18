@@ -7,6 +7,9 @@ import {
   type I18nSettings,
 } from '../../i18n';
 import { LOCALE_REGISTRY, languageRows, languageSettings } from '../../features/i18n/settings';
+import { localesWithTranslations } from '../../features/translations/db';
+import TranslationEditor from '../../features/translations/TranslationEditor.astro';
+import { editorLanguages } from '../../features/translations/editor';
 import { MOUNT } from '../../deployment';
 import { cookieName, withMount } from '../../deployment';
 import { env } from 'cloudflare:workers';
@@ -319,8 +322,9 @@ if (Astro.request.method === 'POST') {
       detect: form.get('detect') === 'root' ? 'root' : 'off',
     };
     const issues = validateI18nSettings(next, { registry: LOCALE_REGISTRY, mount: MOUNT });
-    // No editorial translations exist yet, so relabeling the source can't collide.
-    const sourceIssue = checkContentSourceChange(current, next, []);
+    // A source language that already has translation rows would collide with
+    // them: the main tables and those rows would claim the same language.
+    const sourceIssue = checkContentSourceChange(current, next, await localesWithTranslations(env.DB));
     const defaultChange = describeDefaultLocaleChange(current, next);
     if (issues.length > 0 || sourceIssue) {
       validationError = [...issues, ...(sourceIssue ? [sourceIssue] : [])].map((i) => i.message).join(' ');
@@ -418,6 +422,20 @@ const weightUnit = settings.weightUnit;
 const effectiveShipping = shippingFor(settings).config;
 const announcement = settings.announcement ?? '';
 const announcementHref = settings.announcementHref ?? '';
+// The announcement in each other language: text and link fall back apart.
+const announcementLanguages = editorLanguages(settings);
+const byLocale = (key: 'text' | 'href') =>
+  Object.fromEntries(
+    Object.entries(settings.announcementTranslations ?? {}).map(([code, t]) => [code, t[key]]),
+  );
+const announcementRows = [
+  {
+    fields: [
+      { name: 'announcement', label: 'Announcement bar', source: announcement || null, values: byLocale('text'), maxlength: 200 },
+      { name: 'announcement_href', label: 'Link (optional)', source: announcementHref || null, values: byLocale('href') },
+    ],
+  },
+];
 const timeZones = allTimeZones();
 
 // Search backend: runtime overlay (toggle below) over the build-time default.
@@ -786,6 +804,19 @@ const sections = [
         Save
       </button>
     </form>
+
+    {announcementLanguages.languages.length > 0 && (
+      <div class="mb-4">
+        <TranslationEditor
+          scope="announcement"
+          returnTo="/admin/settings"
+          source={announcementLanguages.source}
+          languages={announcementLanguages.languages}
+          rows={announcementRows}
+          intro="The announcement in other languages. A blank message or link shows the original one; the bar is hidden in every language when the original message is empty."
+        />
+      </div>
+    )}
 
     {/* Shipping used to be a toggle here while the zones lived in store.config.ts —
         two controls that could disagree. Zones and rates now have their own page;

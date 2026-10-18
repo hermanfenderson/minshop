@@ -201,7 +201,10 @@ export function announcementFor(
   settings: StoreSettings | undefined,
   locale: string | null,
 ): { text: string; href: string } {
-  const t = locale ? settings?.announcementTranslations?.[locale] : undefined;
+  // The original message stays the bar's one switch: no message, no bar in
+  // any language.
+  if (!settings?.announcement) return { text: '', href: '' };
+  const t = locale ? settings.announcementTranslations?.[locale] : undefined;
   return {
     text: t?.text ?? settings?.announcement ?? '',
     href: t?.href ?? settings?.announcementHref ?? '',

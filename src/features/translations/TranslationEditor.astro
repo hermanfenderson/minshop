@@ -1,0 +1,170 @@
+---
+/**
+ * The translation section of an admin editor: one collapsible panel per
+ * language, each its own form, with the original text beside every field and
+ * a per-field status. Plain HTML — no client script.
+ *
+ * It writes only translations (POST /api/admin/translations); the editor's own
+ * form above keeps saving the source content and every commercial field.
+ */
+export interface TranslationField {
+  /** Form input name (fieldInputName() for entity fields). */
+  name: string;
+  /** "Empty on purpose" checkbox name, for fields that may be blank in a language. */
+  emptyName?: string;
+  label: string;
+  /** The source-language text this field translates. */
+  source: string | null;
+  /** Stored value per language: undefined/null = not translated, '' = empty on purpose. */
+  values: Record<string, string | null | undefined>;
+  multiline?: boolean;
+  maxlength?: number;
+}
+
+export interface TranslationRow {
+  /** Group heading ("Product", "Variant · Small"); omitted for a single row. */
+  title?: string;
+  fields: TranslationField[];
+}
+
+interface Props {
+  scope: 'product' | 'category' | 'page' | 'menu' | 'announcement';
+  /** The edited entity's public ID (none for the menus and the announcement). */
+  id?: string;
+  /** Logical admin path to come back to. */
+  returnTo: string;
+  source: { code: string; label: string };
+  languages: Array<{ code: string; label: string }>;
+  rows: TranslationRow[];
+  intro?: string;
+}
+
+const { scope, id, returnTo, source, languages, rows, intro } = Astro.props;
+const saved = Astro.url.searchParams.get('translated');
+const error = Astro.url.searchParams.get('translation_error');
+const fields = rows.flatMap((r) => r.fields);
+const status = (f: TranslationField, code: string) => {
+  const v = f.values[code];
+  if (v === '') return 'empty';
+  return v === null || v === undefined ? 'missing' : 'translated';
+};
+const pill = {
+  translated: 'bg-green-50 text-green-700',
+  missing: 'bg-amber-50 text-amber-700',
+  empty: 'bg-gray-100 text-gray-600',
+} as const;
+const pillText = { translated: 'Translated', missing: 'Not translated', empty: 'Empty on purpose' } as const;
+---
+
+<section id="translations" class="mt-12 scroll-mt-20 border-t border-line pt-8">
+  <div class="mb-2 flex flex-wrap items-baseline justify-between gap-3">
+    <h2 class="text-xs uppercase tracking-widest text-gray-400">Translations</h2>
+    <span class="text-xs text-gray-400">
+      Original language: <strong class="font-medium text-gray-600">{source.label} ({source.code})</strong>
+      · Enabled: {[source, ...languages].map((l) => l.code).join(', ')}
+    </span>
+  </div>
+  <p class="mb-4 text-xs text-gray-500">
+    {intro ??
+      'Each language falls back to the original text field by field, so a field left blank shows the original. Prices, stock, SKUs and slugs are shared by every language and are edited above.'}
+  </p>
+
+  {saved && !error && (
+    <p class="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">Translation saved ({saved}).</p>
+  )}
+  {error && <p class="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+
+  {languages.length === 0 && (
+    <p class="text-sm text-gray-500">
+      Only one language is enabled. Enable another in Settings → Languages to translate this content.
+    </p>
+  )}
+
+  {
+    languages.map((lang, index) => {
+      const done = fields.filter((f) => status(f, lang.code) !== 'missing').length;
+      return (
+        <details
+          class="mb-3 rounded-lg border border-gray-200 bg-white"
+          open={saved === lang.code || (index === 0 && !saved)}
+          data-translation-locale={lang.code}
+        >
+          <summary class="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-medium">
+            <span>
+              {lang.label} <span class="text-gray-400">({lang.code})</span>
+            </span>
+            <span class={`rounded-full px-2 py-0.5 text-xs ${done === fields.length ? pill.translated : pill.missing}`}>
+              {done} of {fields.length} translated
+            </span>
+          </summary>
+          <form
+            method="POST"
+            action={Astro.locals.urls.href('/api/admin/translations')}
+            class="space-y-6 border-t border-gray-100 px-4 py-4"
+          >
+            <input type="hidden" name="scope" value={scope} />
+            {id && <input type="hidden" name="id" value={id} />}
+            <input type="hidden" name="locale" value={lang.code} />
+            <input type="hidden" name="return" value={returnTo} />
+            {rows.map((row) => (
+              <fieldset class="space-y-4">
+                {row.title && <legend class="mb-2 text-xs uppercase tracking-widest text-gray-400">{row.title}</legend>}
+                {row.fields.map((f) => {
+                  const st = status(f, lang.code);
+                  const value = f.values[lang.code] ?? '';
+                  return (
+                    <div>
+                      <div class="mb-1 flex items-center justify-between gap-2">
+                        <label for={`${lang.code}-${f.name}`} class="text-xs uppercase tracking-widest text-gray-500">
+                          {f.label}
+                        </label>
+                        <span class={`rounded-full px-2 py-0.5 text-xs ${pill[st]}`} data-translation-status={st}>
+                          {pillText[st]}
+                        </span>
+                      </div>
+                      {f.multiline ? (
+                        <textarea
+                          id={`${lang.code}-${f.name}`}
+                          name={f.name}
+                          rows="6"
+                          maxlength={f.maxlength}
+                          lang={lang.code}
+                          class="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:border-brand focus:outline-none"
+                        >{value}</textarea>
+                      ) : (
+                        <input
+                          id={`${lang.code}-${f.name}`}
+                          type="text"
+                          name={f.name}
+                          value={value}
+                          maxlength={f.maxlength}
+                          lang={lang.code}
+                          class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+                        />
+                      )}
+                      <p class="mt-1 text-xs text-gray-400" lang={source.code}>
+                        {source.label}: {f.source ? (f.source.length > 240 ? `${f.source.slice(0, 240)}…` : f.source) : <em>empty</em>}
+                      </p>
+                      {f.emptyName && (
+                        <label class="mt-1 inline-flex items-center gap-2 text-xs text-gray-500">
+                          <input type="checkbox" name={f.emptyName} value="1" checked={st === 'empty'} />
+                          Leave empty in {lang.label} instead of showing the original
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
+              </fieldset>
+            ))}
+            <button
+              type="submit"
+              class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover"
+            >
+              Save {lang.label}
+            </button>
+          </form>
+        </details>
+      );
+    })
+  }
+</section>

@@ -8,6 +8,8 @@ import {
   normalizePageLayout,
 } from '../../../../features/pages/layouts';
 import { parsePublicId } from '../../../../features/ids/publicId';
+import TranslationEditor from '../../../../features/translations/TranslationEditor.astro';
+import { editorLanguages, editorRows } from '../../../../features/translations/editor';
 
 // The route param is the page_ public ID; numeric row ids are not accepted.
 const publicId = parsePublicId(Astro.params.id, 'page');
@@ -18,6 +20,12 @@ const error = Astro.url.searchParams.get('error');
 const warning = Astro.url.searchParams.get('warning');
 const saved = Astro.url.searchParams.has('saved');
 const currentLayout = normalizePageLayout(page.layout);
+const translation = editorLanguages(Astro.locals.settings);
+const translationRows = translation.languages.length
+  ? await editorRows(env.DB, 'page', [
+      { id: page.id, publicId: page.public_id, source: { title: page.title, body_markdown: page.body_markdown } },
+    ])
+  : [];
 
 // Shown only while the body is empty. Doubles as the Markdown cheat sheet for a
 // merchant who has never written any — it covers exactly what the toolbar above
@@ -272,6 +280,15 @@ const tools = [
       </span>
     </div>
   </form>
+  <TranslationEditor
+    scope="page"
+    id={page.public_id ?? undefined}
+    returnTo={`/admin/pages/${page.public_id}/edit`}
+    source={translation.source}
+    languages={translation.languages}
+    rows={translationRows}
+    intro="Title and content fall back to the original separately. The content is Markdown, rendered exactly like the original (no raw HTML); images it uses stay protected in the media library. Slug, layout and publishing are shared by every language."
+  />
 </AdminLayout>
 
 <script>
