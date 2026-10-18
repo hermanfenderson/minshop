@@ -1,6 +1,8 @@
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { catalogPath, resolveHomePath } from '../settings/home.ts';
 import { withPublicId } from '../ids/publicId.ts';
+import type { TranslationSet } from '../translations/content.ts';
+import type { TranslationWants } from '../translations/db.ts';
 
 export type MenuLocation = 'header' | 'footer';
 export type MenuTargetType = 'home' | 'catalog' | 'page' | 'product' | 'category';
@@ -200,6 +202,54 @@ export function groupMenus(rows: MenuItemRow[], homePage: string | null | undefi
     if (item.location === 'header' || item.location === 'footer') menus[item.location].push(item);
   }
   return menus;
+}
+
+/** The rows whose translations a menu renders: its items and their targets. */
+export function menuTranslationWants(menus: Menus): TranslationWants {
+  const items = [...menus.header, ...menus.footer];
+  const of = (type: MenuTargetType) => items.filter((i) => i.targetType === type).map((i) => i.targetId);
+  return {
+    menuItem: items.map((i) => i.id),
+    page: of('page'),
+    product: of('product'),
+    category: of('category'),
+  };
+}
+
+const TARGET_ENTITY = { page: ['page', 'title'], product: ['product', 'name'], category: ['category', 'name'] } as const;
+
+/**
+ * The menus in the request's language: a translated label replaces the
+ * merchant's label, and an unlabelled item follows its target's translated
+ * name — the same fallback, field by field, as the target itself.
+ */
+export function translatedMenus(menus: Menus, set: TranslationSet): Menus {
+  if (!set.locale) return menus;
+  const one = (item: MenuItem): MenuItem => {
+    const label = set.get('menuItem', item.id)?.label ?? item.label;
+    const target = item.targetType in TARGET_ENTITY && item.targetId !== null
+      ? TARGET_ENTITY[item.targetType as keyof typeof TARGET_ENTITY]
+      : null;
+    const name = target
+      ? ((set.get(target[0], item.targetId!) as Record<string, string | null> | undefined)?.[target[1]] ?? null)
+      : null;
+    const targetName = name ?? item.targetName;
+    return { ...item, label, targetName, text: label ?? targetName ?? '' };
+  };
+  return { header: menus.header.map(one), footer: menus.footer.map(one) };
+}
+
+/**
+ * Unlabelled Home and Catalog items in the interface language. Their names are
+ * interface words, not content, so they come from the dictionaries; a merchant
+ * label (or its translation) still wins.
+ */
+export function namedSingletons(menus: Menus, names: Record<'home' | 'catalog', string>): Menus {
+  const one = (item: MenuItem): MenuItem =>
+    isSingleton(item.targetType) && item.label === null
+      ? { ...item, text: names[item.targetType as 'home' | 'catalog'], targetName: names[item.targetType as 'home' | 'catalog'] }
+      : item;
+  return { header: menus.header.map(one), footer: menus.footer.map(one) };
 }
 
 /** Storefront view: unavailable targets are dropped, never rendered as dead links. */

@@ -69,7 +69,13 @@ export function toCatalogProduct(
   p: Product,
   categoryNames: string[],
   origin: string,
-  options?: { variants?: ProductVariant[]; extras?: ProductExtra[]; imageBaseUrl?: string },
+  options?: {
+    variants?: ProductVariant[];
+    extras?: ProductExtra[];
+    imageBaseUrl?: string;
+    /** Absolute URL builder in the response's language; the store default when omitted. */
+    absolute?: (path: string) => string;
+  },
 ): CatalogProduct {
   const variants = options?.variants;
   const extras = options?.extras;
@@ -86,7 +92,7 @@ export function toCatalogProduct(
     variant_label: p.variant_label,
     categories: categoryNames,
     image: new URL(productImageUrl(p.image_key, options?.imageBaseUrl ?? ''), origin).href,
-    url: storeUrls(origin).absolute(`/products/${p.slug}`),
+    url: (options?.absolute ?? storeUrls(origin).absolute)(`/products/${p.slug}`),
   };
 
   if (variants) {

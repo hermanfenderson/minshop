@@ -48,6 +48,9 @@ import { lifecycleActive } from '../../features/digitalDelivery/rollout.ts';
 import { mintLightningOrder } from '../../features/payments/lightning-provider';
 import { getLightningBackend } from '../../features/payments/lightning';
 import type { I18n } from '../../i18n/index.ts';
+import { purchaseLineName } from '../../features/cart/lineName';
+import { loadTranslations, translatedPurchase } from '../../features/translations/db';
+import { translated, translatedAll, translationLocale } from '../../features/translations/content';
 
 export const prerender = false;
 
@@ -176,14 +179,13 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
     const extras = extraPublicIds.length
       ? await getExtrasByPublicIds(env.DB, product.id, extraPublicIds)
       : [];
+    // The order keeps the name in the shopper's language.
+    const shown = await translatedPurchase(env.DB, locals.contentLocale, product, variant, extras);
     lines = [
       {
         product,
         qty: 1,
-        name:
-          product.name +
-          (variant ? ` — ${variant.label}` : '') +
-          (extras.length ? ` (${extras.map((e) => e.label).join(', ')})` : ''),
+        name: purchaseLineName(shown.product, shown.variant, shown.extras),
         unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
         availableStock: variant ? variant.stock : product.stock,
         variantId: variant?.id ?? null,
@@ -192,15 +194,12 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
     cancelUrl = urls.absolute(`/products/${product.slug}?canceled=1`);
     errorPath = `/products/${product.slug}`;
   } else {
-    const { lines: cartLines } = await resolveCart(env.DB, readCart(cookies));
+    const { lines: cartLines } = await resolveCart(env.DB, readCart(cookies), locals.contentLocale);
     lines = cartLines.map((l) => ({
       product: l.product,
       qty: l.qty,
-      // Compose a descriptive name: "Tee — Large (Gift wrap)".
-      name:
-        l.product.name +
-        (l.variant ? ` — ${l.variant.label}` : '') +
-        (l.extras.length ? ` (${l.extras.map((e) => e.label).join(', ')})` : ''),
+      // "Tee — Large (Gift wrap)", already in the shopper's language.
+      name: purchaseLineName(l.product, l.variant, l.extras),
       unitPriceCents: l.unitPriceCents,
       availableStock: l.availableStock,
       variantId: l.variant?.id ?? null,
@@ -636,16 +635,30 @@ async function handleJsonCheckout(
     lines.push({
       product,
       qty,
-      name:
-        product.name +
-        (variant ? ` — ${variant.label}` : '') +
-        (extras.length ? ` (${extras.map((e) => e.label).join(', ')})` : ''),
+      name: purchaseLineName(product, variant, extras),
       unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
       availableStock,
       variantId: variant?.id ?? null,
       variant,
       extras,
     });
+  }
+
+  // Names in the order's language, read for every line in one batch.
+  const jsonContentLocale = translationLocale(jsonLanguages, jsonLocale);
+  if (jsonContentLocale) {
+    const tr = await loadTranslations(env.DB, jsonContentLocale, {
+      product: lines.map((l) => l.product.id),
+      variant: lines.map((l) => l.variant?.id),
+      extra: lines.flatMap((l) => (l.extras ?? []).map((e) => e.id)),
+    });
+    for (const l of lines) {
+      l.name = purchaseLineName(
+        translated(tr, 'product', l.product),
+        l.variant ? translated(tr, 'variant', l.variant) : null,
+        translatedAll(tr, 'extra', l.extras ?? []),
+      );
+    }
   }
 
   const storeCurrency = cfg.currency;

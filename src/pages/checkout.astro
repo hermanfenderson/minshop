@@ -7,6 +7,8 @@ import { getConfig, formatPrice } from '../config';
 import { readCart, resolveCart } from '../features/cart/cart';
 import { getProductByPublicId, type Product } from '../features/products/db';
 import { listVariants, getExtrasByPublicIds, type ProductVariant } from '../features/products/variants';
+import { purchaseLineName } from '../features/cart/lineName';
+import { translatedPurchase } from '../features/translations/db';
 import { parsePublicId } from '../features/ids/publicId';
 import {
   claimOrderIdentity,
@@ -97,14 +99,13 @@ if (productPublicId) {
     const extras = buyNowExtraIds.length
       ? await getExtrasByPublicIds(env.DB, product.id, buyNowExtraIds)
       : [];
+    // The order keeps the name in the shopper's language.
+    const shown = await translatedPurchase(env.DB, Astro.locals.contentLocale, product, variant, extras);
     lines = [
       {
         product,
         qty: 1,
-        name:
-          product.name +
-          (variant ? ` — ${variant.label}` : '') +
-          (extras.length ? ` (${extras.map((e) => e.label).join(', ')})` : ''),
+        name: purchaseLineName(shown.product, shown.variant, shown.extras),
         unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
         variantId: variant?.id ?? null,
         variant,
@@ -112,7 +113,7 @@ if (productPublicId) {
     ];
   }
 } else {
-  const { lines: cartLines } = await resolveCart(env.DB, readCart(Astro.cookies));
+  const { lines: cartLines } = await resolveCart(env.DB, readCart(Astro.cookies), Astro.locals.contentLocale);
   lines = cartLines.map((l) => ({
     product: l.product,
     qty: l.qty,

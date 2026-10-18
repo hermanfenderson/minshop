@@ -10,6 +10,8 @@ import { MAX_PUBLIC_PAGE, paginate, queryHref, requestedPage } from '../paginati
 import Pagination from '../components/Pagination.astro';
 import { normalizeSearchQuery } from '../features/search/query';
 import { addCacheTags, productCacheTags } from '../features/cache/tags';
+import { loadTranslations } from '../features/translations/db';
+import { translatedAll } from '../features/translations/content';
 
 const { i18n } = Astro.locals;
 const { t, th } = i18n;
@@ -22,13 +24,13 @@ const requestedOffset = (requested - 1) * PAGE_SIZE;
 // configured) decides how to match — and whether it auto-corrected a typo.
 const provider = await getSearchProvider();
 let result = q
-  ? await provider.search(q, { limit: PAGE_SIZE, offset: requestedOffset })
+  ? await provider.search(q, { limit: PAGE_SIZE, offset: requestedOffset, locale: Astro.locals.contentLocale })
   : { products: [], total: 0, correctedTo: null };
 const pageInfo = paginate(Astro.url.searchParams, result.total, PAGE_SIZE, MAX_PUBLIC_PAGE);
 if (q && pageInfo.offset !== requestedOffset) {
-  result = await provider.search(q, { limit: PAGE_SIZE, offset: pageInfo.offset });
+  result = await provider.search(q, { limit: PAGE_SIZE, offset: pageInfo.offset, locale: Astro.locals.contentLocale });
 }
-const { products, total, correctedTo: suggestion } = result;
+const { products: sourceProducts, total, correctedTo: suggestion } = result;
 const { page, totalPages } = pageInfo;
 const hrefFor = (p: number) =>
   queryHref(Astro.locals.urls.search(), { q, page: p > 1 ? p : undefined });
@@ -39,14 +41,20 @@ const autoCorrected = suggestion !== null;
 // it doesn't look sparse. Only when there's at least one match (an off-topic
 // query that matched nothing stays empty, not padded with random items).
 const TARGET = 12;
-const fillers =
-  page === 1 && total < TARGET && products.length > 0 && products.length < TARGET
+const sourceFillers =
+  page === 1 && total < TARGET && sourceProducts.length > 0 && sourceProducts.length < TARGET
     ? await productsInSharedCategories(
         env.DB,
-        products.map((p) => p.id),
-        TARGET - products.length,
+        sourceProducts.map((p) => p.id),
+        TARGET - sourceProducts.length,
       )
     : [];
+// Results and fillers in the visitor's language, one batched read.
+const tr = await loadTranslations(env.DB, Astro.locals.contentLocale, {
+  product: [...sourceProducts, ...sourceFillers].map((p) => p.id),
+});
+const products = translatedAll(tr, 'product', sourceProducts);
+const fillers = translatedAll(tr, 'product', sourceFillers);
 addCacheTags(
   Astro.response.headers,
   productCacheTags([...products, ...fillers].map((product) => product.public_id)),

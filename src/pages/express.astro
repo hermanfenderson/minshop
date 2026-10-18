@@ -8,6 +8,8 @@ import { getProductByPublicId } from '../features/products/db';
 import { listVariants, getExtrasByPublicIds } from '../features/products/variants';
 import { parsePublicId } from '../features/ids/publicId.ts';
 import { lineUnitPriceCents } from '../features/cart/key';
+import { purchaseLineName } from '../features/cart/lineName';
+import { translatedPurchase } from '../features/translations/db';
 import { shippingFor } from '../features/shipping/effective';
 import { shipmentWeightFor } from '../features/shipping/lines';
 import { stripeDestination } from '../features/shipping/destination';
@@ -80,12 +82,10 @@ if (isBuyNow && productPublicId) {
       303,
     );
   }
+  const shown = await translatedPurchase(env.DB, Astro.locals.contentLocale, product, variant, extras);
   lines = [
     {
-      name:
-        product.name +
-        (variant ? ` — ${variant.label}` : '') +
-        (extras.length ? ` (${extras.map((e) => e.label).join(', ')})` : ''),
+      name: purchaseLineName(shown.product, shown.variant, shown.extras),
       imageKey: product.image_key,
       unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
       qty: 1,
@@ -98,7 +98,7 @@ if (isBuyNow && productPublicId) {
     if (e.public_id) carry.push({ name: 'extra', value: e.public_id });
   }
 } else {
-  const { lines: cartLines } = await resolveCart(env.DB, readCart(Astro.cookies));
+  const { lines: cartLines } = await resolveCart(env.DB, readCart(Astro.cookies), Astro.locals.contentLocale);
   if (cartLines.length === 0) return Astro.redirect(Astro.locals.urls.cart(), 303);
   // Stock can drop between adding to the cart and checking out. Bounce to the cart
   // rather than rendering a total the shopper can't actually buy: this page has no

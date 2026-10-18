@@ -10,6 +10,8 @@ import {
   NO_TRANSLATIONS,
   TRANSLATABLE,
   isBlankTranslation,
+  translated,
+  translatedAll,
   translationSet,
   type TranslatableEntity,
   type TranslationFields,
@@ -125,4 +127,31 @@ export function saveTranslationStatement<E extends TranslatableEntity>(
          origin = 'admin', updated_at = datetime('now')`,
     )
     .bind(id, locale, ...values);
+}
+
+/**
+ * One purchase line's product, variant and extras in `locale` — what a buy-now
+ * checkout shows and snapshots onto the order. One batched read.
+ */
+export async function translatedPurchase<
+  P extends { id: number },
+  V extends { id: number },
+  X extends { id: number },
+>(
+  db: D1Database,
+  locale: string | null,
+  product: P,
+  variant: V | null,
+  extras: X[],
+): Promise<{ product: P; variant: V | null; extras: X[] }> {
+  const set = await loadTranslations(db, locale, {
+    product: [product.id],
+    variant: variant ? [variant.id] : [],
+    extra: extras.map((e) => e.id),
+  });
+  return {
+    product: translated(set, 'product', product),
+    variant: variant && translated(set, 'variant', variant),
+    extras: translatedAll(set, 'extra', extras),
+  };
 }

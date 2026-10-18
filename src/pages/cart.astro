@@ -44,7 +44,7 @@ const METHOD: Record<string, { label: string; hint: string; setupHint: string }>
 };
 
 const cart = readCart(Astro.cookies);
-const { lines, subtotalCents } = await resolveCart(env.DB, cart);
+const { lines, subtotalCents } = await resolveCart(env.DB, cart, Astro.locals.contentLocale);
 const error = Astro.url.searchParams.get('error');
 
 // Destination pre-selector for Stripe's hosted checkout: Stripe shows a static

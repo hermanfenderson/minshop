@@ -52,6 +52,8 @@ export type SettingKey =
   | 'home_page' // what / renders: 'page:<id>' | 'product:<id>'; absent = the catalog list
   | 'announcement' // storefront announcement bar text; absent/empty = bar hidden
   | 'announcement_href' // optional link for the announcement bar
+  | `announcement:${string}` // the announcement in another language ('announcement:it')
+  | `announcement_href:${string}` // its link in that language
   | 'email_from' // sender address; absent = build-time default
   | 'store_url' // origin last seen serving a settlement, so the cron can build order links
   | 'email_from_name' // sender display name; absent = store name
@@ -109,6 +111,11 @@ export interface StoreSettings {
   announcement: string | null;
   /** Optional destination making the whole announcement bar clickable. */
   announcementHref: string | null;
+  /**
+   * The announcement in other languages, by locale ('announcement:it' rows).
+   * A missing text or link falls back to the source one, field by field.
+   */
+  announcementTranslations: Record<string, { text: string | null; href: string | null }>;
   emailFrom: string | null;
   emailFromName: string | null;
   emailNotifyTo: string | null;
@@ -175,6 +182,32 @@ export async function setSetting(
  *  alongside the footer's page links without duplicating the SQL. */
 export const STORE_SETTINGS_SQL = 'SELECT key, value FROM settings';
 
+function announcementTranslations(
+  map: Map<string, string>,
+): Record<string, { text: string | null; href: string | null }> {
+  const out: Record<string, { text: string | null; href: string | null }> = {};
+  for (const [key, value] of map) {
+    const m = /^announcement(_href)?:([a-z]{2,3}(?:-[a-z0-9]+)*)$/i.exec(key);
+    if (!m) continue;
+    const entry = (out[m[2].toLowerCase()] ??= { text: null, href: null });
+    if (m[1]) entry.href = value;
+    else entry.text = value;
+  }
+  return out;
+}
+
+/** The announcement bar's text and link in `locale` (null = the source ones). */
+export function announcementFor(
+  settings: StoreSettings | undefined,
+  locale: string | null,
+): { text: string; href: string } {
+  const t = locale ? settings?.announcementTranslations?.[locale] : undefined;
+  return {
+    text: t?.text ?? settings?.announcement ?? '',
+    href: t?.href ?? settings?.announcementHref ?? '',
+  };
+}
+
 /** All overlay settings in one read (used by middleware to populate locals). */
 export async function getStoreSettings(db: D1Database): Promise<StoreSettings> {
   const { results } = await db.prepare(STORE_SETTINGS_SQL).all<{
@@ -213,6 +246,7 @@ export function parseStoreSettings(
     homePage: map.get('home_page') ?? null,
     announcement: map.get('announcement') ?? null,
     announcementHref: map.get('announcement_href') ?? null,
+    announcementTranslations: announcementTranslations(map),
     emailFrom: map.get('email_from') ?? null,
     emailFromName: map.get('email_from_name') ?? null,
     emailNotifyTo: map.get('email_notify_to') ?? null,

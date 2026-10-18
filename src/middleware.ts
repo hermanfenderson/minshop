@@ -14,8 +14,13 @@ import {
   MENU_ITEMS_SQL,
   EMPTY_MENUS,
   groupMenus,
+  menuTranslationWants,
+  namedSingletons,
+  translatedMenus,
   type MenuItemRow,
 } from './features/navigation/db';
+import { translationLocale } from './features/translations/content';
+import { loadTranslations } from './features/translations/db';
 import {
   checkRateLimit,
   rateLimitBucket,
@@ -320,6 +325,23 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
   context.locals.locale = language.locale;
   context.locals.i18n = language.i18n;
   context.locals.urls = language.urls;
+  if (!reentry) {
+    // Admin edits the main tables, so it always sees the source content.
+    const admin = path === '/admin' || path.startsWith('/admin/') || path.startsWith('/api/admin/');
+    context.locals.contentLocale = admin ? null : translationLocale(languages, language.locale);
+    const menus = context.locals.menus;
+    if (context.locals.contentLocale && menus && menus.header.length + menus.footer.length > 0) {
+      // Only a translated language pays this read; it is one query per entity.
+      const set = await loadTranslations(env.DB, context.locals.contentLocale, menuTranslationWants(menus));
+      context.locals.menus = translatedMenus(menus, set);
+    }
+    if (context.locals.menus) {
+      context.locals.menus = namedSingletons(context.locals.menus, {
+        home: language.i18n.t('storefront.nav.home'),
+        catalog: language.i18n.t('storefront.nav.shop'),
+      });
+    }
+  }
   const productError = path.startsWith('/products/') && url.searchParams.has('error');
 
   let response =

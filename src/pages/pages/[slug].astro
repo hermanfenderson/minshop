@@ -7,13 +7,15 @@ import { getPublishedPageBySlug } from '../../features/pages/db';
 import { pageImageDimensions } from '../../features/media/db';
 import { renderMarkdown, markdownExcerpt } from '../../features/pages/markdown';
 import { normalizePageLayout, pageLayoutStyle } from '../../features/pages/layouts';
+import { loadTranslations } from '../../features/translations/db';
+import { translated } from '../../features/translations/content';
 
 const { slug } = Astro.params;
-const page = slug ? await getPublishedPageBySlug(env.DB, slug) : null;
+const source = slug ? await getPublishedPageBySlug(env.DB, slug) : null;
 
 // Drafts are indistinguishable from missing pages here — the query filters on
 // published, so an unpublished slug is a 404 rather than a private preview.
-if (!page) {
+if (!source) {
   // Middleware only stores 200s in the shared cache, so no-store is about caches
   // we do NOT control: 404 is heuristically cacheable, and a browser or proxy
   // holding one would keep serving it after the page goes live.
@@ -25,7 +27,14 @@ if (!page) {
 
 // One indexed read, on an edge-cached route, so body images can carry their
 // intrinsic size and stop shifting the layout when they load.
-const dimensions = await pageImageDimensions(env.DB, page.id);
+// The page in the visitor's language: title and body each fall back to the
+// source on their own. The same server-side renderMarkdown (html: false) runs
+// on a translated body as on the source one.
+const [dimensions, tr] = await Promise.all([
+  pageImageDimensions(env.DB, source.id),
+  loadTranslations(env.DB, Astro.locals.contentLocale, { page: [source.id] }),
+]);
+const page = translated(tr, 'page', source);
 const html = renderMarkdown(page.body_markdown, {
   href: Astro.locals.urls.href,
   baseUrl: getConfig().images.baseUrl,

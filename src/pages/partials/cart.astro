@@ -13,7 +13,7 @@ export const prerender = false;
 
 const cart = readCart(Astro.cookies);
 const [{ lines, subtotalCents }, imageDeliverySetting] = await Promise.all([
-  resolveCart(env.DB, cart),
+  resolveCart(env.DB, cart, Astro.locals.contentLocale),
   getSetting(env.DB, 'image_delivery'),
 ]);
 const imageDelivery = imageDeliverySetting === 'cloudflare' ? 'cloudflare' : 'original';

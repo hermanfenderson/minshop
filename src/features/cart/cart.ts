@@ -9,6 +9,8 @@ import {
 } from '../products/variants';
 import { parseCartKey, lineUnitPriceCents } from './key';
 import { cookieName } from '../../deployment';
+import { loadTranslations } from '../translations/db';
+import { translated } from '../translations/content';
 
 const COOKIE = cookieName('cart');
 /** Script-readable item count (see writeCart). Mirrors COOKIE's lifetime. */
@@ -100,6 +102,8 @@ export function cartCount(cart: Cart): number {
 export async function resolveCart(
   db: D1Database,
   cart: Cart,
+  /** The shopper's content language (names and labels); null = source text. */
+  contentLocale: string | null = null,
 ): Promise<{ lines: CartLine[]; subtotalCents: number }> {
   const requested = Object.entries(cart).flatMap(([key, qty]) => {
     const parsed = parseCartKey(key);
@@ -120,9 +124,16 @@ export async function resolveCart(
       requested.flatMap((line) => line.parsed.extraPublicIds),
     ),
   ]);
-  const productsByPid = new Map(products.map((product) => [product.public_id, product]));
-  const variantsByPid = new Map(variants.map((variant) => [variant.public_id, variant]));
-  const extrasByPid = new Map(extras.map((extra) => [extra.public_id, extra]));
+  // Names and labels in the shopper's language — what the cart shows and what
+  // checkout snapshots onto the order. Prices and stock stay the rows' own.
+  const tr = await loadTranslations(db, contentLocale, {
+    product: products.map((p) => p.id),
+    variant: variants.map((v) => v.id),
+    extra: extras.map((e) => e.id),
+  });
+  const productsByPid = new Map(products.map((product) => [product.public_id, translated(tr, 'product', product)]));
+  const variantsByPid = new Map(variants.map((variant) => [variant.public_id, translated(tr, 'variant', variant)]));
+  const extrasByPid = new Map(extras.map((extra) => [extra.public_id, translated(tr, 'extra', extra)]));
 
   const lines: CartLine[] = [];
   for (const { key, qty, parsed } of requested) {

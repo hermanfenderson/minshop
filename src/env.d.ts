@@ -40,6 +40,12 @@ declare namespace App {
     locale: string;
     /** The request's translator (UI dictionaries). */
     i18n: import('./i18n').I18n;
+    /**
+     * The language whose content translations this request reads, or null to
+     * read the main tables as they are (the source language, admin, a
+     * single-language store). Set by middleware with `locale`.
+     */
+    contentLocale: string | null;
     adminEmail?: string;
     /** Runtime settings overlay (store name etc.), loaded once per request. */
     settings?: import('./features/settings/db').StoreSettings;

@@ -23,13 +23,15 @@ import CatalogSort from '../../features/storefront/controls/CatalogSort.astro';
 import { buildSortModel } from '../../features/storefront/catalog';
 import { catalogPath } from '../../features/settings/home';
 import { addCacheTags, productCacheTags } from '../../features/cache/tags';
+import { loadTranslations } from '../../features/translations/db';
+import { translated, translatedAll } from '../../features/translations/content';
 
 const { slug } = Astro.params;
 const { i18n } = Astro.locals;
 const { t } = i18n;
-const category = slug ? await getCategoryBySlug(env.DB, slug) : null;
+const sourceCategory = slug ? await getCategoryBySlug(env.DB, slug) : null;
 
-if (!category) {
+if (!sourceCategory) {
   return new Response(t('storefront.error.notFound'), { status: 404 });
 }
 
@@ -40,19 +42,29 @@ const { sort, dir } = parseStoreSortQuery(
 const order = orderByClause(sort, dir);
 
 const PAGE_SIZE = 24;
-const [trail, categories, total] = await Promise.all([
-  ancestors(env.DB, category.id),
+const [sourceTrail, categories, total] = await Promise.all([
+  ancestors(env.DB, sourceCategory.id),
   listCategories(env.DB),
-  countProductsInCategory(env.DB, category.id),
+  countProductsInCategory(env.DB, sourceCategory.id),
 ]);
-const subcats = childrenOf(categories, category.id);
+const sourceSubcats = childrenOf(categories, sourceCategory.id);
 const { page, offset, totalPages } = paginate(
   Astro.url.searchParams,
   total,
   PAGE_SIZE,
   MAX_PUBLIC_PAGE,
 );
-const products = await productsInCategory(env.DB, category.id, PAGE_SIZE, offset, order);
+const sourceProducts = await productsInCategory(env.DB, sourceCategory.id, PAGE_SIZE, offset, order);
+// The visitor's language, one batched read; the slug and the products' prices
+// stay the rows' own.
+const tr = await loadTranslations(env.DB, Astro.locals.contentLocale, {
+  category: [sourceCategory.id, ...sourceTrail.map((c) => c.id), ...sourceSubcats.map((c) => c.id)],
+  product: sourceProducts.map((p) => p.id),
+});
+const category = translated(tr, 'category', sourceCategory);
+const trail = translatedAll(tr, 'category', sourceTrail);
+const subcats = translatedAll(tr, 'category', sourceSubcats);
+const products = translatedAll(tr, 'product', sourceProducts);
 addCacheTags(Astro.response.headers, productCacheTags(products.map((product) => product.public_id)));
 // Presentation models are built here, where the store's image settings are
 // known; only the first card is the LCP image.

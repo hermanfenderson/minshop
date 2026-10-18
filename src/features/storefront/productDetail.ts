@@ -13,6 +13,8 @@ import { catalogPath } from '../settings/home';
 import { formatMoney, toMajorUnits, currencyDecimals } from '../../money';
 import { requirePublicId } from '../catalog/serialize';
 import { buildProductCard } from './productCard';
+import { loadTranslations } from '../translations/db';
+import { translated, translatedAll } from '../translations/content';
 import type {
   ProductDetailModel,
   ProductPurchaseModel,
@@ -69,6 +71,8 @@ export interface ProductDetailOptions {
   pathname: string;
   /** Logical path → public URL. Root by default. */
   href?: Href;
+  /** The language of the content translations to read; null/omitted = source text. */
+  contentLocale?: string | null;
 }
 
 function heroImage(
@@ -95,26 +99,43 @@ export async function loadProductDetail(
   db: D1Database,
   options: ProductDetailOptions,
 ): Promise<LoadedProductDetail> {
-  const product = options.slug ? await getProductBySlug(db, options.slug) : null;
-  if (!product) return { status: 'not_found' };
+  const source = options.slug ? await getProductBySlug(db, options.slug) : null;
+  if (!source) return { status: 'not_found' };
 
   // Independent once the product is known. Run together so an uncached render
   // pays one concurrent wait instead of a serial chain.
-  const [categories, storedRelated, variants, extras, gallery] = await Promise.all([
-    categoriesForProduct(db, product.id),
-    getRelatedStored(product, RELATED_TARGET),
-    listVariants(db, product.id),
-    listExtras(db, product.id),
-    listProductImages(db, product.id),
+  const [sourceCategories, storedRelated, sourceVariants, sourceExtras, sourceGallery] = await Promise.all([
+    categoriesForProduct(db, source.id),
+    getRelatedStored(source, RELATED_TARGET),
+    listVariants(db, source.id),
+    listExtras(db, source.id),
+    listProductImages(db, source.id),
   ]);
 
   const semantic = storedRelated ?? [];
-  let related = semantic;
-  if (related.length < RELATED_TARGET) {
-    const seen = new Set(related.map((p) => p.id));
-    const byCategory = await relatedProducts(db, product.id, RELATED_TARGET + semantic.length);
-    related = [...related, ...byCategory.filter((p) => !seen.has(p.id))].slice(0, RELATED_TARGET);
+  let sourceRelated = semantic;
+  if (sourceRelated.length < RELATED_TARGET) {
+    const seen = new Set(sourceRelated.map((p) => p.id));
+    const byCategory = await relatedProducts(db, source.id, RELATED_TARGET + semantic.length);
+    sourceRelated = [...sourceRelated, ...byCategory.filter((p) => !seen.has(p.id))].slice(0, RELATED_TARGET);
   }
+
+  // Everything the page shows, in the visitor's language: one batched read,
+  // field-by-field fallback to the source text. Prices, stock and slugs are
+  // the rows' own whatever the language.
+  const tr = await loadTranslations(db, options.contentLocale ?? null, {
+    product: [source.id, ...sourceRelated.map((p) => p.id)],
+    variant: sourceVariants.map((v) => v.id),
+    extra: sourceExtras.map((e) => e.id),
+    image: sourceGallery.map((g) => g.id),
+    category: sourceCategories.map((c) => c.id),
+  });
+  const product = translated(tr, 'product', source);
+  const related = translatedAll(tr, 'product', sourceRelated);
+  const variants = translatedAll(tr, 'variant', sourceVariants);
+  const extras = translatedAll(tr, 'extra', sourceExtras);
+  const gallery = translatedAll(tr, 'image', sourceGallery);
+  const categories = translatedAll(tr, 'category', sourceCategories);
 
   const hasVariants = variants.length > 0;
   const state = stockState(product.stock);

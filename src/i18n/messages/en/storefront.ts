@@ -32,6 +32,7 @@ export const storefront = {
 
   // Navigation shared by product, category, and 404 pages.
   'storefront.nav.shop': 'Shop',
+  'storefront.nav.home': 'Home',
   'storefront.nav.breadcrumb': 'Breadcrumb',
   'storefront.nav.categories': 'Categories',
   'storefront.nav.backToShop': 'Back to shop',

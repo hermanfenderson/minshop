@@ -1,3 +1,5 @@
+import { loadTranslations } from '../translations/db';
+import { translatedAll } from '../translations/content';
 import { rootHref, type Href } from '../../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import { listProducts, countProducts } from '../products/db';
@@ -126,6 +128,8 @@ export interface CatalogPageOptions {
   href?: Href;
   /** The request's translator, for the sort labels. English when omitted. */
   i18n?: I18n;
+  /** The language of the content translations to read; null/omitted = source text. */
+  contentLocale?: string | null;
 }
 
 export async function loadCatalogPage(
@@ -145,7 +149,13 @@ export async function loadCatalogPage(
     PAGE_SIZE,
     MAX_PUBLIC_PAGE,
   );
-  const products = await listProducts(db, PAGE_SIZE, offset, order);
+  const sourceProducts = await listProducts(db, PAGE_SIZE, offset, order);
+  const topCategories = childrenOf(categories, null);
+  const tr = await loadTranslations(db, options.contentLocale ?? null, {
+    product: sourceProducts.map((p) => p.id),
+    category: topCategories.map((c) => c.id),
+  });
+  const products = translatedAll(tr, 'product', sourceProducts);
 
   addCacheTags(
     options.responseHeaders,
@@ -155,7 +165,7 @@ export async function loadCatalogPage(
   return {
     eyebrow: options.eyebrow,
     heading: options.heading,
-    categories: childrenOf(categories, null).map((category) => ({
+    categories: translatedAll(tr, 'category', topCategories).map((category) => ({
       text: category.name,
       href: (options.href ?? rootHref)(`/categories/${category.slug}`),
     })),

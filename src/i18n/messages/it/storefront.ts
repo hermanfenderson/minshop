@@ -18,6 +18,7 @@ export const storefront = {
   'storefront.footer.nav': 'Piè di pagina',
 
   'storefront.nav.shop': 'Negozio',
+  'storefront.nav.home': 'Home',
   'storefront.nav.breadcrumb': 'Percorso di navigazione',
   'storefront.nav.categories': 'Categorie',
   'storefront.nav.backToShop': 'Torna al negozio',
