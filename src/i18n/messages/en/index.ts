@@ -1,12 +1,16 @@
-import { common } from './common';
-import { storefront } from './storefront';
-import { catalog } from './catalog';
-import { cart } from './cart';
-import { checkout } from './checkout';
+import { common } from './common.ts';
+import { storefront } from './storefront.ts';
+import { catalog } from './catalog.ts';
+import { cart } from './cart.ts';
+import { checkout } from './checkout.ts';
+import { order } from './order.ts';
+import { account } from './account.ts';
+import { adminOrders } from './adminOrders.ts';
 
 /**
  * English: the source catalog. Its keys define MessageKey. Add areas here.
- * The storefront, catalog and cart areas come from ddyy/minshop#60 (Luca G.).
+ * The storefront, catalog, cart, checkout, order and account areas come from
+ * ddyy/minshop#60 (Luca G.).
  */
 export const en = {
   ...common,
@@ -14,4 +18,7 @@ export const en = {
   ...catalog,
   ...cart,
   ...checkout,
+  ...order,
+  ...account,
+  ...adminOrders,
 };

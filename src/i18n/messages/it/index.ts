@@ -1,13 +1,17 @@
-import type { Catalog } from '../../catalog';
-import { common } from './common';
-import { storefront } from './storefront';
-import { catalog } from './catalog';
-import { cart } from './cart';
-import { checkout } from './checkout';
+import type { Catalog } from '../../catalog.ts';
+import { common } from './common.ts';
+import { storefront } from './storefront.ts';
+import { catalog } from './catalog.ts';
+import { cart } from './cart.ts';
+import { checkout } from './checkout.ts';
+import { order } from './order.ts';
+import { account } from './account.ts';
+import { adminOrders } from './adminOrders.ts';
 
 /**
  * Italian. Any subset of the English keys; missing ones fall back.
- * The storefront, catalog and cart translations come from ddyy/minshop#60 (Luca G.).
+ * The storefront, catalog, cart, checkout, order and account translations
+ * come from ddyy/minshop#60 (Luca G.).
  */
 export const it: Catalog = {
   ...common,
@@ -15,4 +19,7 @@ export const it: Catalog = {
   ...catalog,
   ...cart,
   ...checkout,
+  ...order,
+  ...account,
+  ...adminOrders,
 };
