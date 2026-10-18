@@ -75,6 +75,15 @@ if ! node test/integration/i18n-checks.mjs "http://127.0.0.1:$test_port" "$mount
   exit 1
 fi
 
+# Translated content, created and translated from the admin. The admin password
+# is generated for this throwaway store and never leaves it.
+admin_password="$(node -e 'console.log(require("node:crypto").randomBytes(16).toString("hex"))')"
+if ! node test/integration/i18n-content-checks.mjs "http://127.0.0.1:$test_port" "$mount" "$cookie_prefix" "$admin_password"; then
+  echo "--- worker log (tail)" >&2
+  tail -n 60 "$worker_log" >&2
+  exit 1
+fi
+
 # The language each purchase was made in is stored on the order (0040) — what
 # the outbox, the webhooks and the cron later read — while the fixture orders,
 # which predate it, keep a NULL that reads as English.
@@ -94,7 +103,7 @@ if [[ "$pending_locales" != "agent-de@example.com|en,agent-it@example.com|it,age
   echo "i18n integration: unexpected pending payment languages: $pending_locales" >&2
   exit 1
 fi
-legacy_locales="$(d1 "SELECT COUNT(*) FROM orders WHERE email NOT LIKE 'buyer-%@example.com' AND locale IS NOT NULL")"
+legacy_locales="$(d1 "SELECT COUNT(*) FROM orders WHERE email = 'legacy@example.com' AND locale IS NOT NULL")"
 if [[ "$legacy_locales" != "0" ]]; then
   echo "i18n integration: earlier orders gained a language: $legacy_locales" >&2
   exit 1
@@ -105,3 +114,22 @@ if [[ "$legacy_status" != "200" ]]; then
   exit 1
 fi
 echo "  ✓ each order stores the language it was bought in; earlier orders untouched"
+
+# The Italian purchase kept the Italian name; the source row and its price are
+# untouched by every translation save; no translation outlives its entity.
+content_order="$(d1 "SELECT oi.name FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.email = 'content-it@example.com'")"
+if [[ "$content_order" != "Tracolla Monopolele" ]]; then
+  echo "i18n integration: the Italian order kept the wrong name: $content_order" >&2
+  exit 1
+fi
+source_row="$(d1 "SELECT name, price_cents, slug FROM products WHERE slug = 'festival-strap'")"
+if [[ "$source_row" != "Festival strap|2400|festival-strap" ]]; then
+  echo "i18n integration: a translation changed the product row: $source_row" >&2
+  exit 1
+fi
+orphans="$(d1 "SELECT (SELECT COUNT(*) FROM product_translations WHERE product_id NOT IN (SELECT id FROM products)) + (SELECT COUNT(*) FROM category_translations WHERE category_id NOT IN (SELECT id FROM categories)) + (SELECT COUNT(*) FROM page_translations WHERE page_id NOT IN (SELECT id FROM pages)) + (SELECT COUNT(*) FROM menu_item_translations WHERE menu_item_id NOT IN (SELECT id FROM menu_items))")"
+if [[ "$orphans" != "0" ]]; then
+  echo "i18n integration: translations outlived their entity: $orphans" >&2
+  exit 1
+fi
+echo "  ✓ the order keeps the name bought in; translations never touch the product row; none are orphaned"

@@ -14,7 +14,7 @@ import {
 } from '../../src/features/media/db.ts';
 import { mediaUsage, mediaUsageForIds, isUnused } from '../../src/features/media/usage.ts';
 import { uploadMedia } from '../../src/features/media/upload.ts';
-import { savePageBody } from '../../src/features/pages/save.ts';
+import { pageTranslationMediaStatements, savePageBody } from '../../src/features/pages/save.ts';
 import { resolveHomePath, homeTargetIsValid } from '../../src/features/settings/home.ts';
 
 // Media lifecycle against a real D1. The properties under test are the ones a
@@ -118,6 +118,13 @@ try {
        layout TEXT NOT NULL DEFAULT 'standard',
        created_at TEXT NOT NULL DEFAULT (datetime('now')),
        updated_at TEXT NOT NULL DEFAULT (datetime('now')))`,
+    // As migrations/0041, without the sync columns this suite does not read.
+    `CREATE TABLE page_translations (
+       page_id INTEGER NOT NULL,
+       locale TEXT NOT NULL,
+       title TEXT,
+       body_markdown TEXT,
+       PRIMARY KEY (page_id, locale))`,
     `CREATE TABLE page_media (
        page_id INTEGER NOT NULL,
        media_id INTEGER NOT NULL,
@@ -457,6 +464,29 @@ try {
     const page = await seedPage(23, 'atomic-unpublish', 1);
     const result = await savePageBody(db, page, fieldsFor(page, 'no images', 0));
     assert.equal(result.published, 0, 'unpublish was ignored');
+  });
+
+  await check('a source save keeps the media only a translation shows', async () => {
+    const m = await newMedia('media/only-italian.png');
+    const page = await seedPage(24, 'translated-media');
+    await db
+      .prepare("INSERT INTO page_translations (page_id, locale, body_markdown) VALUES (24, 'it', ?)")
+      .bind(`![x](/images/${m.image_key})`)
+      .run();
+    await savePageBody(db, page, fieldsFor(page, 'no images in English', 0));
+    const claim = await db.prepare('SELECT COUNT(*) c FROM page_media WHERE page_id = 24 AND media_id = ?').bind(m.id).first();
+    assert.equal(claim.c, 1, 'the Italian body lost its claim, so the library could delete the image');
+  });
+
+  await check('saving a page translation claims its media and reports the missing', async () => {
+    const m = await newMedia('media/new-italian.png');
+    const page = await seedPage(25, 'translated-claims');
+    const body = `![x](/images/${m.image_key}) ![y](/images/media/not-uploaded.png)`;
+    const { statements, unresolved } = await pageTranslationMediaStatements(db, page, 'it', body);
+    await db.batch(statements);
+    const claim = await db.prepare('SELECT COUNT(*) c FROM page_media WHERE page_id = 25 AND media_id = ?').bind(m.id).first();
+    assert.equal(claim.c, 1, 'the translated body did not claim its image');
+    assert.deepEqual(unresolved, ['media/not-uploaded.png']);
   });
 
   await check('an image-heavy save stays inside D1’s free-plan query budget', async () => {
