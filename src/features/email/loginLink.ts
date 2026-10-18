@@ -1,21 +1,28 @@
+import { enI18n, type I18n } from '../../i18n/index.ts';
 import type { EmailMessage } from './provider';
 import { PALETTE, emailShell, emailButton } from './layout';
 
-/** Passwordless sign-in email — a single-use, short-lived magic link. */
-export function loginLinkEmail(to: string, link: string, storeName: string): EmailMessage {
-  const subject = `Sign in to ${storeName}`;
-  const text = `Click to sign in to ${storeName}:\n\n${link}\n\nThis link expires in 15 minutes. If you didn't request it, ignore this email.`;
+/** Passwordless sign-in email — a single-use, short-lived magic link, in the store's language. */
+export function loginLinkEmail(
+  to: string,
+  link: string,
+  storeName: string,
+  i18n: I18n = enI18n,
+): EmailMessage {
+  const { t } = i18n;
+  const subject = t('email.login.subject', { store: storeName });
+  const text = `${t('email.login.textIntro', { store: storeName })}\n\n${link}\n\n${t('email.login.textExpiry')}`;
   const html = emailShell({
     storeName,
-    heading: 'Sign in',
-    subheading: 'This link expires in 15 minutes and can only be used once.',
+    heading: t('email.login.heading'),
+    subheading: t('email.login.subheading'),
     body:
-      emailButton(link, 'Sign in') +
+      emailButton(link, t('email.login.button')) +
       `<p style="margin:0;font-size:12px;line-height:1.6;color:${PALETTE.muted};">
-        Button not working? Paste this into your browser:<br>
+        ${t('email.login.fallback')}<br>
         <a href="${link}" style="color:${PALETTE.muted};word-break:break-all;">${link}</a>
       </p>`,
-    footer: "If you didn't request this, you can safely ignore this email.",
+    footer: t('email.login.footer'),
   });
   return { to, subject, html, text };
 }

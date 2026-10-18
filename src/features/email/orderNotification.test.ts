@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Order } from '../orders/db';
 import { orderNotificationEmail } from './orderConfirmation';
 
+
 const order = (overrides: Partial<Order> = {}): Order =>
   ({
     id: 105,

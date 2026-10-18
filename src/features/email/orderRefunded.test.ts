@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { orderRefundedEmail } from './orderConfirmation';
 import type { Order } from '../orders/db';
+
 
 // A refunded order must read back in the currency it was CHARGED in. The store's
 // current currency is irrelevant — an order taken in EUR before a switch to USD

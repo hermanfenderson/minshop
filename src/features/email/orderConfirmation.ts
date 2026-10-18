@@ -1,4 +1,6 @@
 import { formatPrice, getConfig } from '../../config';
+import { enI18n, type I18n } from '../../i18n/index.ts';
+import { withMount } from '../../deployment';
 import type { Order, OrderItemWithImage, ShippingAddress } from '../orders/db';
 import { orderReference } from '../orders/number';
 import {
@@ -16,6 +18,10 @@ import {
   escapeHtml,
   type TotalRow,
 } from './layout';
+
+// Every builder takes a trailing `i18n`. Emails go out after the request that
+// caused them (webhooks, the outbox sweep, the cron), so callers pass the
+// order's stored language (features/i18n/email.ts); English is the default.
 
 /** A 48px product thumbnail cell (absolute URL so email clients can fetch it).
  *  `new URL` resolves both an absolute image base (R2 domain) and the relative
@@ -35,14 +41,28 @@ const thumbCell = (
 };
 
 /** Shipping / discount / tax / total, in the order they appear on a receipt. */
-function totalRows(order: Order, money: (cents: number) => string): TotalRow[] {
+function totalRows(order: Order, money: (cents: number) => string, i18n: I18n): TotalRow[] {
+  const { t } = i18n;
   return [
-    ...(order.shipping_cents > 0 ? [{ label: 'Shipping', amount: money(order.shipping_cents) }] : []),
-    ...(order.discount_cents > 0
-      ? [{ label: 'Discount', amount: `&minus;${money(order.discount_cents)}` }]
+    ...(order.shipping_cents > 0
+      ? [{ label: t('email.totals.shipping'), amount: money(order.shipping_cents) }]
       : []),
-    ...(order.tax_cents > 0 ? [{ label: 'Tax', amount: money(order.tax_cents) }] : []),
-    { label: 'Total', amount: money(order.amount_total_cents), strong: true },
+    ...(order.discount_cents > 0
+      ? [{ label: t('email.totals.discount'), amount: `&minus;${money(order.discount_cents)}` }]
+      : []),
+    ...(order.tax_cents > 0 ? [{ label: t('email.totals.tax'), amount: money(order.tax_cents) }] : []),
+    { label: t('email.totals.total'), amount: money(order.amount_total_cents), strong: true },
+  ];
+}
+
+/** The same totals as plain-text lines. */
+function totalLines(order: Order, money: (cents: number) => string, i18n: I18n): string[] {
+  const { t } = i18n;
+  return [
+    ...(order.shipping_cents > 0 ? [t('email.text.shipping', { amount: money(order.shipping_cents) })] : []),
+    ...(order.discount_cents > 0 ? [t('email.text.discount', { amount: money(order.discount_cents) })] : []),
+    ...(order.tax_cents > 0 ? [t('email.text.tax', { amount: money(order.tax_cents) })] : []),
+    t('email.text.total', { amount: money(order.amount_total_cents) }),
   ];
 }
 
@@ -73,10 +93,12 @@ export function orderConfirmationEmail(
   imageDelivery: ImageDelivery = 'original',
   /** Tokenized guest link (allowlisted email position); null = omit the link. */
   guestOrderUrl?: string | null,
+  i18n: I18n = enI18n,
 ): EmailMessage {
+  const { t, th } = i18n;
   const cfg = getConfig();
   const num = orderReference(order.public_id, order.id, cfg.orderNumber);
-  const money = (cents: number) => formatPrice(cents, order.currency);
+  const money = (cents: number) => formatPrice(cents, order.currency, i18n.intl);
   const orderUrl = guestOrderUrl ?? null;
   const hasDigital = items.some((item) => Boolean(item.file_key));
 
@@ -85,23 +107,20 @@ export function orderConfirmationEmail(
   );
 
   const text = [
-    `Thanks for your order!`,
+    t('email.confirmation.textThanks'),
     ``,
-    `Order #${num}, ${storeName}`,
+    t('email.confirmation.textOrder', { num, store: storeName }),
     ``,
     ...rows,
-    ...(order.shipping_cents > 0 ? [`Shipping: ${money(order.shipping_cents)}`] : []),
-    ...(order.discount_cents > 0 ? [`Discount: -${money(order.discount_cents)}`] : []),
-    ...(order.tax_cents > 0 ? [`Tax: ${money(order.tax_cents)}`] : []),
-    `Total: ${money(order.amount_total_cents)}`,
-    ...(hasDigital && orderUrl ? [``, `Your download is ready.`] : []),
-    ...(orderUrl ? [``, `View your order: ${orderUrl}`] : []),
+    ...totalLines(order, money, i18n),
+    ...(hasDigital && orderUrl ? [``, t('email.confirmation.downloadReady')] : []),
+    ...(orderUrl ? [``, t('email.text.viewOrder', { url: orderUrl })] : []),
   ].join('\n');
 
   const html = emailShell({
     storeName,
-    heading: 'Thanks for your order',
-    subheading: `Order #${num} is confirmed. We'll email you again when it ships.`,
+    heading: t('email.confirmation.heading'),
+    subheading: th('email.confirmation.subheading', { num }),
     body:
       emailItemsTable(
         items.map((it) => ({
@@ -110,18 +129,18 @@ export function orderConfirmationEmail(
           quantity: it.quantity,
           amount: money(it.price_cents * it.quantity),
         })),
-        totalRows(order, money),
+        totalRows(order, money, i18n),
       ) +
       (hasDigital && orderUrl
-        ? `<p style="margin:20px 0 0;font-size:14px;">Your download is ready.</p>`
+        ? `<p style="margin:20px 0 0;font-size:14px;">${t('email.confirmation.downloadReady')}</p>`
         : '') +
-      (orderUrl ? emailButton(orderUrl, 'View your order') : ''),
-    footer: `Questions about this order? Just reply to this email.`,
+      (orderUrl ? emailButton(orderUrl, t('email.button.viewOrder')) : ''),
+    footer: t('email.confirmation.footer'),
   });
 
   return {
     to: order.email!,
-    subject: `Your ${storeName} order #${num}`,
+    subject: t('email.confirmation.subject', { store: storeName, num }),
     html,
     text,
   };
@@ -138,46 +157,48 @@ export function orderNotificationEmail(
   baseUrl: string,
   storeName: string,
   imageDelivery: ImageDelivery = 'original',
+  i18n: I18n = enI18n,
 ): EmailMessage {
+  const { t, th } = i18n;
   const publicId = order.public_id ?? '—';
   // ASCII hyphen on purpose: a non-ASCII char anywhere in a header forces RFC
   // 2047 encoded-words, which read as "=?utf-8?b?...?=" in raw logs. The em
   // dashes in the BODY are fine — bodies declare their charset.
   const subjectPublicId = order.public_id ? ` - ${order.public_id}` : '';
-  const money = (cents: number) => formatPrice(cents, order.currency);
+  const money = (cents: number) => formatPrice(cents, order.currency, i18n.intl);
   const shipText = formatShipAddress(order);
-  const adminUrl = `${baseUrl}/admin/orders/${order.public_id ?? order.id}`;
+  const adminUrl = baseUrl + withMount(`/admin/orders/${order.public_id ?? order.id}`);
 
   const rows = items.map(
     (it) => `${it.name} × ${it.quantity}: ${money(it.price_cents * it.quantity)}`,
   );
 
   const text = [
-    `New order #${order.id}`,
-    `Public ID: ${publicId}`,
+    t('email.notification.textHeading', { id: order.id }),
+    t('email.notification.textPublicId', { publicId }),
     ``,
-    `Customer: ${order.email ?? '-'}`,
+    t('email.notification.textCustomer', { email: order.email ?? '-' }),
     ``,
-    `Ship to:`,
+    t('email.notification.textShipTo'),
     shipText,
     ``,
     ...rows,
-    ...(order.shipping_cents > 0 ? [`Shipping: ${money(order.shipping_cents)}`] : []),
-    ...(order.discount_cents > 0 ? [`Discount: -${money(order.discount_cents)}`] : []),
-    ...(order.tax_cents > 0 ? [`Tax: ${money(order.tax_cents)}`] : []),
-    `Total: ${money(order.amount_total_cents)}`,
+    ...totalLines(order, money, i18n),
     ``,
-    `View in admin: ${adminUrl}`,
+    t('email.notification.textViewInAdmin', { url: adminUrl }),
   ].join('\n');
 
   const html = emailShell({
     storeName,
-    heading: `New order #${order.id}`,
-    subheading: `${money(order.amount_total_cents)} from ${escapeHtml(order.email ?? 'an unknown address')}`,
+    heading: t('email.notification.heading', { id: order.id }),
+    subheading: th('email.notification.subheading', {
+      amount: money(order.amount_total_cents),
+      email: order.email ?? t('email.notification.unknownAddress'),
+    }),
     body:
-      emailLabel('Order identifiers') +
-      `<p style="margin:0;font-size:14px;line-height:1.6;">Order #${order.id}<br><span style="font-family:monospace;">${escapeHtml(publicId)}</span></p>` +
-      emailLabel('Ship to') +
+      emailLabel(t('email.notification.identifiers')) +
+      `<p style="margin:0;font-size:14px;line-height:1.6;">${th('email.notification.orderNumber', { id: order.id })}<br><span style="font-family:monospace;">${escapeHtml(publicId)}</span></p>` +
+      emailLabel(t('email.notification.shipTo')) +
       `<p style="margin:0;font-size:14px;line-height:1.6;">${escapeHtml(shipText).replace(/\n/g, '<br>')}</p>` +
       emailItemsTable(
         items.map((it) => ({
@@ -186,14 +207,14 @@ export function orderNotificationEmail(
           quantity: it.quantity,
           amount: money(it.price_cents * it.quantity),
         })),
-        totalRows(order, money),
+        totalRows(order, money, i18n),
       ) +
-      emailButton(adminUrl, 'View in admin'),
+      emailButton(adminUrl, t('email.notification.viewInAdmin')),
   });
 
   return {
     to,
-    subject: `New ${storeName} order #${order.id}${subjectPublicId}`,
+    subject: `${t('email.notification.subject', { store: storeName, id: order.id })}${subjectPublicId}`,
     html,
     text,
   };
@@ -205,29 +226,32 @@ export function orderShippedEmail(
   storeName: string,
   /** Tokenized guest link (allowlisted email position); null = omit the link. */
   guestOrderUrl?: string | null,
+  i18n: I18n = enI18n,
 ): EmailMessage {
+  const { t, th } = i18n;
   const cfg = getConfig();
   const num = orderReference(order.public_id, order.id, cfg.orderNumber);
   const url = trackingUrl(order.tracking_carrier, order.tracking_number);
   const orderUrl = guestOrderUrl ?? null;
+  const carrier = carrierName(order.tracking_carrier, i18n);
 
   const text = [
-    `Your order #${num} has shipped!`,
+    t('email.shipped.textShipped', { num }),
     ...(order.tracking_number
       ? [
           ``,
-          `Carrier: ${carrierName(order.tracking_carrier)}`,
-          `Tracking: ${order.tracking_number}`,
-          ...(url ? [`Track it: ${url}`] : []),
+          t('email.shipped.textCarrier', { carrier }),
+          t('email.shipped.textTracking', { number: order.tracking_number }),
+          ...(url ? [t('email.shipped.textTrackIt', { url })] : []),
         ]
       : []),
-    ...(orderUrl ? [``, `View your order: ${orderUrl}`] : []),
+    ...(orderUrl ? [``, t('email.text.viewOrder', { url: orderUrl })] : []),
   ].join('\n');
 
   const trackingHtml = order.tracking_number
-    ? emailLabel('Tracking') +
+    ? emailLabel(t('email.shipped.tracking')) +
       `<p style="margin:0;font-size:14px;line-height:1.6;">
-        ${escapeHtml(carrierName(order.tracking_carrier))}<br>
+        ${escapeHtml(carrier)}<br>
         ${
           url
             ? `<a href="${url}" style="color:${PALETTE.brand};font-weight:600;">${escapeHtml(order.tracking_number)}</a>`
@@ -238,21 +262,24 @@ export function orderShippedEmail(
 
   const html = emailShell({
     storeName,
-    heading: 'Your order is on its way',
-    subheading: `Order #${num} shipped.`,
+    heading: t('email.shipped.heading'),
+    subheading: th('email.shipped.subheading', { num }),
     body:
       trackingHtml +
       (url
-        ? emailButton(url, 'Track your package')
+        ? emailButton(url, t('email.shipped.trackPackage'))
         : orderUrl
-          ? emailButton(orderUrl, 'View your order')
+          ? emailButton(orderUrl, t('email.button.viewOrder'))
           : ''),
-    footer: orderUrl && url ? `Order details: <a href="${orderUrl}" style="color:${PALETTE.muted};">${orderUrl}</a>` : undefined,
+    footer:
+      orderUrl && url
+        ? `${t('email.shipped.orderDetails')} <a href="${orderUrl}" style="color:${PALETTE.muted};">${orderUrl}</a>`
+        : undefined,
   });
 
   return {
     to: order.email!,
-    subject: `Your ${storeName} order #${num} has shipped`,
+    subject: t('email.shipped.subject', { store: storeName, num }),
     html,
     text,
   };
@@ -273,7 +300,9 @@ export function orderRefundedEmail(
   storeName: string,
   /** Tokenized guest link (allowlisted email position); null = omit the link. */
   guestOrderUrl?: string | null,
+  i18n: I18n = enI18n,
 ): EmailMessage {
+  const { t, th } = i18n;
   const cfg = getConfig();
   const num = orderReference(order.public_id, order.id, cfg.orderNumber);
   const orderUrl = guestOrderUrl ?? null;
@@ -285,39 +314,41 @@ export function orderRefundedEmail(
   // "it depends on your bank" for cards. Saying nothing invites a support email.
   const timing =
     method === 'stripe' || method === null
-      ? 'Card refunds usually appear within 5-10 business days, depending on your bank.'
-      : 'The refund was sent back over the same payment method you used.';
+      ? t('email.refunded.timingCard')
+      : t('email.refunded.timingOther');
 
   // Prices in the ORDER's currency, not the store's current one — an order
   // placed before a currency change must still read back in what was charged.
-  const money = (cents: number) => formatPrice(cents, order.currency);
+  const money = (cents: number) => formatPrice(cents, order.currency, i18n.intl);
 
   const priorLine =
-    refundedCents > refundCents ? `Total refunded so far: ${money(refundedCents)}` : null;
+    refundedCents > refundCents
+      ? t('email.refunded.textTotalSoFar', { amount: money(refundedCents) })
+      : null;
 
   const text = [
-    full ? `Your order #${num} has been refunded.` : `A refund was issued for order #${num}.`,
+    full ? t('email.refunded.textFull', { num }) : t('email.refunded.textPartial', { num }),
     ``,
-    `Refunded: ${money(refundCents)}`,
+    t('email.refunded.textRefunded', { amount: money(refundCents) }),
     ...(priorLine ? [priorLine] : []),
-    ...(full ? [] : [`Still paid: ${money(remaining)}`]),
+    ...(full ? [] : [t('email.refunded.textStillPaid', { amount: money(remaining) })]),
     ``,
     timing,
-    ...(orderUrl ? [``, `View your order: ${orderUrl}`] : []),
+    ...(orderUrl ? [``, t('email.text.viewOrder', { url: orderUrl })] : []),
   ].join('\n');
 
   const rows: TotalRow[] = [
-    { label: 'Refunded', amount: money(refundCents), strong: true },
-    ...(priorLine ? [{ label: 'Total refunded', amount: money(refundedCents) }] : []),
-    ...(full ? [] : [{ label: 'Still paid', amount: money(remaining) }]),
+    { label: t('email.refunded.refunded'), amount: money(refundCents), strong: true },
+    ...(priorLine ? [{ label: t('email.refunded.totalRefunded'), amount: money(refundedCents) }] : []),
+    ...(full ? [] : [{ label: t('email.refunded.stillPaid'), amount: money(remaining) }]),
   ];
 
   const html = emailShell({
     storeName,
-    heading: full ? 'Your order has been refunded' : 'A refund is on its way',
-    subheading: `Order #${num}`,
+    heading: full ? t('email.refunded.headingFull') : t('email.refunded.headingPartial'),
+    subheading: th('email.refunded.subheading', { num }),
     body:
-      emailLabel('Refund') +
+      emailLabel(t('email.refunded.refund')) +
       `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">${rows
         .map(
           (r) =>
@@ -326,14 +357,14 @@ export function orderRefundedEmail(
         )
         .join('')}</table>` +
       `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${PALETTE.muted};">${escapeHtml(timing)}</p>` +
-      (orderUrl ? emailButton(orderUrl, 'View your order') : ''),
+      (orderUrl ? emailButton(orderUrl, t('email.button.viewOrder')) : ''),
   });
 
   return {
     to: order.email!,
     subject: full
-      ? `Your ${storeName} order #${num} has been refunded`
-      : `A refund for your ${storeName} order #${num}`,
+      ? t('email.refunded.subjectFull', { store: storeName, num })
+      : t('email.refunded.subjectPartial', { store: storeName, num }),
     html,
     text,
   };
