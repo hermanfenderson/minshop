@@ -22,6 +22,8 @@ export interface SearchOptions {
   offset?: number;
   /** Product ids already supplied by a higher-priority provider. */
   excludeIds?: number[];
+  /** A translated language to match as well (keyword search); null = source text. */
+  locale?: string | null;
 }
 
 export interface SearchProvider {

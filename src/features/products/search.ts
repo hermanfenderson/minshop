@@ -19,14 +19,43 @@ function exclusionSql(ids: number[]): string {
   return ids.length > 0 ? ` AND p.id NOT IN (${ids.map(() => '?').join(',')})` : '';
 }
 
+/**
+ * Matches in a translated language: a product matches on its source text OR on
+ * its translation in that language, ranked by the better of the two. Bound
+ * parameters: the query twice, then the locale.
+ */
+const TRANSLATED_HITS = `
+  SELECT id, MIN(rank) AS rank FROM (
+    SELECT f.rowid AS id, bm25(products_fts) AS rank
+      FROM products_fts f WHERE products_fts MATCH ?
+    UNION ALL
+    SELECT t.product_id AS id, bm25(product_translations_fts) AS rank
+      FROM product_translations_fts tf
+      JOIN product_translations t ON t.rowid = tf.rowid
+     WHERE product_translations_fts MATCH ? AND t.locale = ?
+  ) GROUP BY id`;
+
 /** Count active FTS matches, optionally excluding results supplied elsewhere. */
 export async function countSearchProducts(
   db: D1Database,
   raw: string,
   excludeIds: number[] = [],
+  /** A translated language to search as well; null = the source text only. */
+  locale: string | null = null,
 ): Promise<number> {
   const query = toFtsQuery(raw);
   if (!query) return 0;
+  if (locale) {
+    const row = await db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM (${TRANSLATED_HITS}) h
+           JOIN products p ON p.id = h.id
+          WHERE p.active = 1${exclusionSql(excludeIds)}`,
+      )
+      .bind(query, query, locale, ...excludeIds)
+      .first<{ n: number }>();
+    return row?.n ?? 0;
+  }
 
   const row = await db
     .prepare(
@@ -47,9 +76,24 @@ export async function searchProducts(
   limit = 50,
   offset = 0,
   excludeIds: number[] = [],
+  /** A translated language to search as well; null = the source text only. */
+  locale: string | null = null,
 ): Promise<Product[]> {
   const query = toFtsQuery(raw);
   if (!query || limit <= 0) return [];
+  if (locale) {
+    const { results } = await db
+      .prepare(
+        `SELECT p.* FROM (${TRANSLATED_HITS}) h
+           JOIN products p ON p.id = h.id
+          WHERE p.active = 1${exclusionSql(excludeIds)}
+          ORDER BY h.rank
+          LIMIT ? OFFSET ?`,
+      )
+      .bind(query, query, locale, ...excludeIds, limit, offset)
+      .all<Product>();
+    return results ?? [];
+  }
 
   const { results } = await db
     .prepare(
@@ -83,11 +127,21 @@ export function editDistance(a: string, b: string): number {
   return prev[n];
 }
 
-/** Distinct ≥3-char words from active products' name + description. */
-async function productVocabulary(db: D1Database): Promise<string[]> {
-  const { results } = await db
-    .prepare('SELECT name, description FROM products WHERE active = 1')
-    .all<{ name: string; description: string | null }>();
+/** Distinct ≥3-char words from active products' name + description (and, in a
+ *  translated language, their translations). */
+async function productVocabulary(db: D1Database, locale: string | null): Promise<string[]> {
+  const { results } = await (locale
+    ? db
+        .prepare(
+          `SELECT name, description FROM products WHERE active = 1
+           UNION ALL
+           SELECT COALESCE(t.name, ''), t.description FROM product_translations t
+             JOIN products p ON p.id = t.product_id
+            WHERE p.active = 1 AND t.locale = ?`,
+        )
+        .bind(locale)
+    : db.prepare('SELECT name, description FROM products WHERE active = 1')
+  ).all<{ name: string; description: string | null }>();
   const words = new Set<string>();
   for (const r of results ?? []) {
     const matches = `${r.name} ${r.description ?? ''}`.toLowerCase().match(/[a-z0-9]+/g);
@@ -101,10 +155,14 @@ async function productVocabulary(db: D1Database): Promise<string[]> {
  * to the nearest product word within a small edit distance. Returns null if no
  * token is improved. Runs in the Worker (no spellfix1 needed on D1).
  */
-export async function suggestQuery(db: D1Database, raw: string): Promise<string | null> {
+export async function suggestQuery(
+  db: D1Database,
+  raw: string,
+  locale: string | null = null,
+): Promise<string | null> {
   const tokens = raw.toLowerCase().match(/[a-z0-9]+/g);
   if (!tokens || tokens.length === 0) return null;
-  const vocab = await productVocabulary(db);
+  const vocab = await productVocabulary(db, locale);
   if (vocab.length === 0) return null;
 
   let changed = false;

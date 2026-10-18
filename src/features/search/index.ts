@@ -148,6 +148,9 @@ export async function getSearchProvider(): Promise<SearchProvider> {
         limit: remaining,
         offset: ftsOffset,
         excludeIds: [...(options.excludeIds ?? []), ...semanticIds],
+        // Semantic search stays on the source language; keyword search also
+        // matches the translations.
+        locale: options.locale,
       });
 
       return {

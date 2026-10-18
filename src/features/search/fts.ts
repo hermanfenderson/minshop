@@ -16,25 +16,26 @@ export function createFtsSearch(db: D1Database): SearchProvider {
       const limit = Math.max(0, Math.trunc(options.limit ?? 50));
       const offset = Math.max(0, Math.trunc(options.offset ?? 0));
       const excludeIds = options.excludeIds ?? [];
-      const directTotal = await countSearchProducts(db, normalized);
+      const locale = options.locale ?? null;
+      const directTotal = await countSearchProducts(db, normalized, [], locale);
       if (directTotal > 0) {
         const total =
           excludeIds.length > 0
-            ? await countSearchProducts(db, normalized, excludeIds)
+            ? await countSearchProducts(db, normalized, excludeIds, locale)
             : directTotal;
-        const products = await searchProducts(db, normalized, limit, offset, excludeIds);
+        const products = await searchProducts(db, normalized, limit, offset, excludeIds, locale);
         return { products, total, correctedTo: null };
       }
 
-      const suggestion = await suggestQuery(db, normalized);
+      const suggestion = await suggestQuery(db, normalized, locale);
       if (suggestion) {
-        const correctedTotal = await countSearchProducts(db, suggestion);
+        const correctedTotal = await countSearchProducts(db, suggestion, [], locale);
         if (correctedTotal > 0) {
           const total =
             excludeIds.length > 0
-              ? await countSearchProducts(db, suggestion, excludeIds)
+              ? await countSearchProducts(db, suggestion, excludeIds, locale)
               : correctedTotal;
-          const products = await searchProducts(db, suggestion, limit, offset, excludeIds);
+          const products = await searchProducts(db, suggestion, limit, offset, excludeIds, locale);
           return { products, total, correctedTo: suggestion };
         }
       }
