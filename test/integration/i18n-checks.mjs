@@ -201,35 +201,52 @@ await check('a missing variant sends the Italian shopper back to the Italian pro
   assert(location(res).startsWith(`${IT}/products/sample-tee?error=`), location(res));
 });
 
-await check('checkout from the Italian cart stays Italian through payment and the order page', async () => {
-  const withCart = (init) => ({ ...init, headers: { ...init.headers, cookie: cart } });
-  // Cart → method choice (public API, ?lang=it) → in-app checkout in Italian.
-  let res = await get(`${EN}/api/checkout?lang=it`, withCart(form({ method: 'demo' })));
-  equal(res.status, 303, 'checkout status');
-  let next = location(res);
-  assert(next.startsWith(`${IT}/checkout`), `in-app checkout in Italian: ${next}`);
-  // The in-app checkout mints the demo payment and sends the shopper to the
-  // store's own pay page — built by the caller in the shopper's language.
-  res = await get(next, withCart({}));
-  if (res.status === 200) {
-    // Address step: post it back through the rewrite.
-    const body = await res.text();
-    const fields = Object.fromEntries([...body.matchAll(/<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"/g)].map((m) => [m[1], m[2]]));
-    res = await get(next, withCart(form({ ...fields, email: 'buyer@example.com', name: 'A', line1: 'Via Roma 1', city: 'Roma', postal_code: '00100', country: 'IT' })));
-  }
-  equal(res.status, 303, 'pay redirect status');
-  const pay = location(res).replace('https://canonical.example', '');
-  debug(`pay page ${pay}`);
-  assert(pay.startsWith(`${IT}/pay/`), `pay page in Italian: ${pay}`);
-  equal(htmlLang(await html(pay)), 'it', 'pay page language');
-  // Pay (demo card) with a POST through the rewrite → the Italian order page.
-  res = await get(pay, form({ email: 'buyer@example.com', outcome: 'approve' }));
-  equal(res.status, 303, 'payment status');
-  const order = location(res);
-  debug(`order page ${order}`);
-  assert(order.startsWith(`${IT}/order/`), `order page in Italian: ${order}`);
-  equal(htmlLang(await html(order)), 'it', 'order page language');
-});
+// The whole purchase in each language: cart → checkout → demo payment → order.
+// i18n.sh then reads the orders back from D1 and checks the stored language.
+for (const [code, prefix, startCart] of [
+  ['it', IT, () => cart],
+  ['en', EN, async () => {
+    const res = await get(`${EN}/api/cart`, form({ _action: 'add', product_id: productId, variant_id: variantId, qty: '1' }));
+    return cookieHeader(res);
+  }],
+]) {
+  const name = code === 'it' ? 'Italian' : 'English';
+  await check(`checkout from the ${name} cart stays ${name} through payment and the order page`, async () => {
+    const jar = await startCart();
+    const withCart = (init) => ({ ...init, headers: { ...init.headers, cookie: jar } });
+    const email = `buyer-${code}@example.com`;
+    // Cart → method choice (public API, ?lang=) → in-app checkout in the language.
+    let res = await get(`${EN}/api/checkout${code === 'it' ? '?lang=it' : ''}`, withCart(form({ method: 'demo' })));
+    equal(res.status, 303, 'checkout status');
+    const next = location(res);
+    assert(next.startsWith(`${prefix}/checkout`), `in-app checkout in ${name}: ${next}`);
+    // The in-app checkout mints the demo payment and sends the shopper to the
+    // store's own pay page — built by the caller in the shopper's language.
+    res = await get(next, withCart({}));
+    if (res.status === 200) {
+      const body = await res.text();
+      equal(htmlLang(body), code, 'checkout page language');
+      // Address step: post it back through the rewrite.
+      const fields = Object.fromEntries([...body.matchAll(/<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+      res = await get(next, withCart(form({ ...fields, email, name: 'A', line1: 'Via Roma 1', city: 'Roma', postal_code: '00100', country: 'IT' })));
+    }
+    equal(res.status, 303, 'pay redirect status');
+    const pay = location(res).replace('https://canonical.example', '');
+    debug(`pay page ${pay}`);
+    assert(pay.startsWith(`${prefix}/pay/`), `pay page in ${name}: ${pay}`);
+    equal(htmlLang(await html(pay)), code, 'pay page language');
+    // Pay (demo card) with a POST through the rewrite → the order page.
+    res = await get(pay, form({ email, outcome: 'approve' }));
+    equal(res.status, 303, 'payment status');
+    const order = location(res);
+    debug(`order page ${order}`);
+    assert(order.startsWith(`${prefix}/order/`), `order page in ${name}: ${order}`);
+    equal(htmlLang(await html(order)), code, 'order page language');
+    // The order page is the same order in the other language: one token, two URLs.
+    const other = code === 'it' ? order.replace(`${IT}/`, `${EN}/`) : order.replace(`${EN}/`, `${IT}/`);
+    equal(htmlLang(await html(other)), code === 'it' ? 'en' : 'it', 'order page in the other language');
+  });
+}
 
 await check('customer sign-in posts through the rewrite and stays Italian', async () => {
   const res = await get(`${IT}/account/login`, form({ email: 'buyer@example.com' }));
@@ -279,6 +296,30 @@ await check('each language is a separate, cacheable URL with no Vary', async () 
     equal(res.headers.get('vary'), null, 'no Vary: the URL alone decides the language');
   }
   equal(it.headers.get('cache-tag'), en.headers.get('cache-tag'), 'one purge covers both languages');
+});
+
+// Last: these purchases hold the remaining stock of the sample product.
+await check('an agent checkout names the language in its body, validated', async () => {
+  const buy = (locale) =>
+    get(`${EN}/api/checkout`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin },
+      body: JSON.stringify({
+        items: [{ product_id: productId, variant_id: variantId, quantity: 1 }],
+        method: 'demo',
+        locale,
+        ship_to: { email: `agent-${locale}@example.com`, name: 'A', line1: '1 Main St', city: 'Springfield', state: 'IL', postal: '62701', country: 'US' },
+      }),
+    });
+  // Italian is enabled; German is supported but not enabled here; xx is not a language.
+  for (const [locale, prefix] of [['it', IT], ['de', EN], ['xx', EN]]) {
+    const res = await buy(locale);
+    const body = await res.json();
+    debug(locale, res.status, JSON.stringify(body).slice(0, 200));
+    equal(res.status, 200, `status for ${locale}`);
+    const url = (body.checkout_url ?? '').replace(/^https?:\/\/[^/]+/, '');
+    assert(url.startsWith(`${prefix}/pay/`) || url.startsWith(`${prefix}/order/`), `${locale} → ${url}`);
+  }
 });
 
 if (failures > 0) {

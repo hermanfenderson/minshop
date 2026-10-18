@@ -36,6 +36,10 @@ npx wrangler d1 execute DB --local --persist-to "$state_dir" \
   --file ./test/fixtures/storefront-states.sql >/dev/null
 npx wrangler d1 execute DB --local --persist-to "$state_dir" \
   --command "INSERT INTO settings (key, value) VALUES ('i18n_enabled_locales', 'en,it') ON CONFLICT(key) DO UPDATE SET value = excluded.value" >/dev/null
+# An order from before languages: no stored locale, addressed by its legacy id.
+legacy_order="ab$(printf 'cd%.0s' {1..15})"
+npx wrangler d1 execute DB --local --persist-to "$state_dir" \
+  --command "INSERT INTO orders (public_id, email, amount_total_cents, currency, status) VALUES ('$legacy_order', 'legacy@example.com', 1500, 'eur', 'paid')" >/dev/null
 
 npx wrangler dev \
   --config dist/server/wrangler.json \
@@ -70,3 +74,34 @@ if ! node test/integration/i18n-checks.mjs "http://127.0.0.1:$test_port" "$mount
   tail -n 60 "$worker_log" >&2
   exit 1
 fi
+
+# The language each purchase was made in is stored on the order (0040) — what
+# the outbox, the webhooks and the cron later read — while the fixture orders,
+# which predate it, keep a NULL that reads as English.
+d1() {
+  npx wrangler d1 execute DB --local --persist-to "$state_dir" --json --command "$1" |
+    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)[0].results.map(r=>Object.values(r).join("|")).join(",")))'
+}
+order_locales="$(d1 "SELECT email, locale FROM orders WHERE email LIKE 'buyer-%@example.com' ORDER BY email")"
+if [[ "$order_locales" != "buyer-en@example.com|en,buyer-it@example.com|it" ]]; then
+  echo "i18n integration: unexpected order languages: $order_locales" >&2
+  exit 1
+fi
+# Agent checkouts still awaiting payment: the body's language when enabled,
+# else the request's (English) — never an unvalidated value.
+pending_locales="$(d1 "SELECT email, locale FROM pending_payments WHERE email LIKE 'agent-%@example.com' ORDER BY email")"
+if [[ "$pending_locales" != "agent-de@example.com|en,agent-it@example.com|it,agent-xx@example.com|en" ]]; then
+  echo "i18n integration: unexpected pending payment languages: $pending_locales" >&2
+  exit 1
+fi
+legacy_locales="$(d1 "SELECT COUNT(*) FROM orders WHERE email NOT LIKE 'buyer-%@example.com' AND locale IS NOT NULL")"
+if [[ "$legacy_locales" != "0" ]]; then
+  echo "i18n integration: earlier orders gained a language: $legacy_locales" >&2
+  exit 1
+fi
+legacy_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$test_port$mount/order/$legacy_order")"
+if [[ "$legacy_status" != "200" ]]; then
+  echo "i18n integration: the earlier order page answered $legacy_status" >&2
+  exit 1
+fi
+echo "  ✓ each order stores the language it was bought in; earlier orders untouched"
