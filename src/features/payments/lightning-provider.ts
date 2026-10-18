@@ -91,6 +91,7 @@ export async function mintLightningOrder(
     deliveryMethod: input.deliveryMethod ?? null,
     shipAddressJson: input.shippingAddress ? JSON.stringify(input.shippingAddress) : null,
     reservationId: input.reservationId ?? null,
+    locale: input.locale ?? null,
     expiresAt,
   });
 

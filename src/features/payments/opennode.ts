@@ -102,6 +102,7 @@ export function createOpenNodeProvider(
           ? JSON.stringify(params.selectedShipping.address)
           : null,
         reservationId: params.metadata?.reservation_id ?? null,
+        locale: params.locale ?? null,
         expiresAt: null,
       });
 

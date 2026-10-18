@@ -47,6 +47,7 @@ export function createDemoProvider(db: D1Database): PaymentProvider {
           ? JSON.stringify(params.selectedShipping.address)
           : null,
         reservationId: params.metadata?.reservation_id ?? null,
+        locale: params.locale ?? null,
         // Fixed 24h window: past it the pay page refuses to render, poll, or
         // settle the demo checkout (the guest token stays valid for the order
         // if one settled).

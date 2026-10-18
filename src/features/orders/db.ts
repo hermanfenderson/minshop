@@ -18,6 +18,9 @@ export interface ShippingAddress {
 export interface Order {
   id: number;
   public_id: string | null;
+  /** The shopper's language at checkout; null for orders from before 0040. Read it
+   *  through orderLocale(), which gives those a stable fallback. */
+  locale?: string | null;
   provider_session_id: string | null;
   email: string | null;
   amount_total_cents: number;
@@ -168,6 +171,8 @@ export interface PaidOrderInput {
   taxCents?: number;
   shippingAddress?: ShippingAddress | null;
   currency: string;
+  /** The shopper's language at checkout (null when unknown: legacy sessions). */
+  locale?: string | null;
   /** Which rail settled it ('stripe' | 'lightning' | 'opennode'). */
   paymentMethod?: string;
   /**
@@ -487,13 +492,14 @@ export async function recordPaidOrder(
     // Stripe PaymentIntent. Refund webhooks identify the charge and its payment
     // but not the session, so this is what charge.refunded resolves an order by.
     o.providerPaymentId ?? null,
+    o.locale ?? null,
   ] as const;
   const settlementStatuses = "('active', 'payment_pending', 'expired', 'failed')";
   const insertOrder = o.reservationId
     ? db
         .prepare(
-          `INSERT INTO orders (provider_session_id, public_id, email, amount_total_cents, shipping_cents, shipping_label, shipping_weight_grams, delivery_method, discount_cents, tax_cents, currency, ship_address, status, payment_method, settlement_token, provider_payment_id)
-           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, NULL, ?
+          `INSERT INTO orders (provider_session_id, public_id, email, amount_total_cents, shipping_cents, shipping_label, shipping_weight_grams, delivery_method, discount_cents, tax_cents, currency, ship_address, status, payment_method, settlement_token, provider_payment_id, locale)
+           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, NULL, ?, ?
             WHERE EXISTS (
               SELECT 1 FROM checkout_reservations
                WHERE public_id = ? AND status IN ${settlementStatuses}
@@ -504,8 +510,8 @@ export async function recordPaidOrder(
         .bind(...orderValues, o.reservationId)
     : db
         .prepare(
-          `INSERT INTO orders (provider_session_id, public_id, email, amount_total_cents, shipping_cents, shipping_label, shipping_weight_grams, delivery_method, discount_cents, tax_cents, currency, ship_address, status, payment_method, settlement_token, provider_payment_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, NULL, ?)
+          `INSERT INTO orders (provider_session_id, public_id, email, amount_total_cents, shipping_cents, shipping_label, shipping_weight_grams, delivery_method, discount_cents, tax_cents, currency, ship_address, status, payment_method, settlement_token, provider_payment_id, locale)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, NULL, ?, ?)
            ON CONFLICT(provider_session_id) DO NOTHING
            RETURNING id`,
         )

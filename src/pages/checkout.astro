@@ -313,6 +313,7 @@ if (submitted) {
                   metadata: { public_id: publicId, reservation_id: publicId },
                   accessToken,
                   payUrl: Astro.locals.urls.absolute(`/pay/${accessToken}`),
+                locale: Astro.locals.locale,
                   selectedShipping: {
                     label: chosen.label,
                     amountCents: chosen.amountCents,
@@ -329,6 +330,7 @@ if (submitted) {
                 publicId,
                 accessToken,
                 payUrl: Astro.locals.urls.absolute(`/pay/${accessToken}`),
+                locale: Astro.locals.locale,
                 currency,
                 subtotalCents,
                 shippingCents: chosen.amountCents,

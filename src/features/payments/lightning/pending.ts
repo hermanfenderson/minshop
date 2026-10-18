@@ -27,6 +27,8 @@ export interface PendingPayment {
   ship_address: string | null; // JSON (ShippingAddress) or null
   /** Explicit link for post-0021 rows; null preserves legacy settlement. */
   reservation_id: string | null;
+  /** The shopper's language at checkout; null for rows from before 0040. */
+  locale: string | null;
   status: string; // 'pending' | 'settled' | 'expired'
   expires_at: string | null;
   created_at: string;
@@ -51,6 +53,8 @@ export interface NewPendingPayment {
   shipAddressJson?: string | null;
   /** Inventory hold created with this payment; absent for legacy rows. */
   reservationId?: string | null;
+  /** The shopper's language at checkout (validated by the caller). */
+  locale?: string | null;
   expiresAt: string | null;
 }
 
@@ -58,8 +62,8 @@ export async function createPendingPayment(db: D1Database, p: NewPendingPayment)
   await db
     .prepare(
       `INSERT INTO pending_payments
-         (public_id, payment_hash, backend, bolt11, amount_sat, amount_total_cents, currency, email, items, shipping_cents, shipping_label, shipping_weight_grams, delivery_method, ship_address, expires_at, reservation_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (public_id, payment_hash, backend, bolt11, amount_sat, amount_total_cents, currency, email, items, shipping_cents, shipping_label, shipping_weight_grams, delivery_method, ship_address, expires_at, reservation_id, locale)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       p.publicId,
@@ -78,6 +82,7 @@ export async function createPendingPayment(db: D1Database, p: NewPendingPayment)
       p.shipAddressJson ?? null,
       p.expiresAt,
       p.reservationId ?? null,
+      p.locale ?? null,
     )
     .run();
 }
@@ -157,6 +162,8 @@ export function pendingToPaidOrder(p: PendingPayment): PaidOrderInput {
     shippingWeightGrams: p.shipping_weight_grams,
     deliveryMethod: p.delivery_method === 'pickup' ? 'pickup' : p.delivery_method === 'shipping' ? 'shipping' : null,
     shippingAddress,
+    // The language survives settlement by webhook, cron or page alike.
+    locale: p.locale ?? null,
     currency: p.currency,
     items,
     // Settle this pending row inside the order batch — no separate round trip.

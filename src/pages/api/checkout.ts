@@ -1,6 +1,10 @@
 import { readForm } from '../../features/http/form';
 import type { APIRoute } from 'astro';
 import type { LocaleUrls } from '../../i18n';
+import { acceptedLocale } from '../../features/i18n/order';
+import { requestLanguage } from '../../features/i18n/request';
+import { LOCALE_REGISTRY, languageSettings } from '../../features/i18n/settings';
+import { MOUNT } from '../../deployment';
 import { env } from 'cloudflare:workers';
 import { getProductByPublicId, getProductBySlug, type Product } from '../../features/products/db';
 import {
@@ -418,6 +422,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       },
       accessToken,
       payUrl: urls.absolute(`/pay/${accessToken}`),
+      locale: locals.locale,
     });
     checkoutUrl = result.url;
   } catch (error) {
@@ -490,6 +495,19 @@ async function handleJsonCheckout(
   // Optional { method } selects the rail; default = the store's default (first
   // available). Must be one the store actually offers.
   const jsonSettings = await getStoreSettings(env.DB);
+  // An agent may name the shopper's language in the body. It is honoured only
+  // when the store has it enabled; otherwise the request's own language
+  // (?lang=, already validated by the middleware) applies. The return URLs
+  // follow the language the order will be stored with.
+  const jsonLanguages = languageSettings(jsonSettings);
+  const jsonLocale =
+    acceptedLocale((body as { locale?: unknown }).locale, jsonLanguages.enabledLocales) ?? i18n.locale;
+  if (jsonLocale !== i18n.locale) {
+    ({ urls, i18n } = requestLanguage(jsonLanguages, LOCALE_REGISTRY, MOUNT, jsonLocale, url.origin, {
+      path: '/',
+      search: '',
+    }));
+  }
   const available = enabledMethods(jsonSettings);
   if (available.length === 0) {
     return cjson({ error: 'This store is not accepting payments right now.' }, 503);
@@ -806,6 +824,7 @@ async function handleJsonCheckout(
         publicId: lnPublicId,
         accessToken: lnAccessToken,
         payUrl: urls.absolute(`/pay/${lnAccessToken}`),
+        locale: jsonLocale,
         currency: storeCurrency,
         subtotalCents,
         shippingCents: chosen.amountCents,
@@ -937,6 +956,7 @@ async function handleJsonCheckout(
       },
       accessToken,
       payUrl: urls.absolute(`/pay/${accessToken}`),
+      locale: jsonLocale,
     });
   } catch (error) {
     await releaseInventoryReservation(env.DB, publicId, purgeStockProductCache);
