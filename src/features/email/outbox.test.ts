@@ -7,20 +7,25 @@ import type { D1Database } from '@cloudflare/workers-types';
 // the order batch) and the wrangler integration gate.
 vi.mock('./index', () => ({ getEmailProvider: vi.fn() }));
 vi.mock('../orders/db', () => ({ getOrder: vi.fn(), listOrderItemsWithImages: vi.fn() }));
-vi.mock('../settings/db', () => ({ getStoreSettings: vi.fn() }));
+vi.mock('../settings/db', () => ({
+  getStoreSettings: vi.fn(),
+  getSetting: vi.fn(async () => 'https://x'),
+  setSetting: vi.fn(),
+}));
 vi.mock('./orderConfirmation', () => ({
   orderConfirmationEmail: vi.fn(() => ({ to: 'c@x', subject: 'r', html: '', text: '' })),
   orderNotificationEmail: vi.fn(() => ({ to: 'o@x', subject: 'n', html: '', text: '' })),
 }));
 vi.mock('../orders/guestAccess.ts', () => ({
-  guestOrderUrl: vi.fn(async () => null),
+  guestOrderPath: vi.fn(async () => null),
   getGuestAccess: vi.fn(async () => null),
 }));
 
 import { deliverOrderNotifications } from './outbox';
 import { getEmailProvider } from './index';
 import { getOrder, listOrderItemsWithImages } from '../orders/db';
-import { getGuestAccess } from '../orders/guestAccess.ts';
+import { getGuestAccess, guestOrderPath } from '../orders/guestAccess.ts';
+import { orderConfirmationEmail, orderNotificationEmail } from './orderConfirmation';
 
 interface Row {
   order_id: number;
@@ -331,3 +336,61 @@ describe('deliverOrderNotifications', () => {
     expect(rows[0].state).toBe('sent');
   });
 });
+
+describe('deliverOrderNotifications — language', () => {
+  const send = vi.fn();
+  // English default with Italian under /it/, admin in Italian.
+  const MULTI = {
+    ...(SETTINGS as object),
+    i18n: { defaultLocale: 'en', enabledLocales: ['en', 'it'], routing: 'prefix', adminLocale: 'it' },
+  } as never;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getEmailProvider).mockResolvedValue({ send });
+    vi.mocked(listOrderItemsWithImages).mockResolvedValue([] as never);
+    vi.mocked(guestOrderPath).mockResolvedValue('/order/otk_abc');
+    send.mockResolvedValue(undefined);
+  });
+
+  const receiptArgs = () => vi.mocked(orderConfirmationEmail).mock.calls[0];
+  const ownerI18n = () => vi.mocked(orderNotificationEmail).mock.calls[0][6];
+
+  it('writes to the customer in the language stored on the order, linking in it', async () => {
+    vi.mocked(getOrder).mockResolvedValue({ ...ORDER, locale: 'it' } as never);
+    await deliverOrderNotifications(fakeDb(freshRows()), 7, 'https://x', MULTI);
+    const [, , , , , link, i18n] = receiptArgs();
+    expect(i18n?.locale).toBe('it');
+    expect(link).toBe('https://x/it/order/otk_abc');
+    // The owner reads the admin's language, whatever the shopper used.
+    expect(ownerI18n()?.locale).toBe('it');
+  });
+
+  it('keeps an English order in English even when the admin is Italian', async () => {
+    vi.mocked(getOrder).mockResolvedValue({ ...ORDER, locale: 'en' } as never);
+    await deliverOrderNotifications(fakeDb(freshRows()), 7, 'https://x', MULTI);
+    const [, , , , , link, i18n] = receiptArgs();
+    expect(i18n?.locale).toBe('en');
+    expect(link).toBe('https://x/order/otk_abc');
+  });
+
+  it('reads an order from before languages (NULL) as English, not as the store default', async () => {
+    vi.mocked(getOrder).mockResolvedValue({ ...ORDER, locale: null } as never);
+    const itDefault = {
+      ...(SETTINGS as object),
+      i18n: { defaultLocale: 'it', enabledLocales: ['it', 'en'], routing: 'prefix' },
+    } as never;
+    await deliverOrderNotifications(fakeDb(freshRows()), 7, 'https://x', itDefault);
+    const [, , , , , link, i18n] = receiptArgs();
+    expect(i18n?.locale).toBe('en');
+    expect(link).toBe('https://x/en/order/otk_abc');
+  });
+
+  it('keeps the words but links to the default when the order language was switched off', async () => {
+    vi.mocked(getOrder).mockResolvedValue({ ...ORDER, locale: 'it' } as never);
+    await deliverOrderNotifications(fakeDb(freshRows()), 7, 'https://x', SETTINGS);
+    const [, , , , , link, i18n] = receiptArgs();
+    expect(i18n?.locale).toBe('it');
+    expect(link).toBe('https://x/order/otk_abc');
+  });
+});
+

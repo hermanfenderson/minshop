@@ -7,7 +7,7 @@ import {
   reissueGuestAccess,
   deleteGuestAccessIfUnsettled,
   sweepAbandonedGuestAccess,
-  guestOrderUrl,
+  guestOrderPath,
 } from '../../src/features/orders/guestAccess.ts';
 import { parsePublicId } from '../../src/features/ids/publicId.ts';
 import { isAccessToken } from '../../src/features/ids/token.ts';
@@ -106,14 +106,14 @@ try {
   assert.ok(await getGuestAccess(db, fresh.publicId), 'fresh unsettled row survives the sweep');
   assert.ok(await getGuestAccess(db, orderPublicId), 'settled row survives the sweep');
 
-  // Customer-email guest URLs: tokenized for ord_ orders, legacy passthrough,
+  // Customer-email guest paths: tokenized for ord_ orders, legacy passthrough,
   // and null (omit link) when a new order somehow has no registry row.
-  const url = await guestOrderUrl(db, orderPublicId, 'https://s.example');
+  const url = await guestOrderPath(db, orderPublicId);
   const current = await getGuestAccess(db, orderPublicId);
-  assert.equal(url, `https://s.example/order/${current.access_token}`);
+  assert.equal(url, `/order/${current.access_token}`);
   const legacy = 'ab'.repeat(16);
-  assert.equal(await guestOrderUrl(db, legacy, 'https://s.example'), `https://s.example/order/${legacy}`);
-  assert.equal(await guestOrderUrl(db, 'ord_zzzzzzzzzz', 'https://s.example'), null);
+  assert.equal(await guestOrderPath(db, legacy), `/order/${legacy}`);
+  assert.equal(await guestOrderPath(db, 'ord_zzzzzzzzzz'), null);
 
   console.log('guest-access integration: all assertions passed');
 } finally {

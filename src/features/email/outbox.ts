@@ -1,4 +1,3 @@
-import { storeUrls } from '../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
 import {
   NOTIFICATION_KINDS,
@@ -19,7 +18,10 @@ import { getOrder, listOrderItemsWithImages } from '../orders/db';
 import { getEmailProvider } from './index';
 import { orderConfirmationEmail, orderNotificationEmail, orderShippedEmail } from './orderConfirmation';
 import { guestLinkReissueEmail } from './guestLinkReissue';
-import { guestOrderUrl, getGuestAccess, sweepAbandonedGuestAccess } from '../orders/guestAccess.ts';
+import { guestOrderPath, getGuestAccess, sweepAbandonedGuestAccess } from '../orders/guestAccess.ts';
+import { emailLanguage } from '../i18n/email';
+import { orderLocale } from '../i18n/order';
+import { languageSettings } from '../i18n/settings';
 import { shouldSendCustomerOrderEmail } from './orderPolicy';
 
 /**
@@ -121,6 +123,14 @@ export async function deliverOrderNotifications(
       }
       const notifyTo = s.emailNotifyTo || getConfig().email.notifyTo;
       const storeName = s.storeName || getConfig().storeName;
+      // Customer mail speaks the language stored on the order — not the admin's,
+      // not the store default, and not that of whichever request delivers it.
+      // Its links carry the same language (and the mount).
+      const customer = emailLanguage(s, orderLocale(order.locale), origin);
+      const orderLink = async () => {
+        const path = await guestOrderPath(db, order!.public_id);
+        return path ? customer.urls.absolute(path) : null;
+      };
 
       // Guest-link reissue: a stale event — one whose generation no longer
       // matches order_guest_access.generation because a newer reissue already
@@ -139,7 +149,12 @@ export async function deliverOrderNotifications(
         }
         // Customer email is an allowlisted token position (the ONLY delivery
         // path for a reissued credential — admin output never shows it).
-        const msg = guestLinkReissueEmail(order, storeName, storeUrls(origin).absolute(`/order/${access.access_token}`));
+        const msg = guestLinkReissueEmail(
+          order,
+          storeName,
+          customer.urls.absolute(`/order/${access.access_token}`),
+          customer.i18n,
+        );
         await emailer.send({ ...msg, idempotencyKey: `${kind}/${order.public_id ?? orderId}` });
         await markSent(db, orderId, kind, attempts);
         continue;
@@ -157,7 +172,7 @@ export async function deliverOrderNotifications(
           await markSkipped(db, orderId, kind, attempts);
           continue;
         }
-        const msg = orderShippedEmail(order, storeName, await guestOrderUrl(db, order.public_id, origin));
+        const msg = orderShippedEmail(order, storeName, await orderLink(), customer.i18n);
         await emailer.send({ ...msg, idempotencyKey: `${kind}/${order.public_id ?? orderId}` });
         await markSent(db, orderId, kind, attempts);
         continue;
@@ -182,9 +197,12 @@ export async function deliverOrderNotifications(
               s.imageDelivery,
               // Tokenized guest link — customer email is an allowlisted token
               // position. The owner notification links to admin instead.
-              await guestOrderUrl(db, order.public_id, origin),
+              await orderLink(),
+              customer.i18n,
             )
-          : orderNotificationEmail(order, items, notifyTo!, origin, storeName, s.imageDelivery);
+          : // The owner reads it in the admin's language.
+            orderNotificationEmail(order, items, notifyTo!, origin, storeName, s.imageDelivery,
+              emailLanguage(s, languageSettings(s).adminLocale, origin).i18n);
       // Keyed on public_id, not the row id: D1 ids restart per store, so two
       // stores sharing one Resend account would both mint customer-receipt/1 —
       // and Resend 409s a reused key with a different payload, walking the

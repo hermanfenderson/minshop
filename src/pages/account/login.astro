@@ -39,7 +39,7 @@ if (Astro.request.method === 'POST') {
   } else if (!isValidEmail(email)) {
     error = t('account.login.invalidEmail');
   } else {
-    await requestLogin(email, Astro.url.origin);
+    await requestLogin(email, Astro.locals);
     sent = true;
   }
 }

@@ -1,4 +1,4 @@
-import { storeUrls } from '../i18n/urls';
+import type { I18n, LocaleUrls } from '../../i18n';
 import { env } from 'cloudflare:workers';
 import type { AstroCookies } from 'astro';
 import { getConfig } from '../../config';
@@ -44,12 +44,16 @@ export function isValidEmail(email: string): boolean {
  * record to enumerate). In dev the link is also logged so you can test without
  * email delivery.
  */
-export async function requestLogin(email: string, origin: string): Promise<void> {
+export async function requestLogin(
+  email: string,
+  // The language of the page that asked: the email and the link speak it.
+  { urls, i18n }: { urls: LocaleUrls; i18n: I18n },
+): Promise<void> {
   const secret = env.AUTH_SECRET;
   if (!secret) return;
   const addr = normalize(email);
   const token = await signToken(addr, secret, MAGIC_TTL, now());
-  const link = storeUrls(origin).absolute(`/account/verify?token=${encodeURIComponent(token)}`);
+  const link = urls.absolute(`/account/verify?token=${encodeURIComponent(token)}`);
 
   if (import.meta.env.DEV) console.log(`[magic-link] ${addr} → ${link}`);
 
@@ -57,7 +61,7 @@ export async function requestLogin(email: string, origin: string): Promise<void>
   if (emailer) {
     try {
       const storeName = (await getSetting(env.DB, 'store_name')) || getConfig().storeName;
-      await emailer.send(loginLinkEmail(addr, link, storeName));
+      await emailer.send(loginLinkEmail(addr, link, storeName, i18n));
     } catch (err) {
       console.error('Login email failed:', err);
     }

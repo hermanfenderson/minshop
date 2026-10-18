@@ -2,10 +2,12 @@ import { env } from 'cloudflare:workers';
 import { getOrder } from '../orders/db';
 import { getEmailProvider } from '../email';
 import { orderRefundedEmail } from '../email/orderConfirmation';
-import { guestOrderUrl } from '../orders/guestAccess.ts';
+import { guestOrderPath } from '../orders/guestAccess.ts';
+import { emailLanguage } from '../i18n/email';
+import { orderLocale } from '../i18n/order';
 import { shouldSendCustomerOrderEmail } from '../email/orderPolicy';
 import { getConfig } from '../../config';
-import { getSetting } from '../settings/db';
+import { getStoreSettings } from '../settings/db';
 
 /**
  * Tell the customer about a refund we just recognised.
@@ -36,10 +38,14 @@ export async function sendRefundNotice(
   const emailer = await getEmailProvider();
   if (!emailer) return;
   try {
-    const storeName = (await getSetting(env.DB, 'store_name')) || getConfig().storeName;
+    const settings = await getStoreSettings(env.DB);
+    const storeName = settings.storeName || getConfig().storeName;
+    // In the order's language, like every other mail about the order.
+    const { i18n, urls } = emailLanguage(settings, orderLocale(order.locale), origin);
+    const path = await guestOrderPath(env.DB, order.public_id);
     await emailer.send(
       orderRefundedEmail(order, deltaCents, order.refunded_cents, storeName,
-        await guestOrderUrl(env.DB, order.public_id, origin)),
+        path ? urls.absolute(path) : null, i18n),
     );
   } catch (err) {
     console.error('Refund email failed:', err);

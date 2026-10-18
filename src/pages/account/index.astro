@@ -6,7 +6,7 @@ import { formatPrice, formatDate, getConfig } from '../../config';
 import { accountsEnabled, getCustomerEmail } from '../../features/auth/customer';
 import { countOrdersByEmail, listOrdersByEmail } from '../../features/orders/db';
 import { orderReference } from '../../features/orders/number';
-import { guestOrderUrl } from '../../features/orders/guestAccess.ts';
+import { guestOrderPath } from '../../features/orders/guestAccess.ts';
 import { paginate, queryHref } from '../../pagination';
 import Pagination from '../../components/Pagination.astro';
 import { catalogPath } from '../../features/settings/home';
@@ -28,7 +28,10 @@ const orders = await listOrdersByEmail(env.DB, email, PAGE_SIZE, offset);
 // with no resolvable link render as plain text rather than a dead bare-id URL.
 const orderLinks = new Map(
   await Promise.all(
-    orders.map(async (o) => [o.id, await guestOrderUrl(env.DB, o.public_id, '')] as const),
+    orders.map(async (o) => {
+      const path = await guestOrderPath(env.DB, o.public_id);
+      return [o.id, path ? Astro.locals.urls.href(path) : null] as const;
+    }),
   ),
 );
 const hrefFor = (p: number) => queryHref(Astro.locals.urls.account(), { page: p > 1 ? p : undefined });

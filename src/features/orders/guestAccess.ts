@@ -128,21 +128,22 @@ export async function reissueGuestAccess(
 }
 
 /**
- * Tokenized guest order URL for CUSTOMER-facing emails and redirects — the only
- * code allowed to read the stored token. Legacy orders link by their preserved
- * public id; a new order with no registry row returns null (omit the link)
- * rather than ever emitting a bare ord_ URL. Owner/operator notifications must
- * use the authenticated /admin/orders/<public_id> route instead, never this.
+ * Tokenized guest order PATH ('/order/<token>') for CUSTOMER-facing emails and
+ * links — the only code allowed to read the stored token. A logical path, so
+ * the caller's URL builder adds the mount and the order's language. Legacy
+ * orders link by their preserved public id; a new order with no registry row
+ * returns null (omit the link) rather than ever emitting a bare ord_ URL.
+ * Owner/operator notifications must use the authenticated
+ * /admin/orders/<public_id> route instead, never this.
  */
-export async function guestOrderUrl(
+export async function guestOrderPath(
   db: D1Database,
   orderPublicId: string | null,
-  baseUrl: string,
 ): Promise<string | null> {
   if (!orderPublicId) return null;
-  if (!orderPublicId.startsWith('ord_')) return `${baseUrl}/order/${orderPublicId}`;
+  if (!orderPublicId.startsWith('ord_')) return `/order/${orderPublicId}`;
   const access = await getGuestAccess(db, orderPublicId);
-  return access ? `${baseUrl}/order/${access.access_token}` : null;
+  return access ? `/order/${access.access_token}` : null;
 }
 
 /**
