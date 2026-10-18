@@ -43,6 +43,7 @@ import { purgeStockProductCache } from '../../features/cache/purge';
 import { lifecycleActive } from '../../features/digitalDelivery/rollout.ts';
 import { mintLightningOrder } from '../../features/payments/lightning-provider';
 import { getLightningBackend } from '../../features/payments/lightning';
+import type { I18n } from '../../i18n/index.ts';
 
 export const prerender = false;
 
@@ -119,12 +120,16 @@ export const GET: APIRoute = async () => {
 export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRedirect, locals }) => {
   const urls = locals.urls;
   if ((request.headers.get('content-type') ?? '').includes('application/json')) {
-    return handleJsonCheckout(request, url, urls);
+    return handleJsonCheckout(request, url, urls, locals.i18n);
   }
   // Every redirect below names a LOGICAL path ('/cart', '/products/x?error=…');
   // the URL builder adds the mount. The hosted-checkout hop uses Response.redirect.
   const redirect = (path: string, status: 301 | 302 | 303 | 307 | 308 = 303) =>
     astroRedirect(urls.href(path), status);
+  // The browser flow: every refusal below is read by the shopper, on /cart or the
+  // product page (both show `?error=` as-is), so it is rendered in their language.
+  const i18n = locals.i18n;
+  const { t } = i18n;
 
   const form = await readForm(request);
   const origin = url.origin;
@@ -138,12 +143,12 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   const productIdRaw = form.get('product_id');
   const productPublicId = parsePublicId(productIdRaw, 'product');
   if (productIdRaw != null && String(productIdRaw).trim() !== '' && !productPublicId) {
-    return new Response('Invalid product id (expected a prod_… public ID).', { status: 400 });
+    return new Response(t('checkout.error.invalidProductId'), { status: 400 });
   }
   if (productPublicId) {
     const product = await getProductByPublicId(env.DB, productPublicId);
     if (!product || !product.active) {
-      return new Response('Product unavailable', { status: 404 });
+      return new Response(t('checkout.error.productUnavailable'), { status: 404 });
     }
     // Express "Buy now" — resolve variant + extras right here so it checks out
     // WITHOUT the cart (works even when the cart is switched off).
@@ -153,9 +158,9 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       const wantedVariant = parsePublicId(form.get('variant_id'), 'variant');
       variant = wantedVariant ? (variants.find((v) => v.public_id === wantedVariant) ?? null) : null;
       if (!variant) {
-        const label = product.variant_label || 'option';
+        const label = product.variant_label || t('checkout.error.variantFallback');
         return redirect(
-          `/products/${product.slug}?error=${encodeURIComponent(`Please choose a ${label}.`)}`,
+          `/products/${product.slug}?error=${encodeURIComponent(t('checkout.error.chooseVariant', { label }))}`,
           303,
         );
       }
@@ -206,8 +211,8 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   if (short) {
     const msg =
       short.availableStock <= 0
-        ? `${short.name} is sold out.`
-        : `Only ${short.availableStock} of ${short.name} left — please adjust your cart.`;
+        ? t('checkout.error.lineSoldOut', { name: short.name })
+        : t('checkout.error.lineShort', { count: short.availableStock, name: short.name });
     return redirect(`${errorPath}?error=${encodeURIComponent(msg)}`, 303);
   }
 
@@ -275,7 +280,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   // it gets the primary zone's options; zone-accurate per-address shipping is the
   // own-checkout (Lightning) path's job — Stripe can't recompute mid-session.
   const subtotalCents = lines.reduce((s, l) => s + l.unitPriceCents * l.qty, 0);
-  const shipCalc = createConfigRatesCalculator(effectiveShipping);
+  const shipCalc = createConfigRatesCalculator(effectiveShipping, i18n);
   // The shopper pre-selects a destination on the cart (defaulted, editable), so
   // Stripe gets that zone's rates instead of always the first zone's. Stripe still
   // collects + confirms the full address on its page; this just sets which rates
@@ -296,9 +301,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   const shipCountry = selectedCountry ? selectedCountry : stripeFallbackCountry;
   if (shippingApplies && shipCountry == null) {
     return redirect(
-      `${errorPath}?error=${encodeURIComponent(
-        'The configured shipping destinations are not supported by card checkout. Please contact us to complete this order.',
-      )}`,
+      `${errorPath}?error=${encodeURIComponent(t('checkout.shipping.errorCardDestinations'))}`,
       303,
     );
   }
@@ -329,10 +332,10 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
     return redirect(
       `${errorPath}?error=${encodeURIComponent(
         missing
-          ? "We can't calculate shipping for one of these items right now. Please contact us to complete this order."
+          ? t('checkout.shipping.errorMissingWeight')
           : quote.omitted.some((o) => o.reason === 'overweight')
-            ? 'This order is too heavy for the available shipping services.'
-            : `Sorry, we don't ship to ${shipCountry} yet.`,
+            ? t('checkout.shipping.errorOverweight')
+            : t('checkout.shipping.errorNoShip', { country: shipCountry ?? '' }),
       )}`,
       303,
     );
@@ -348,7 +351,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   if (quote && !sessionCountries) {
     return redirect(
       `${errorPath}?error=${encodeURIComponent(
-        `Sorry, card checkout can't ship to ${shipCountry}.`,
+        t('checkout.shipping.errorCardNoShip', { country: shipCountry ?? '' }),
       )}`,
       303,
     );
@@ -380,7 +383,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   if (!reserved) {
     await deleteGuestAccessIfUnsettled(env.DB, publicId);
     return redirect(
-      `${errorPath}?error=${encodeURIComponent('Some inventory just sold out — please review your cart.')}`,
+      `${errorPath}?error=${encodeURIComponent(t('checkout.error.reservationFailed'))}`,
       303,
     );
   }
@@ -440,8 +443,17 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
  * agent hands that URL to the human to pay (honest given agentic-payment
  * standards aren't settled). Reuses the same createCheckout() as the browser
  * flow, so shipping/tax/discounts behave the same.
+ *
+ * Its `error`/`note` strings are part of the machine-readable agent contract and
+ * stay English; `i18n` only names the synthesized free-shipping rate, so its label
+ * matches the browser flow's (agents echo labels back as `shipping_label`).
  */
-async function handleJsonCheckout(request: Request, url: URL, urls: LocaleUrls): Promise<Response> {
+async function handleJsonCheckout(
+  request: Request,
+  url: URL,
+  urls: LocaleUrls,
+  i18n: I18n,
+): Promise<Response> {
   const origin = url.origin;
 
   // Early reject on the declared size, then enforce the cap on the bytes we
@@ -620,7 +632,7 @@ async function handleJsonCheckout(request: Request, url: URL, urls: LocaleUrls):
 
   const storeCurrency = cfg.currency;
   const subtotalCents = lines.reduce((s, l) => s + l.unitPriceCents * l.qty, 0);
-  const shipCalc = createConfigRatesCalculator(effectiveShipping);
+  const shipCalc = createConfigRatesCalculator(effectiveShipping, i18n);
   const stripeFallbackCountry =
     stripeAllowedCountries(shipCalc.allowedCountries(), shipCalc.hasCatchAll())[0] ?? null;
   // Weight comes from the D1 rows resolved above; a request body never supplies it.

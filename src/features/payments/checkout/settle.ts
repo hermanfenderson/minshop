@@ -11,6 +11,7 @@ import { resolveRequiredOrderEmail } from '../../email/orderPolicy';
 import { deliverOrderNotifications } from '../../email/outbox';
 import type { StoreSettings } from '../../settings/db';
 import { purgeStockProductCache } from '../../cache/purge';
+import { enI18n, type I18n } from '../../../i18n/translator.ts';
 
 // Settlement logic for the self-rendered /pay page, one function per method. Kept
 // here (beside the views) so the route stays a thin dispatcher.
@@ -22,16 +23,12 @@ export interface DemoSettleResult {
   declined?: string | null;
 }
 
-const DECLINE: Record<string, string> = {
-  insufficient: 'Payment declined — insufficient funds. (Simulated)',
-  decline: 'Payment declined — your card was declined. (Simulated)',
-};
-
 /**
  * Handle a demo-checkout POST. "approve" records a genuine order (tagged
  * payment_method='demo') through the same path the real webhooks use — emails,
  * stock, revenue, confirmation — and signals settled so the caller can redirect
- * to its guest order URL. Any other outcome returns a simulated decline message.
+ * to its guest order URL. Any other outcome returns a simulated decline message,
+ * in the shopper's language (`i18n`).
  */
 export async function settleDemoCheckout(
   pending: PendingPayment,
@@ -39,14 +36,15 @@ export async function settleDemoCheckout(
   origin: string,
   settings?: StoreSettings,
   waitUntil?: (promise: Promise<unknown>) => void,
+  i18n: I18n = enI18n,
 ): Promise<DemoSettleResult> {
   // Fail closed after the demo window even if a POST slips past the page guard.
   if (pending.expires_at != null && Date.parse(pending.expires_at) <= Date.now()) {
-    return { declined: 'This demo checkout has expired.' };
+    return { declined: i18n.t('checkout.demo.expired') };
   }
   const outcome = String(form.get('outcome') ?? 'approve');
   const email = resolveRequiredOrderEmail(String(form.get('email') ?? ''), pending.email);
-  if (!email) return { declined: 'A valid email is required.' };
+  if (!email) return { declined: i18n.t('checkout.demo.emailRequired') };
   if (outcome === 'approve') {
     const order = { ...pendingToPaidOrder(pending), email };
     // pendingToPaidOrder carries settlePaymentHash, so the pending row settles
@@ -55,7 +53,12 @@ export async function settleDemoCheckout(
     await recordPaidWebhookOrder({ type: 'demo.paid', order }, origin, 'demo', settings, waitUntil);
     return { settled: true };
   }
-  return { declined: DECLINE[outcome] ?? DECLINE.decline };
+  return {
+    declined:
+      outcome === 'insufficient'
+        ? i18n.t('checkout.demo.declinedInsufficient')
+        : i18n.t('checkout.demo.declinedCard'),
+  };
 }
 
 /**

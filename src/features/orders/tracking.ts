@@ -1,3 +1,5 @@
+import { enI18n, type I18n } from '../../i18n/translator.ts';
+
 /** Supported carriers for fulfillment tracking. */
 export const CARRIERS = [
   { code: 'usps', name: 'USPS' },
@@ -7,7 +9,10 @@ export const CARRIERS = [
   { code: 'other', name: 'Other' },
 ] as const;
 
-export function carrierName(code: string | null): string {
+/** Display name for a carrier code. Carrier brands stay as they are; only the
+ *  catch-all 'other' is a word, so it goes through the translator. */
+export function carrierName(code: string | null, i18n: I18n = enI18n): string {
+  if (code === 'other') return i18n.t('order.carrier.other');
   return CARRIERS.find((c) => c.code === code)?.name ?? code ?? '—';
 }
 

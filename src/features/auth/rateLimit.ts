@@ -1,4 +1,5 @@
 import type { RateLimit } from '@cloudflare/workers-types';
+import { enI18n, type I18n } from '../../i18n/translator.ts';
 
 export type RateLimitBucket = 'auth' | 'checkout' | 'search';
 
@@ -47,12 +48,13 @@ export async function checkRateLimit(
   return result.success;
 }
 
-export function rateLimitedResponse(pathname: string): Response {
+/** A person reads this (a login or checkout form post), so it takes the request's
+ *  translator; the JSON shape stays the same. */
+export function rateLimitedResponse(pathname: string, i18n: I18n = enI18n): Response {
   const api = pathname.startsWith('/api/');
+  const message = i18n.t('checkout.rateLimit.tooMany');
   return new Response(
-    api
-      ? JSON.stringify({ error: 'Too many requests. Try again shortly.' })
-      : 'Too many requests. Try again shortly.',
+    api ? JSON.stringify({ error: message }) : message,
     {
       status: 429,
       headers: {

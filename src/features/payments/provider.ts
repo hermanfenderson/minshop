@@ -46,6 +46,12 @@ export interface CreateCheckoutParams {
    * Lightning) send the shopper there; hosted rails ignore it.
    */
   payUrl?: string;
+  /**
+   * The shopper's language for this checkout (an enabled, supported code,
+   * validated by the caller). Stored with the pending payment and the order,
+   * shown on hosted pages that support it, and used for invoice text.
+   */
+  locale?: string;
   /** Server-side cart snapshot for adapters that persist pending payment state. */
   orderItemsJson?: string;
   /** Show the "add promotion code" field on hosted checkout (codes live in Stripe). */

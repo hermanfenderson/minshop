@@ -27,16 +27,19 @@ function contentDisposition(name: string): string {
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 }
 
-export const GET: APIRoute = async ({ params }) => {
+// A shopper follows these links from the order page or the receipt, so every
+// refusal is plain text in their language.
+export const GET: APIRoute = async ({ params, locals }) => {
+  const { t } = locals.i18n;
   const token = params.token;
   const itemPublicId = parsePublicId(params.itemPublicId, 'orderItem');
-  if (!token || !isAccessToken(token) || !itemPublicId) return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS });
+  if (!token || !isAccessToken(token) || !itemPublicId) return new Response(t('order.download.notFound'), { status: 404, headers: PRIVATE_HEADERS });
   const access = await resolveAccessToken(env.DB, token);
-  if (!access) return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS });
+  if (!access) return new Response(t('order.download.notFound'), { status: 404, headers: PRIVATE_HEADERS });
   const order = access ? await getOrderByPublicId(env.DB, access.order_public_id) : null;
-  if (!order) return new Response('Payment is not settled.', { status: 403, headers: PRIVATE_HEADERS });
+  if (!order) return new Response(t('order.download.unsettled'), { status: 403, headers: PRIVATE_HEADERS });
   if (order.refunded_cents >= order.amount_total_cents) {
-    return new Response('Downloads are unavailable for a fully refunded order.', { status: 403, headers: PRIVATE_HEADERS });
+    return new Response(t('order.download.refunded'), { status: 403, headers: PRIVATE_HEADERS });
   }
   const item = await env.DB
     .prepare(
@@ -46,9 +49,9 @@ export const GET: APIRoute = async ({ params }) => {
     )
     .bind(order.id, itemPublicId)
     .first<{ id: number; file_key: string; file_name: string | null; file_mime: string | null }>();
-  if (!item) return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS });
+  if (!item) return new Response(t('order.download.notFound'), { status: 404, headers: PRIVATE_HEADERS });
   const stored = await getFileStorage().get(item.file_key);
-  if (!stored) return new Response('File unavailable', { status: 404, headers: PRIVATE_HEADERS });
+  if (!stored) return new Response(t('order.download.fileUnavailable'), { status: 404, headers: PRIVATE_HEADERS });
   await env.DB.prepare('UPDATE order_items SET downloads = downloads + 1 WHERE id = ?').bind(item.id).run();
   return new Response(stored.body, {
     headers: {

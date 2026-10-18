@@ -21,6 +21,7 @@ import {
 // never grants access. The method is read from the stored pending payment (its
 // `backend`), so there's one URL and one source of truth. Hosted providers
 // (Stripe/OpenNode) never reach here; they hand off to their own pages.
+const { t } = Astro.locals.i18n;
 const guestParam = Astro.params.publicId;
 let orderPublicId: string | null = null;
 if (guestParam && isAccessToken(guestParam)) {
@@ -29,7 +30,7 @@ if (guestParam && isAccessToken(guestParam)) {
 } else if (guestParam && isLegacyPublicId(guestParam)) {
   orderPublicId = guestParam;
 }
-if (!orderPublicId) return new Response('Not found', { status: 404 });
+if (!orderPublicId) return new Response(t('checkout.pay.notFound'), { status: 404 });
 
 // Capability URL: never cache, never leak in referrers.
 Astro.response.headers.set('cache-control', 'private, no-store');
@@ -43,7 +44,7 @@ if (await getOrderByPublicId(env.DB, orderPublicId)) {
 }
 
 const pending = await getPendingByPublicId(env.DB, orderPublicId);
-if (!pending) return new Response('Not found', { status: 404 });
+if (!pending) return new Response(t('checkout.pay.notFound'), { status: 404 });
 
 const isDemo = pending.backend === 'demo';
 const isLightning = pending.backend === 'lnbits' || pending.backend === 'phoenixd';
@@ -72,6 +73,7 @@ if (isDemo && Astro.request.method === 'POST' && !payExpired) {
     Astro.url.origin,
     Astro.locals.settings,
     waitUntil,
+    Astro.locals.i18n,
   );
   // Settled → the order page, addressed by the SAME guest param (token or legacy).
   if (result.settled) return Astro.redirect(Astro.locals.urls.order(guestParam), 303);
@@ -92,17 +94,17 @@ if (
 const lightningExpired = isLightning && payExpired;
 
 const { storeName } = getConfig();
-const title = isDemo ? 'Demo checkout' : 'Pay with Lightning';
+const title = isDemo ? t('checkout.pay.demoTitle') : t('checkout.pay.lightningTitle');
 const description = isDemo
-  ? `Simulated checkout for ${storeName}.`
-  : `Pay ${storeName} with Bitcoin Lightning.`;
+  ? t('checkout.pay.demoDescription', { store: storeName })
+  : t('checkout.pay.lightningDescription', { store: storeName });
 ---
 
 <Layout title={title} description={description}>
   {isDemo && payExpired && (
     <Fragment>
-      <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">Checkout expired</h1>
-      <p class="text-muted">This demo checkout has expired. Please start a new one.</p>
+      <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">{t('checkout.pay.demoExpiredHeading')}</h1>
+      <p class="text-muted">{t('checkout.pay.demoExpired')}</p>
     </Fragment>
   )}
   {isDemo && !payExpired && <DemoCheckout pending={pending} declined={declined} />}

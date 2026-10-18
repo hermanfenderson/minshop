@@ -19,6 +19,7 @@ import ProductImage from '../features/products/ProductImage.astro';
 // store's default). Two sources: "Buy now" (a single product_id [+ variant/extras])
 // or the whole cart (no product_id → reads the cart cookie). Skips the full cart
 // page; the chosen method posts to /api/checkout, carrying the same source.
+const { t } = Astro.locals.i18n;
 const isPost = Astro.request.method === 'POST';
 const form = isPost ? await readForm(Astro.request) : null;
 const fld = (n: string) => (form?.get(n) ?? Astro.url.searchParams.get(n) ?? '').toString().trim();
@@ -60,7 +61,13 @@ if (isBuyNow && productPublicId) {
       : null;
   if (variants.length > 0 && !variant) {
     return Astro.redirect(
-      Astro.locals.urls.href(`/products/${product.slug}?error=${encodeURIComponent(`Please choose a ${product.variant_label || 'option'}.`)}`),
+      Astro.locals.urls.href(
+        `/products/${product.slug}?error=${encodeURIComponent(
+          t('checkout.error.chooseVariant', {
+            label: product.variant_label || t('checkout.error.variantFallback'),
+          }),
+        )}`,
+      ),
       303,
     );
   }
@@ -68,7 +75,10 @@ if (isBuyNow && productPublicId) {
     ? await getExtrasByPublicIds(env.DB, product.id, extraPublicIds)
     : [];
   if ((variant ? variant.stock : product.stock) <= 0) {
-    return Astro.redirect(Astro.locals.urls.href(`/products/${product.slug}?error=Sold+out`), 303);
+    return Astro.redirect(
+      Astro.locals.urls.href(`/products/${product.slug}?${new URLSearchParams({ error: t('checkout.error.soldOut') })}`),
+      303,
+    );
   }
   lines = [
     {
@@ -99,11 +109,7 @@ if (isBuyNow && productPublicId) {
   const short = cartLines.find((l) => l.qty > l.availableStock);
   if (short) {
     return Astro.redirect(
-      Astro.locals.urls.href(
-        `/cart?error=${encodeURIComponent(
-          'Some items are no longer available in the quantity you selected. Please review your cart.',
-        )}`,
-      ),
+      Astro.locals.urls.href(`/cart?error=${encodeURIComponent(t('checkout.error.cartShort'))}`),
       303,
     );
   }
@@ -133,20 +139,21 @@ const destination = stripeDestination(
   effectiveShipping,
   shipmentWeightFor(weightLines).shippingRequired,
   Astro.request.headers.get('cf-ipcountry'),
+  Astro.locals.i18n,
 );
 
-const heading = isBuyNow ? 'Buy now' : 'Checkout';
+const heading = isBuyNow ? t('checkout.express.buyNow') : t('checkout.page.heading');
 const METHOD: Record<string, { label: string; hint: string }> = {
-  stripe: { label: 'Pay with card', hint: 'Visa, Mastercard, Apple Pay & more' },
-  lightning: { label: 'Pay with Lightning ⚡', hint: 'Instant — from any Lightning wallet' },
-  opennode: { label: 'Pay with Bitcoin', hint: 'On-chain or Lightning (OpenNode)' },
-  demo: { label: 'Demo checkout', hint: 'Simulated — places a real test order, no charge' },
+  stripe: { label: t('checkout.method.stripe.label'), hint: t('checkout.method.stripe.hint') },
+  lightning: { label: t('checkout.method.lightning.label'), hint: t('checkout.method.lightning.hint') },
+  opennode: { label: t('checkout.method.opennode.label'), hint: t('checkout.method.opennode.hint') },
+  demo: { label: t('checkout.method.demo.label'), hint: t('checkout.method.demo.hint') },
 };
 ---
 
-<Layout title="Checkout" description="Express checkout.">
+<Layout title={t('checkout.page.title')} description={t('checkout.express.description')}>
   <div class="mx-auto max-w-md">
-    <p class="text-xs uppercase tracking-[0.25em] text-muted">Express checkout</p>
+    <p class="text-xs uppercase tracking-[0.25em] text-muted">{t('checkout.express.eyebrow')}</p>
     <h1 class="mt-2 mb-6 font-serif text-3xl tracking-tight sm:text-4xl">{heading}</h1>
 
     <ul class="divide-y divide-line border-y border-line">
@@ -162,7 +169,7 @@ const METHOD: Record<string, { label: string; hint: string }> = {
             />
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium">{l.name}</p>
-              <p class="text-xs text-muted">Qty {l.qty}</p>
+              <p class="text-xs text-muted">{t('checkout.express.qty', { qty: l.qty })}</p>
             </div>
             <span class="tabular-nums">{formatPrice(l.unitPriceCents * l.qty)}</span>
           </li>
@@ -171,7 +178,7 @@ const METHOD: Record<string, { label: string; hint: string }> = {
     </ul>
 
     <div class="mt-4 flex items-center justify-between">
-      <span class="text-xs uppercase tracking-widest text-muted">Total</span>
+      <span class="text-xs uppercase tracking-widest text-muted">{t('checkout.express.total')}</span>
       <span class="text-lg tabular-nums">{formatPrice(totalCents)}</span>
     </div>
 
@@ -191,7 +198,7 @@ const METHOD: Record<string, { label: string; hint: string }> = {
                 zone — possibly the very country the Stripe filter removed. */}
             {m === 'stripe' && destination.showSelect && (
               <label class="mb-2 flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
-                Ship to
+                {t('checkout.express.shipTo')}
                 <select
                   name="country"
                   class="rounded-md border border-line px-2 py-1.5 text-sm normal-case tracking-normal text-ink"
@@ -234,7 +241,7 @@ const METHOD: Record<string, { label: string; hint: string }> = {
       href={backHref}
       class="mt-6 inline-block text-xs uppercase tracking-widest text-faint hover:text-brand"
     >
-      &larr; Back
+      &larr; {t('checkout.express.back')}
     </a>
   </div>
 </Layout>

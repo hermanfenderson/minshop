@@ -15,6 +15,7 @@ import {
   pendingToPaidOrder,
 } from './lightning/pending';
 import { getConfig } from '../../config';
+import { createI18n } from '../../i18n/index.ts';
 
 export interface MintLightningOrderInput {
   origin: string;
@@ -23,6 +24,8 @@ export interface MintLightningOrderInput {
   accessToken?: string | null;
   /** The pay page URL in the shopper's language (see CreateCheckoutParams.payUrl). */
   payUrl?: string;
+  /** The shopper's language (see CreateCheckoutParams.locale). */
+  locale?: string;
   currency: string;
   subtotalCents: number;
   shippingCents?: number;
@@ -59,7 +62,11 @@ export async function mintLightningOrder(
 
   const invoice = await backend.createInvoice({
     amountSat,
-    description: `${cfg.storeName} — order ${input.publicId.slice(0, 8)}`,
+    // Shown in the payer's wallet, so in the shopper's language.
+    description: createI18n(input.locale).t('checkout.lightning.invoiceDescription', {
+      store: cfg.storeName,
+      ref: input.publicId.slice(0, 8),
+    }),
     externalId: input.publicId,
     expirySeconds,
     // Per-provider path so Lightning settlements route to the Lightning verifier
@@ -121,6 +128,7 @@ export function createLightningProvider(
         publicId,
         accessToken: params.accessToken ?? null,
         payUrl: params.payUrl,
+        locale: params.locale,
         currency,
         subtotalCents,
         itemsJson: params.orderItemsJson ?? null,

@@ -11,9 +11,18 @@
  * (EasyPost/Shippo) later without touching callers.
  */
 
+import { enI18n, type I18n } from '../../i18n/translator.ts';
+
+/** The synthesized free-shipping option's label in `i18n`'s language: what a quote
+ *  shows the shopper (and Stripe), so a configured rate must not collide with it. */
+export function freeShippingLabel(i18n: I18n = enI18n): string {
+  return i18n.t('checkout.shipping.freeShippingLabel');
+}
+
 /** The synthesized free-shipping option's label. Shared with Admin validation so a
- *  configured rate can neither collide with it nor drift away from it. */
-export const FREE_SHIPPING_LABEL = 'Free shipping';
+ *  configured rate can neither collide with it nor drift away from it. This is the
+ *  English text; see `freeShippingLabel` for the shopper's language. */
+export const FREE_SHIPPING_LABEL = freeShippingLabel();
 
 export interface ShippingOption {
   label: string;
@@ -154,7 +163,11 @@ export function bandFor(shipmentWeightGrams: number, bands: WeightBand[]): Weigh
  * `enabled` flag BEFORE calling: an all-digital cart or a shipping-disabled store
  * bypasses shipping entirely, which keeps "no options" unambiguously blocking here.
  */
-export function quoteShipping(cfg: ShippingConfig, input: ShippingQuoteInput): ShippingQuote {
+export function quoteShipping(
+  cfg: ShippingConfig,
+  input: ShippingQuoteInput,
+  i18n: I18n = enI18n,
+): ShippingQuote {
   const missingWeight = input.missingWeight ?? [];
   const zone = shippingZoneFor(input.country, cfg.zones);
   if (!zone) return { shipmentWeightGrams: null, options: [], omitted: [], missingWeight };
@@ -202,7 +215,7 @@ export function quoteShipping(cfg: ShippingConfig, input: ShippingQuoteInput): S
   // zone with NO configured rates has always synthesized it.
   const qualifies = zone.freeOverCents != null && input.subtotalCents >= zone.freeOverCents;
   if (qualifies && (rates.length === 0 || deliveryResolved)) {
-    options.unshift({ label: FREE_SHIPPING_LABEL, amountCents: 0 });
+    options.unshift({ label: freeShippingLabel(i18n), amountCents: 0 });
   }
 
   return { shipmentWeightGrams, options, omitted, missingWeight };
@@ -217,9 +230,10 @@ export function computeShipping(
   subtotalCents: number,
   country: string,
   cfg: ShippingConfig,
+  i18n: I18n = enI18n,
 ): ShippingOption[] {
   if (!cfg.enabled) return [];
-  return quoteShipping(cfg, { subtotalCents, country, itemWeightGrams: null }).options;
+  return quoteShipping(cfg, { subtotalCents, country, itemWeightGrams: null }, i18n).options;
 }
 
 /** Explicit destination countries, for Stripe's `allowed_countries` (drops '*'). */
@@ -260,10 +274,14 @@ export interface ShippingCalculator {
   hasCatchAll(): boolean;
 }
 
-export function createConfigRatesCalculator(cfg: ShippingConfig): ShippingCalculator {
+/** `i18n` names the synthesized free-shipping option in the shopper's language. */
+export function createConfigRatesCalculator(
+  cfg: ShippingConfig,
+  i18n: I18n = enI18n,
+): ShippingCalculator {
   return {
-    optionsFor: ({ subtotalCents, country }) => computeShipping(subtotalCents, country, cfg),
-    quoteFor: (input) => quoteShipping(cfg, input),
+    optionsFor: ({ subtotalCents, country }) => computeShipping(subtotalCents, country, cfg, i18n),
+    quoteFor: (input) => quoteShipping(cfg, input, i18n),
     allowedCountries: () => allowedCountries(cfg),
     hasCatchAll: () => hasCatchAllZone(cfg),
   };

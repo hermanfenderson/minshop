@@ -12,6 +12,7 @@ import Pagination from '../../components/Pagination.astro';
 import { catalogPath } from '../../features/settings/home';
 
 if (!(await accountsEnabled())) return Astro.redirect(Astro.locals.urls.home(), 303);
+const { t } = Astro.locals.i18n;
 const email = await getCustomerEmail(Astro.cookies);
 if (!email) return Astro.redirect(Astro.locals.urls.href('/account/login'), 303);
 
@@ -35,20 +36,30 @@ const orderCfg = getConfig().orderNumber;
 const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
 // The catalog is at / until the home page is pointed elsewhere.
 const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
+// Status words for the list (lowercase where the list capitalizes them); an
+// unknown status shows as stored.
+const statusLabel = (o: (typeof orders)[number]): string => {
+  if (o.refunded_cents > 0 && o.refunded_cents < o.amount_total_cents) {
+    return t('account.orders.statusPartiallyRefunded');
+  }
+  if (o.status === 'paid') return t('account.orders.statusPaid');
+  if (o.status === 'refunded') return t('account.orders.statusRefunded');
+  return o.status;
+};
 ---
 
-<Layout title="Your account">
+<Layout title={t('account.page.title')}>
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="font-serif text-3xl tracking-tight sm:text-4xl">Your orders</h1>
-      <a href={Astro.locals.urls.href('/account/logout')} class="text-sm font-medium text-accent">Sign out</a>
+      <h1 class="font-serif text-3xl tracking-tight sm:text-4xl">{t('account.orders.heading')}</h1>
+      <a href={Astro.locals.urls.href('/account/logout')} class="text-sm font-medium text-accent">{t('account.orders.signOut')}</a>
     </div>
-    <p class="mb-6 text-sm text-muted">Signed in as {email}</p>
+    <p class="mb-6 text-sm text-muted">{t('account.orders.signedInAs', { email })}</p>
 
     {
       orders.length === 0 ? (
         <p class="rounded-lg border border-line bg-surface px-4 py-6 text-center text-sm text-muted">
-          No orders yet. <a href={shopHref} class="font-medium text-accent">Start shopping →</a>
+          {t('account.orders.empty')} <a href={shopHref} class="font-medium text-accent">{t('account.orders.startShopping')} →</a>
         </p>
       ) : (
         <ul class="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
@@ -57,11 +68,11 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
               <div>
                 {orderLinks.get(o.id) ? (
                   <a href={orderLinks.get(o.id)} class="font-medium text-ink hover:text-accent">
-                    Order #{orderReference(o.public_id, o.id, orderCfg)}
+                    {t('account.orders.reference', { ref: orderReference(o.public_id, o.id, orderCfg) })}
                   </a>
                 ) : (
                   <span class="font-medium text-ink">
-                    Order #{orderReference(o.public_id, o.id, orderCfg)}
+                    {t('account.orders.reference', { ref: orderReference(o.public_id, o.id, orderCfg) })}
                   </span>
                 )}
                 <div class="text-xs text-faint">{formatDate(o.created_at, undefined, timeZone)}</div>
@@ -69,9 +80,7 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
               <div class="text-right">
                 <div class="tabular-nums">{formatPrice(o.amount_total_cents, o.currency)}</div>
                 <div class="text-xs capitalize text-faint">
-                  {o.refunded_cents > 0 && o.refunded_cents < o.amount_total_cents
-                    ? 'Partially refunded'
-                    : o.status}
+                  {statusLabel(o)}
                 </div>
               </div>
             </li>
