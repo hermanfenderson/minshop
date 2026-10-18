@@ -1,4 +1,4 @@
-import type { Message } from '../../format';
+import type { Message } from '../../format.ts';
 
 export const cart = {
   // /cart

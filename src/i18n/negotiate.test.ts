@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { negotiateLocale, parseAcceptLanguage } from './negotiate';
+import { negotiateLocale, parseAcceptLanguage } from './negotiate.ts';
 
 describe('parseAcceptLanguage', () => {
   it('orders ranges by weight, keeping header order on ties', () => {

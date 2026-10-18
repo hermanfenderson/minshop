@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { isLocalizedPath, resolveRequestLocale } from './resolve';
-import { createRouting } from './routing';
-import { resolveI18nSettings, type I18nSettings } from './settings';
+import { isLocalizedPath, resolveRequestLocale } from './resolve.ts';
+import { createRouting } from './routing/index.ts';
+import { resolveI18nSettings, type I18nSettings } from './settings.ts';
 
 const ORIGIN = 'https://monopolele.com';
 const monopolele = (over: Partial<I18nSettings> = {}) =>

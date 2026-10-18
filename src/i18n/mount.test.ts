@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { joinMount, mountToBase, normalizeMountPath, stripMount } from './mount';
+import { joinMount, mountToBase, normalizeMountPath, stripMount } from './mount.ts';
 
 describe('normalizeMountPath', () => {
   it('reduces every spelling of the root to ""', () => {

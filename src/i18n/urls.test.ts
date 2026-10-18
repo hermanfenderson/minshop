@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createRouting } from './routing';
-import { resolveI18nSettings, type I18nSettings } from './settings';
-import { createLocaleUrls, hreflangTag } from './urls';
+import { createRouting } from './routing/index.ts';
+import { resolveI18nSettings, type I18nSettings } from './settings.ts';
+import { createLocaleUrls, hreflangTag } from './urls.ts';
 
 const ORIGIN = 'https://monopolele.com';
 function urls(locale: string, over: Partial<I18nSettings> = {}, mount = '/shop', current = {}) {

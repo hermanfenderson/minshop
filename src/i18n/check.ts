@@ -4,7 +4,7 @@
  * form its language needs. MISSING keys only degrade to the fallback, so they
  * are reported as coverage, never as failures.
  */
-import type { Message } from './format';
+import type { Message } from './format.ts';
 
 export interface CatalogReport {
   errors: string[];

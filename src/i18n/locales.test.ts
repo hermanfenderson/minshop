@@ -5,7 +5,7 @@ import {
   fallbackChain,
   isSupportedLocale,
   normalizeLocaleCode,
-} from './locales';
+} from './locales.ts';
 
 describe('language codes', () => {
   it('normalizes to lowercase BCP 47', () => {

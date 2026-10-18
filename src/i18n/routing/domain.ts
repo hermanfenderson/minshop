@@ -3,8 +3,8 @@
  * only in the first version: tested here, not yet selectable in the admin.
  * A host with no language mapped serves the default language.
  */
-import { joinMount, stripMount } from '../mount';
-import type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from './strategy';
+import { joinMount, stripMount } from '../mount.ts';
+import type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from './strategy.ts';
 
 export function domainRouting(ctx: RoutingContext): LocaleRouting {
   const { settings, mount } = ctx;

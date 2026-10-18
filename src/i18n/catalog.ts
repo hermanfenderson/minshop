@@ -7,11 +7,11 @@
  * Dictionaries hold interface text only. Editorial content (product names,
  * pages, menus) is data and lives in D1, never here.
  */
-import type { Message } from './format';
-import { en } from './messages/en';
-import { it } from './messages/it';
+import type { Message } from './format.ts';
+import { en } from './messages/en/index.ts';
+import { it } from './messages/it/index.ts';
 
-export type { Message, Params, PluralMessage } from './format';
+export type { Message, Params, PluralMessage } from './format.ts';
 
 export type MessageKey = keyof typeof en;
 

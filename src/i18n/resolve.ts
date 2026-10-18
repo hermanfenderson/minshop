@@ -12,11 +12,11 @@
  *   default prefix/parameter redirects to the canonical URL.
  * - Redirects of non-GET requests use 308, which keeps the method and body.
  */
-import { joinMount } from './mount';
-import { negotiateLocale } from './negotiate';
-import { normalizeLocaleCode } from './locales';
-import type { LocaleRouting, PublicLocation } from './routing/strategy';
-import type { I18nSettings } from './settings';
+import { joinMount } from './mount.ts';
+import { negotiateLocale } from './negotiate.ts';
+import { normalizeLocaleCode } from './locales.ts';
+import type { LocaleRouting, PublicLocation } from './routing/strategy.ts';
+import type { I18nSettings } from './settings.ts';
 
 /** First path segments (under the mount) that never carry a language. */
 export const UNLOCALIZED_SEGMENTS: ReadonlySet<string> = new Set([

@@ -1,7 +1,7 @@
 // The catalog-free formatter's type, not ../../core's: storefront templates
 // reach this file for their English fallback, and core would drag every
 // locale's catalogs into the storefront boundary checker's import walk.
-import type { Message } from '../../format';
+import type { Message } from '../../format.ts';
 
 /**
  * The shopper-facing browse surfaces: the document shell, every theme's

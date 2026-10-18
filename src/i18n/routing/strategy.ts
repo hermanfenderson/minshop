@@ -3,7 +3,7 @@
  * writes the language part of a URL; the decisions (redirect, default,
  * detection) are made once, in ../resolve, for all of them.
  */
-import type { I18nSettings, RoutingStrategy } from '../settings';
+import type { I18nSettings, RoutingStrategy } from '../settings.ts';
 
 export interface RoutingContext {
   settings: I18nSettings;

@@ -3,15 +3,15 @@
  * Pure — no Cloudflare or Astro imports — so unit-tested modules and
  * presentation builders can take an `I18n` without touching the runtime.
  */
-import { BUNDLED_CATALOGS, type Catalog, type MessageKey } from './catalog';
-import { createTranslator, type Message, type Translator } from './format';
+import { BUNDLED_CATALOGS, type Catalog, type MessageKey } from './catalog.ts';
+import { createTranslator, type Message, type Translator } from './format.ts';
 import {
   BUILTIN_LOCALES,
   UI_SOURCE_LOCALE,
   fallbackChain,
   isSupportedLocale,
   type LocaleRegistry,
-} from './locales';
+} from './locales.ts';
 
 /** The translator for one language, typed over every catalog key. */
 export interface I18n extends Translator<MessageKey> {

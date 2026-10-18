@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createLocaleRegistry } from './locales';
-import { createI18n, enI18n } from './translator';
+import { createLocaleRegistry } from './locales.ts';
+import { createI18n, enI18n } from './translator.ts';
 
 describe('createI18n', () => {
   it('translates bundled languages', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BUNDLED_CATALOGS, SOURCE_CATALOG } from './catalog';
-import { checkCatalog, checkSourceCatalog, placeholders } from './check';
-import { BUILTIN_LOCALES } from './locales';
+import { BUNDLED_CATALOGS, SOURCE_CATALOG } from './catalog.ts';
+import { checkCatalog, checkSourceCatalog, placeholders } from './check.ts';
+import { BUILTIN_LOCALES } from './locales.ts';
 
 describe('bundled catalogs', () => {
   it('the English source follows the key and plural rules', () => {

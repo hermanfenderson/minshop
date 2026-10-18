@@ -3,8 +3,8 @@
  * mount (/it/shop/products/mug). The default language has no prefix unless
  * `prefixDefault` is set.
  */
-import { joinMount, stripMount } from '../mount';
-import type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from './strategy';
+import { joinMount, stripMount } from '../mount.ts';
+import type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from './strategy.ts';
 
 export function prefixRouting(ctx: RoutingContext): LocaleRouting {
   const { settings, mount, known } = ctx;

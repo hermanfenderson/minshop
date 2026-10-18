@@ -6,8 +6,8 @@
  *
  * Adapted from ddyy/minshop#60 by Luca G. (lgibelli).
  */
-import { formatMoney, formatNumber } from '../money';
-import { formatTimestamp } from '../dates';
+import { formatMoney, formatNumber } from '../money.ts';
+import { formatTimestamp } from '../dates.ts';
 
 export type PluralMessage = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string };
 export type Message = string | PluralMessage;

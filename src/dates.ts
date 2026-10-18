@@ -3,7 +3,7 @@
  * code can use it without the Cloudflare runtime. `config.formatDate` adds the
  * store time-zone default on top, which is the only part that reads settings.
  */
-import { DEFAULT_INTL } from './money';
+import { DEFAULT_INTL } from './money.ts';
 
 /**
  * Format a stored UTC timestamp in a time zone and an Intl locale tag. Accepts

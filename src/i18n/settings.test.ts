@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createLocaleRegistry } from './locales';
+import { createLocaleRegistry } from './locales.ts';
 import {
   DEFAULT_I18N_SETTINGS,
   checkContentSourceChange,
@@ -7,7 +7,7 @@ import {
   resolveI18nSettings,
   validateI18nSettings,
   type I18nSettings,
-} from './settings';
+} from './settings.ts';
 
 const monopolele: I18nSettings = {
   ...DEFAULT_I18N_SETTINGS,

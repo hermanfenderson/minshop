@@ -1,6 +1,6 @@
 // Formatter cases adapted from ddyy/minshop#60 (Luca G.).
 import { describe, expect, it } from 'vitest';
-import { createTranslator, escapeHtml, formatMessage } from './format';
+import { createTranslator, escapeHtml, formatMessage } from './format.ts';
 
 describe('formatMessage', () => {
   it('fills placeholders and leaves unknown ones visible', () => {

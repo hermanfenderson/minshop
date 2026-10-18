@@ -3,8 +3,8 @@
  * mount. The default language has no parameter. Paths never change, so no
  * rewrite is needed; every internal link must carry the parameter.
  */
-import { joinMount, stripMount } from '../mount';
-import type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from './strategy';
+import { joinMount, stripMount } from '../mount.ts';
+import type { LocaleMatch, LocaleRouting, PublicLocation, RoutingContext } from './strategy.ts';
 
 export function queryRouting(ctx: RoutingContext): LocaleRouting {
   const { settings, mount } = ctx;

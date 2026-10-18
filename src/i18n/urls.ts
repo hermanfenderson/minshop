@@ -7,9 +7,9 @@
  * prototype), and Astro.url shows the internal path after a rewrite, so
  * neither may be used to build a public URL.
  */
-import { API_LANGUAGE_PARAM, isLanguageAwareApi, isLocalizedPath, locationToString } from './resolve';
-import type { LocaleRouting } from './routing/strategy';
-import type { I18nSettings } from './settings';
+import { API_LANGUAGE_PARAM, isLanguageAwareApi, isLocalizedPath, locationToString } from './resolve.ts';
+import type { LocaleRouting } from './routing/strategy.ts';
+import type { I18nSettings } from './settings.ts';
 
 /**
  * A logical path → public URL function. Pure presentation builders take one

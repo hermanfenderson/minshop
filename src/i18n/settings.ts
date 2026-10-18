@@ -16,7 +16,7 @@ import {
   isSupportedLocale,
   normalizeLocaleCode,
   type LocaleRegistry,
-} from './locales';
+} from './locales.ts';
 
 export type RoutingStrategy = 'prefix' | 'query' | 'domain';
 

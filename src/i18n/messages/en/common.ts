@@ -1,7 +1,7 @@
 // The catalog-free formatter's type only: storefront controls will reach these
 // files for their English fallback, and importing the bound catalogs here would
 // drag every locale into the storefront boundary checker's import walk.
-import type { Message } from '../../format';
+import type { Message } from '../../format.ts';
 
 export const common = {
   // Page links, shared by the storefront catalog and the admin lists (ddyy/minshop#60).

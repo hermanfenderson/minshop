@@ -1,4 +1,4 @@
-import type { Catalog } from '../../catalog';
+import type { Catalog } from '../../catalog.ts';
 
 export const cart = {
   'cart.page.title': 'Carrello',

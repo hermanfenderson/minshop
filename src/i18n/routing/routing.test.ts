@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveI18nSettings, type I18nSettings } from '../settings';
-import { createRouting } from './index';
+import { resolveI18nSettings, type I18nSettings } from '../settings.ts';
+import { createRouting } from './index.ts';
 
 const url = (href: string) => new URL(href, 'https://monopolele.com');
 const settings = (over: Partial<I18nSettings> = {}) =>
