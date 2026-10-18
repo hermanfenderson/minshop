@@ -6,6 +6,7 @@ import type {
   WebhookResult,
 } from './provider';
 import { STRIPE_CHECKOUT_TTL_SECONDS } from './provider';
+import { stripeCheckoutLocale } from './stripeLocale';
 import { stripeAllowedCountries } from './stripeCountries.ts';
 
 /**
@@ -71,9 +72,14 @@ export function createStripeProvider(
         })),
         success_url: params.successUrl,
         cancel_url: params.cancelUrl,
-        ...((params.metadata || params.shipping?.shipmentWeightGrams != null) && {
+        // The hosted page in the shopper's language when Stripe has it, else 'auto'.
+        locale: stripeCheckoutLocale(params.locale) as Stripe.Checkout.SessionCreateParams.Locale,
+        ...((params.metadata || params.shipping?.shipmentWeightGrams != null || params.locale) && {
           metadata: {
             ...(params.metadata ?? {}),
+            // The language travels with the session so the webhook can store it
+            // on the order (emails go out in it, long after this request).
+            ...(params.locale && { locale: params.locale }),
             // Stripe picks the rate AFTER the session exists, so the weight it was
             // priced at has to travel with the session to reach the order.
             ...(params.shipping?.shipmentWeightGrams != null && {
@@ -258,6 +264,9 @@ export function createStripeProvider(
             taxCents,
             shippingAddress,
             currency: session.currency ?? 'usd',
+            // Stored as sent; read back through orderLocale(), which falls back
+            // for sessions created before the language travelled with them.
+            locale: session.metadata?.locale ?? null,
             items,
           },
         };
