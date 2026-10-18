@@ -60,7 +60,7 @@ const pillText = { translated: 'Translated', missing: 'Not translated', empty: '
   <div class="mb-2 flex flex-wrap items-baseline justify-between gap-3">
     <h2 class="text-xs uppercase tracking-widest text-gray-400">Translations</h2>
     <span class="text-xs text-gray-400">
-      Original language: <strong class="font-medium text-gray-600">{source.label} ({source.code})</strong>
+      Original language: <strong class="font-medium text-gray-600">{source.label} ({source.code})</strong>{' '}
       · Enabled: {[source, ...languages].map((l) => l.code).join(', ')}
     </span>
   </div>
