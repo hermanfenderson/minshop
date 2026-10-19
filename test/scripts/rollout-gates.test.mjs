@@ -156,7 +156,7 @@ describe('digital-delivery rollout gates', () => {
  * a default would point agents at something that does not exist.
  */
 describe('optional MCP advertisement', () => {
-  const llms = source('src/pages/llms.txt.ts');
+  const llms = source('src/features/storefront/llms.ts');
 
   it('renders the MCP line only from a configured MCP_URL', () => {
     expect(llms).toMatch(/const mcpUrl = \(env\.MCP_URL \?\? ''\)\.trim\(\)/);

@@ -21,6 +21,7 @@ import {
 } from './features/navigation/db';
 import { translationLocale } from './features/translations/content';
 import { loadTranslations } from './features/translations/db';
+import { llmsResponse } from './features/storefront/llms';
 import {
   checkRateLimit,
   rateLimitBucket,
@@ -257,6 +258,11 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   return context.redirect(urls.href('/admin/setup'), 303);
 }
 
+/** Localized files (one per language) and the builders that answer them. */
+const LOCALIZED_FILES: Record<string, (context: APIContext) => Promise<Response>> = {
+  '/llms.txt': llmsResponse,
+};
+
 const notFound = (): Response =>
   new Response('Not found', {
     status: 404,
@@ -311,8 +317,16 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
       // this point may read the body (nothing does: route and gate only read
       // headers and the URL).
       if (resolution.rewrite) {
-        const internal = new URL(resolution.internalPath + url.search, url);
-        proceed = () => next(internal);
+        const file = LOCALIZED_FILES[resolution.path];
+        if (file) {
+          // Astro 7 rewrites under a mount append a slash ('/shop/llms.txt/'),
+          // which no endpoint named with its extension matches; serve the file
+          // from its builder directly. Same gate, same cache rules after.
+          proceed = () => file(context);
+        } else {
+          const internal = new URL(resolution.internalPath + url.search, url);
+          proceed = () => next(internal);
+        }
       }
     }
   }

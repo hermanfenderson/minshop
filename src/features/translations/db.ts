@@ -163,12 +163,13 @@ export async function translatedPurchase<
  * collide with existing rows.
  */
 export async function localesWithTranslations(db: D1Database): Promise<string[]> {
-  const union = Object.values(TRANSLATABLE)
-    .map((t) => `SELECT DISTINCT locale FROM ${t.table}`)
-    .join(' UNION ');
+  // One statement per table in a batch: D1 caps a compound SELECT at fewer
+  // terms than there are translation tables.
   try {
-    const { results } = await db.prepare(union).all<{ locale: string }>();
-    return (results ?? []).map((r) => r.locale);
+    const results = await db.batch<{ locale: string }>(
+      Object.values(TRANSLATABLE).map((t) => db.prepare(`SELECT DISTINCT locale FROM ${t.table}`)),
+    );
+    return [...new Set(results.flatMap((r) => (r.results ?? []).map((row) => row.locale)))];
   } catch (err) {
     console.error('Listing translated languages failed:', err);
     return [];

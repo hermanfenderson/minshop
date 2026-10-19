@@ -439,6 +439,25 @@ await check('sitemap, llms.txt and pages carry the tags an editorial purge clear
   }
 });
 
+await check('the content source cannot move onto a language that has translations', async () => {
+  const res = await get(`${EN}/admin/settings`, {
+    method: 'POST',
+    headers: { origin, 'content-type': 'application/x-www-form-urlencoded', cookie: admin },
+    body: new URLSearchParams([
+      ['_action', 'save_languages'],
+      ['default_locale', 'en'],
+      ['content_source_locale', 'it'],
+      ['routing', 'prefix'],
+      ['detect', 'off'],
+      ['enabled_locales', 'en'],
+      ['enabled_locales', 'it'],
+    ]).toString(),
+  });
+  const body = await res.text();
+  assert(body.includes('Translations in &quot;it&quot; already exist') || body.includes('Translations in "it" already exist'), 'the change was not refused');
+  equal(links(await html(`${IT}/products/festival-strap`)).canonical, strapIt, 'settings unchanged');
+});
+
 await check('disabling Italian removes it from hreflang, the sitemap and llms.txt', async () => {
   // URLSearchParams needs repeated keys: build the body by hand.
   const post = (enabled) =>
@@ -469,6 +488,20 @@ await check('disabling Italian removes it from hreflang, the sitemap and llms.tx
   }
   equal(links(await html(`${IT}/products/festival-strap`)).hreflang.length, 3, 'Italian back after re-enabling');
 });
+
+// I18N_SAMPLES=<dir> saves what the Worker really served, for review.
+if (process.env.I18N_SAMPLES) {
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  mkdirSync(process.env.I18N_SAMPLES, { recursive: true });
+  const head = (body) => body.match(/<head>[\s\S]*?<\/head>/)?.[0].replace(/<script is:inline>[\s\S]*?<\/script>|<script>[\s\S]*?<\/script>/g, '') ?? '';
+  const ld = (body) => body.match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/)?.[0] ?? '';
+  for (const [name, path] of [['product-en', `${EN}/products/festival-strap`], ['product-it', `${IT}/products/festival-strap`], ['untranslated-it', `${IT}/products/sample-mug`]]) {
+    const body = await html(path);
+    writeFileSync(`${process.env.I18N_SAMPLES}/${name}.html`, `${head(body)}\n${ld(body)}\n`);
+  }
+  writeFileSync(`${process.env.I18N_SAMPLES}/sitemap.xml`, await (await get(`${EN}/sitemap.xml`)).text());
+  writeFileSync(`${process.env.I18N_SAMPLES}/llms-it.txt`, await (await get(`${IT}/llms.txt`)).text());
+}
 
 if (failures > 0) {
   console.log(`\ntranslated content: ${failures} check(s) failed`);
