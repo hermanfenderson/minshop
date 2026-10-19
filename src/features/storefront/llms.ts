@@ -7,7 +7,7 @@ import { listProducts, countProducts } from '../products/db';
 import { listCategories } from '../categories/db';
 import { listPublishedPages } from '../pages/db';
 import { publicOrigin } from '../http/origin';
-import { loadTranslations } from '../translations/db';
+import { loadTranslations, translatedLocalesByRow } from '../translations/db';
 import { translatedAll } from '../translations/content';
 import { LOCALE_REGISTRY, languageSettings } from '../i18n/settings';
 
@@ -46,6 +46,23 @@ export const llmsResponse = async ({ url, locals }: Pick<APIContext, 'url' | 'lo
   const categories = translatedAll(tr, 'category', sourceCategories);
   const pages = translatedAll(tr, 'page', sourcePages);
   const languages = languageSettings(locals.settings);
+  // Each link goes to the page's canonical URL: in this language where the
+  // content is translated, else the original (features/i18n/seo.ts).
+  const [productCover, categoryCover, pageCover] = locals.contentLocale
+    ? await Promise.all([
+        translatedLocalesByRow(env.DB, 'product', sourceProducts),
+        translatedLocalesByRow(env.DB, 'category', sourceCategories),
+        translatedLocalesByRow(
+          env.DB,
+          'page',
+          sourcePages.map((p) => ({ id: p.id, title: p.title, body_markdown: p.has_body ? '…' : '' })),
+        ),
+      ])
+    : [new Map<number, string[]>(), new Map<number, string[]>(), new Map<number, string[]>()];
+  const link = (path: string, cover: Map<number, string[]>, id: number) =>
+    !locals.contentLocale || cover.get(id)?.includes(locals.contentLocale)
+      ? abs(path)
+      : `${origin}${locals.urls.href(path, { locale: languages.contentSourceLocale })}`;
   const others = languages.enabledLocales.filter((code) => code !== locals.locale);
   const languageLine =
     others.length > 0
@@ -61,16 +78,16 @@ export const llmsResponse = async ({ url, locals }: Pick<APIContext, 'url' | 'lo
     // This whole-catalog response carries coarse tags, so checkout-frequency
     // product-tag purges cannot keep stock honest here. Omit availability; the
     // catalog API and checkout resolve it through product-scoped/live reads.
-    return `- [${linkText(p.name)}](${abs(`/products/${p.slug}`)}): ${formatPrice(p.price_cents, currency, intl)}${desc ? ` — ${desc}` : ''}`;
+    return `- [${linkText(p.name)}](${link(`/products/${p.slug}`, productCover, p.id)}): ${formatPrice(p.price_cents, currency, intl)}${desc ? ` — ${desc}` : ''}`;
   });
 
   const categoryLines = categories.map(
-    (c) => `- [${linkText(c.name)}](${abs(`/categories/${c.slug}`)})`,
+    (c) => `- [${linkText(c.name)}](${link(`/categories/${c.slug}`, categoryCover, c.id)})`,
   );
 
   // Merchant-authored informational pages (shipping, returns, policies) — the
   // context an agent needs that the catalog itself doesn't carry.
-  const pageLines = pages.map((p) => `- [${linkText(p.title)}](${abs(`/pages/${p.slug}`)})`);
+  const pageLines = pages.map((p) => `- [${linkText(p.title)}](${link(`/pages/${p.slug}`, pageCover, p.id)})`);
 
   // Optional: this store's MCP endpoint, when one is deployed. The MCP server is
   // a SEPARATE Worker whose hostname the storefront cannot derive — they share a

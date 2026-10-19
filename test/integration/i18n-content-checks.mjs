@@ -430,6 +430,8 @@ await check('llms.txt follows the language and the mount', async () => {
   assert(it.includes('## Prodotti') && it.includes(`${C}${EN}/llms.txt`), 'Italian headings and the English file');
   assert(en.includes(`[Festival strap](${C}${EN}/products/festival-strap)`), 'English product line');
   assert(en.includes(`${C}${IT}/llms.txt`), 'English names the Italian file');
+  // An untranslated product links to its canonical, original URL.
+  assert(it.includes(`(${C}${EN}/products/sample-mug)`) && !it.includes(`${IT}/products/sample-mug`), 'untranslated product link');
 });
 
 await check('sitemap, llms.txt and pages carry the tags an editorial purge clears', async () => {
