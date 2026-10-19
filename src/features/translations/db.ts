@@ -173,3 +173,17 @@ export async function localesWithTranslations(db: D1Database): Promise<string[]>
     return [];
   }
 }
+
+/**
+ * A product's option name ("Size") in `locale`, for the "choose a size"
+ * message the variant check sends a shopper back with. Null when the product
+ * names none in any language.
+ */
+export async function translatedVariantLabel(
+  db: D1Database,
+  locale: string | null,
+  product: { id: number; variant_label: string | null },
+): Promise<string | null> {
+  const set = await loadTranslations(db, locale, { product: [product.id] });
+  return translated(set, 'product', product).variant_label || null;
+}

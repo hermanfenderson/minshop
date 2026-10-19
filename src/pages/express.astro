@@ -9,7 +9,7 @@ import { listVariants, getExtrasByPublicIds } from '../features/products/variant
 import { parsePublicId } from '../features/ids/publicId.ts';
 import { lineUnitPriceCents } from '../features/cart/key';
 import { purchaseLineName } from '../features/cart/lineName';
-import { translatedPurchase } from '../features/translations/db';
+import { translatedPurchase, translatedVariantLabel } from '../features/translations/db';
 import { shippingFor } from '../features/shipping/effective';
 import { shipmentWeightFor } from '../features/shipping/lines';
 import { stripeDestination } from '../features/shipping/destination';
@@ -66,7 +66,9 @@ if (isBuyNow && productPublicId) {
       Astro.locals.urls.href(
         `/products/${product.slug}?error=${encodeURIComponent(
           t('checkout.error.chooseVariant', {
-            label: product.variant_label || t('checkout.error.variantFallback'),
+            label:
+              (await translatedVariantLabel(env.DB, Astro.locals.contentLocale, product)) ||
+              t('checkout.error.variantFallback'),
           }),
         )}`,
       ),

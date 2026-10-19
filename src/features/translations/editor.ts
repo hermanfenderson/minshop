@@ -44,6 +44,8 @@ export async function editorRows(
   db: D1Database,
   entity: TranslatableEntity,
   items: EditorItem[],
+  /** Fields carried but not shown (see TranslationField.hidden). */
+  hiddenFields: readonly string[] = [],
 ): Promise<TranslationRow[]> {
   const withIds = items.filter((i): i is EditorItem & { publicId: string } => i.publicId !== null);
   const stored = await translationsByRow(db, entity, withIds.map((i) => i.id));
@@ -63,6 +65,7 @@ export async function editorRows(
         values,
         multiline: rule.multiline,
         maxlength: rule.max,
+        hidden: hiddenFields.includes(field),
       };
     }),
   }));

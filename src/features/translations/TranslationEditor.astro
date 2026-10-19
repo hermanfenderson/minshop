@@ -19,6 +19,11 @@ export interface TranslationField {
   values: Record<string, string | null | undefined>;
   multiline?: boolean;
   maxlength?: number;
+  /**
+   * Not editable here (an option name on a product without options): carried
+   * as a hidden input so a save keeps the stored value instead of clearing it.
+   */
+  hidden?: boolean;
 }
 
 export interface TranslationRow {
@@ -42,7 +47,7 @@ interface Props {
 const { scope, id, returnTo, source, languages, rows, intro } = Astro.props;
 const saved = Astro.url.searchParams.get('translated');
 const error = Astro.url.searchParams.get('translation_error');
-const fields = rows.flatMap((r) => r.fields);
+const fields = rows.flatMap((r) => r.fields).filter((f) => !f.hidden);
 const status = (f: TranslationField, code: string) => {
   const v = f.values[code];
   if (v === '') return 'empty';
@@ -110,6 +115,7 @@ const pillText = { translated: 'Translated', missing: 'Not translated', empty: '
               <fieldset class="space-y-4">
                 {row.title && <legend class="mb-2 text-xs uppercase tracking-widest text-gray-400">{row.title}</legend>}
                 {row.fields.map((f) => {
+                  if (f.hidden) return <input type="hidden" name={f.name} value={f.values[lang.code] ?? ''} />;
                   const st = status(f, lang.code);
                   const value = f.values[lang.code] ?? '';
                   return (

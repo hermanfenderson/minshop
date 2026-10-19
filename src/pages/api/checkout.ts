@@ -49,7 +49,7 @@ import { mintLightningOrder } from '../../features/payments/lightning-provider';
 import { getLightningBackend } from '../../features/payments/lightning';
 import type { I18n } from '../../i18n/index.ts';
 import { purchaseLineName } from '../../features/cart/lineName';
-import { loadTranslations, translatedPurchase } from '../../features/translations/db';
+import { loadTranslations, translatedPurchase, translatedVariantLabel } from '../../features/translations/db';
 import { translated, translatedAll, translationLocale } from '../../features/translations/content';
 
 export const prerender = false;
@@ -165,7 +165,8 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       const wantedVariant = parsePublicId(form.get('variant_id'), 'variant');
       variant = wantedVariant ? (variants.find((v) => v.public_id === wantedVariant) ?? null) : null;
       if (!variant) {
-        const label = product.variant_label || t('checkout.error.variantFallback');
+        const label =
+          (await translatedVariantLabel(env.DB, locals.contentLocale, product)) || t('checkout.error.variantFallback');
         return redirect(
           `/products/${product.slug}?error=${encodeURIComponent(t('checkout.error.chooseVariant', { label }))}`,
           303,

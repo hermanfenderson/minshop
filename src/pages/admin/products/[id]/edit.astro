@@ -72,7 +72,8 @@ const translationRows = translation.languages.length
             title: 'Product',
             source: { name: product.name, description: product.description, variant_label: product.variant_label },
           },
-        ]),
+          // The option name only means something once the product has options.
+        ], variants.length > 0 ? [] : ['variant_label']),
         editorRows(
           env.DB,
           'variant',
