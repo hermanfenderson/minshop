@@ -25,6 +25,11 @@ import { catalogPath } from '../../features/settings/home';
 import { addCacheTags, productCacheTags } from '../../features/cache/tags';
 import { loadTranslations } from '../../features/translations/db';
 import { translated, translatedAll } from '../../features/translations/content';
+import { translatedLocalesByRow } from '../../features/translations/db';
+import { languageSettings } from '../../features/i18n/settings';
+import { requestSeo } from '../../features/i18n/seoRequest';
+import { structuredData } from '../../features/i18n/structuredData';
+import { publicOrigin } from '../../features/http/origin';
 
 const { slug } = Astro.params;
 const { i18n } = Astro.locals;
@@ -88,9 +93,33 @@ const hrefFor = (p: number) =>
   });
 // The catalog is at / until the home page is pointed elsewhere.
 const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
+
+// Canonical and hreflang follow whether the category NAME is translated (the
+// products listed fall back one by one); the JSON-LD trail matches the page's.
+const multilingual = languageSettings(Astro.locals.settings).enabledLocales.length > 1;
+const translatedInto = multilingual
+  ? ((await translatedLocalesByRow(env.DB, 'category', [sourceCategory])).get(sourceCategory.id) ?? [])
+  : [];
+const pageSeo = requestSeo(
+  Astro.locals,
+  publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN),
+  Astro.locals.path,
+  translatedInto,
+);
+const jsonLd = structuredData({
+  seo: pageSeo,
+  pageType: 'CollectionPage',
+  name: category.name,
+  breadcrumb: [
+    { name: t('storefront.nav.shop'), url: pageSeo.absolute(catalogPath(Astro.locals.settings?.homePage)) },
+    ...trail.filter((c) => c.id !== category.id).map((c) => ({ name: c.name, url: pageSeo.absolute(`/categories/${c.slug}`) })),
+    { name: category.name, url: pageSeo.canonical },
+  ],
+});
 ---
 
-<Layout title={category.name}>
+<Layout title={category.name} seo={pageSeo}>
+  <script is:inline type="application/ld+json" set:html={jsonLd} />
   <nav class="mb-4 flex flex-wrap gap-x-2 text-xs uppercase tracking-widest text-faint">
     <a href={shopHref} class="hover:text-brand">{t('storefront.nav.shop')}</a>
     {

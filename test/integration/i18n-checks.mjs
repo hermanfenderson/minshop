@@ -72,8 +72,12 @@ await check('the switcher links each page to itself in the other language', asyn
 });
 
 await check('canonical and links follow the page language', async () => {
+  // An interface page exists in Italian; a product with no Italian text is a
+  // duplicate of the English one and canonicals to it (see i18n-content-checks).
+  const catalog = await html(`${IT}/products`);
+  assert(catalog.includes(`<link rel="canonical" href="https://canonical.example${IT}/"`), 'Italian catalog canonical');
   const it = await html(`${IT}/products/sample-tee`);
-  assert(it.includes(`<link rel="canonical" href="https://canonical.example${IT}/products/sample-tee"`), 'Italian canonical');
+  assert(it.includes(`<link rel="canonical" href="https://canonical.example${EN}/products/sample-tee"`), 'untranslated product canonical');
   assert(it.includes(`action="${EN}/api/cart?lang=it"`), 'add-to-cart form names the language');
   assert(it.includes(`data-cart-partial="${IT}/partials/cart"`), 'drawer fragment in Italian');
 });

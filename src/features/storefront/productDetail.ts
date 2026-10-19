@@ -13,7 +13,8 @@ import { catalogPath } from '../settings/home';
 import { formatMoney, toMajorUnits, currencyDecimals } from '../../money';
 import { requirePublicId } from '../catalog/serialize';
 import { buildProductCard } from './productCard';
-import { loadTranslations } from '../translations/db';
+import { loadTranslations, translatedLocalesByRow } from '../translations/db';
+import { languageSettings } from '../i18n/settings';
 import { translated, translatedAll } from '../translations/content';
 import type {
   ProductDetailModel,
@@ -67,8 +68,6 @@ export interface ProductDetailOptions {
   intl?: string;
   /** Absolute origin for SEO URLs. */
   origin: string;
-  /** The page's public path (mount and, later, language included), for JSON-LD. */
-  pathname: string;
   /** Logical path → public URL. Root by default. */
   href?: Href;
   /** The language of the content translations to read; null/omitted = source text. */
@@ -104,13 +103,18 @@ export async function loadProductDetail(
 
   // Independent once the product is known. Run together so an uncached render
   // pays one concurrent wait instead of a serial chain.
-  const [sourceCategories, storedRelated, sourceVariants, sourceExtras, sourceGallery] = await Promise.all([
+  // Which languages this product is a real translation in — only a store with
+  // more than one language asks.
+  const multilingual = languageSettings(options.settings).enabledLocales.length > 1;
+  const [sourceCategories, storedRelated, sourceVariants, sourceExtras, sourceGallery, coverage] = await Promise.all([
     categoriesForProduct(db, source.id),
     getRelatedStored(source, RELATED_TARGET),
     listVariants(db, source.id),
     listExtras(db, source.id),
     listProductImages(db, source.id),
+    multilingual ? translatedLocalesByRow(db, 'product', [source]) : Promise.resolve(new Map<number, string[]>()),
   ]);
+  const translatedInto = coverage.get(source.id) ?? [];
 
   const semantic = storedRelated ?? [];
   let sourceRelated = semantic;
@@ -188,8 +192,7 @@ export async function loadProductDetail(
 
   const href = options.href ?? rootHref;
   const imagePath = productImageUrl(product.image_key, options.imageBaseUrl);
-  const jsonLd = {
-    '@context': 'https://schema.org',
+  const productLd = {
     '@type': 'Product',
     name: product.name,
     // Structured data wants prose, not Markdown syntax characters.
@@ -207,7 +210,6 @@ export async function loadProductDetail(
       ),
       priceCurrency: options.currency.toUpperCase(),
       availability: soldOut ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
-      url: new URL(options.pathname, options.origin).href,
     },
   };
 
@@ -221,8 +223,9 @@ export async function loadProductDetail(
       // Meta/og description: plain text, truncated on a word boundary.
       description: product.description ? markdownExcerpt(product.description, 160) : null,
       imagePath,
-      // Escape "<" so a product name can't break out of the <script> tag.
-      jsonLd: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+      product: productLd,
+      translatedInto,
+      category: categories[0] ? { name: categories[0].name, slug: categories[0].slug } : null,
     },
     model: {
       id: requirePublicId(product.public_id, product.id, 'product'),

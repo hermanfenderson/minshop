@@ -10,6 +10,7 @@ import { EMPTY_MENUS, visibleItems } from '../features/navigation/db';
 import { getEmailProvider } from '../features/email';
 import { buildShellModel } from '../features/storefront/shell';
 import { announcementFor } from '../features/settings/db';
+import { isIndexablePage, requestSeo, type RequestSeo } from '../features/i18n/seoRequest';
 import StoreHeader from '#theme/Header.astro';
 import StoreFooter from '#theme/Footer.astro';
 import '../styles/global.css';
@@ -19,12 +20,20 @@ interface Props {
   description?: string;
   /** Root-relative or absolute image for social cards (made absolute below). */
   image?: string;
-  /** Override the canonical URL. Used where two routes render the same content
-   *  — the catalog is at both / and /products — so only one is indexable. */
-  canonical?: string;
+  /**
+   * The page's search signals, from requestSeo(): canonical, hreflang and Open
+   * Graph locales. Content pages pass theirs (it depends on what is
+   * translated); interface pages omit it and exist in every language.
+   */
+  seo?: RequestSeo;
+  /** The logical path to canonicalize to, when it is not this page's own —
+   *  the catalog is at both / and /products, so only one is indexable. */
+  seoPath?: string;
+  /** Never index this document (the 404 page). Private routes need not ask. */
+  noindex?: boolean;
 }
 
-const { title, description, image, canonical: canonicalOverride } = Astro.props;
+const { title, description, image, seoPath, noindex } = Astro.props;
 const { i18n } = Astro.locals;
 const { t } = i18n;
 const config = getConfig();
@@ -75,7 +84,12 @@ const query =
 
 const desc = (description ?? t('storefront.meta.description', { storeName })).slice(0, 160);
 const origin = publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN);
-const canonical = canonicalOverride ?? new URL(urls.href(path), origin).href;
+// Canonical, hreflang and og:locale come from one rule shared with the sitemap
+// (features/i18n/seo.ts). A store with one language gets its canonical only.
+const seo = Astro.props.seo ?? requestSeo(Astro.locals, origin, seoPath ?? path);
+const canonical = seo.canonical;
+const indexable = !noindex && isIndexablePage(path);
+const multilingual = languages.enabledLocales.length > 1;
 const ogImage = image ? new URL(image, origin).href : undefined;
 
 // The header and footer are store-owned, so they receive a model rather than
@@ -120,9 +134,13 @@ const shell = buildShellModel({
     <link rel="apple-touch-icon" sizes="180x180" href={withMount('/apple-touch-icon.png')} />
     <title>{pageTitle}</title>
     <meta name="description" content={desc} />
+    {!indexable && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
+    {indexable && seo.alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.href} />)}
 
     <meta property="og:type" content="website" />
+    {multilingual && <meta property="og:locale" content={seo.ogLocale} />}
+    {multilingual && indexable && seo.ogLocaleAlternates.map((l) => <meta property="og:locale:alternate" content={l} />)}
     <meta property="og:site_name" content={storeName} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={desc} />

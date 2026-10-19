@@ -6,6 +6,9 @@ import { loadProductDetail } from '../../features/storefront/productDetail';
 import { getConfig } from '../../config';
 import { publicOrigin } from '../../features/http/origin';
 import { addCacheTags, productCacheTags } from '../../features/cache/tags';
+import { requestSeo } from '../../features/i18n/seoRequest';
+import { structuredData } from '../../features/i18n/structuredData';
+import { catalogPath } from '../../features/settings/home';
 
 const { i18n } = Astro.locals;
 const loaded = await loadProductDetail(env.DB, {
@@ -17,7 +20,6 @@ const loaded = await loadProductDetail(env.DB, {
   currency: getConfig().currency,
   intl: i18n.intl,
   origin: publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN),
-  pathname: Astro.locals.urls.href(Astro.locals.path),
   href: Astro.locals.urls.href,
   contentLocale: Astro.locals.contentLocale,
 });
@@ -29,6 +31,21 @@ if (loaded.status === 'not_found') {
 }
 
 const { model, purchase, seo } = loaded;
+// Canonical and hreflang follow what is actually translated; the JSON-LD graph
+// carries the same canonical URL and the language of the main content.
+const origin = publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN);
+const pageSeo = requestSeo(Astro.locals, origin, Astro.locals.path, seo.translatedInto);
+const jsonLd = structuredData({
+  seo: pageSeo,
+  pageType: 'ItemPage',
+  name: seo.title,
+  breadcrumb: [
+    { name: i18n.t('storefront.nav.shop'), url: pageSeo.absolute(catalogPath(Astro.locals.settings?.homePage)) },
+    ...(seo.category ? [{ name: seo.category.name, url: pageSeo.absolute(`/categories/${seo.category.slug}`) }] : []),
+    { name: seo.title, url: pageSeo.canonical },
+  ],
+  product: seo.product,
+});
 addCacheTags(Astro.response.headers, productCacheTags(loaded.cacheTagIds));
 if (loaded.backfillRelated) {
   // After the response is sent, so the shopper never waits on it.
@@ -36,10 +53,10 @@ if (loaded.backfillRelated) {
 }
 ---
 
-<Layout title={seo.title} description={seo.description ?? undefined} image={seo.imagePath}>
+<Layout title={seo.title} description={seo.description ?? undefined} image={seo.imagePath} seo={pageSeo}>
   <ProductDetail model={model} purchase={purchase} i18n={i18n} />
 
-  <script is:inline type="application/ld+json" set:html={seo.jsonLd} />
+  <script is:inline type="application/ld+json" set:html={jsonLd} />
 
   {/* Live price + hero image: reflect the chosen variant + checked add-ons. No-JS
       still works — the server computes the real price in cart/checkout, and the

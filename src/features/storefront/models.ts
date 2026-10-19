@@ -205,8 +205,13 @@ export interface ProductSeoModel {
   description: string | null;
   /** Root-relative image path for the social card. */
   imagePath: string;
-  /** Serialized JSON-LD, already escaped for embedding in a script tag. */
-  jsonLd: string;
+  /** The schema.org Product (names in the page language; offers shared). The
+   *  route places it in the page graph with its canonical URL. */
+  product: Record<string, unknown>;
+  /** Languages this product is fully translated into (features/i18n/seo.ts). */
+  translatedInto: string[];
+  /** The product's first category, for the breadcrumb trail. */
+  category: { name: string; slug: string } | null;
 }
 
 export interface ProductDetailModel {

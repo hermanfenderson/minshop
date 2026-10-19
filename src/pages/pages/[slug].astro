@@ -9,6 +9,11 @@ import { renderMarkdown, markdownExcerpt } from '../../features/pages/markdown';
 import { normalizePageLayout, pageLayoutStyle } from '../../features/pages/layouts';
 import { loadTranslations } from '../../features/translations/db';
 import { translated } from '../../features/translations/content';
+import { translatedLocalesByRow } from '../../features/translations/db';
+import { languageSettings } from '../../features/i18n/settings';
+import { requestSeo } from '../../features/i18n/seoRequest';
+import { structuredData } from '../../features/i18n/structuredData';
+import { publicOrigin } from '../../features/http/origin';
 
 const { slug } = Astro.params;
 const source = slug ? await getPublishedPageBySlug(env.DB, slug) : null;
@@ -30,10 +35,19 @@ if (!source) {
 // The page in the visitor's language: title and body each fall back to the
 // source on their own. The same server-side renderMarkdown (html: false) runs
 // on a translated body as on the source one.
-const [dimensions, tr] = await Promise.all([
+const multilingual = languageSettings(Astro.locals.settings).enabledLocales.length > 1;
+const [dimensions, tr, coverage] = await Promise.all([
   pageImageDimensions(env.DB, source.id),
   loadTranslations(env.DB, Astro.locals.contentLocale, { page: [source.id] }),
+  multilingual ? translatedLocalesByRow(env.DB, 'page', [source]) : Promise.resolve(new Map<number, string[]>()),
 ]);
+// Canonical and hreflang follow whether title and body are both translated.
+const pageSeo = requestSeo(
+  Astro.locals,
+  publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN),
+  Astro.locals.path,
+  coverage.get(source.id) ?? [],
+);
 const page = translated(tr, 'page', source);
 const html = renderMarkdown(page.body_markdown, {
   href: Astro.locals.urls.href,
@@ -44,7 +58,8 @@ const description = markdownExcerpt(page.body_markdown);
 const layout = normalizePageLayout(page.layout);
 ---
 
-<Layout title={page.title} description={description}>
+<Layout title={page.title} description={description} seo={pageSeo}>
+  <script is:inline type="application/ld+json" set:html={structuredData({ seo: pageSeo, pageType: 'WebPage', name: page.title, breadcrumb: [] })} />
   <ContentPage
     model={{ title: page.title, html, layout, layoutStyle: pageLayoutStyle(layout) }}
   />

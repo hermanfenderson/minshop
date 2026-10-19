@@ -10,7 +10,7 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
 const { t, th } = Astro.locals.i18n;
 ---
 
-<Layout title={t('storefront.notFound.title')} description={t('storefront.notFound.description')}>
+<Layout title={t('storefront.notFound.title')} description={t('storefront.notFound.description')} noindex>
   <section class="reveal mx-auto max-w-xl py-16 text-center sm:py-24">
     <p class="text-xs uppercase tracking-[0.25em] text-muted">{t('storefront.notFound.eyebrow')}</p>
     <h1 class="mt-3 font-serif text-5xl tracking-tight sm:text-6xl">

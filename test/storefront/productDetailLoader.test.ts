@@ -65,7 +65,6 @@ const load = () =>
     delivery: undefined,
     currency: 'usd',
     origin: 'https://shop.example.com',
-    pathname: '/products/sample-tee',
   });
 
 const variant = (overrides: Record<string, unknown> = {}) => ({

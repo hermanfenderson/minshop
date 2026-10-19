@@ -17,6 +17,7 @@ import {
   type TranslationFields,
   type TranslationSet,
 } from './content.ts';
+import { translatedLocales, type CompletenessEntity } from '../i18n/seo.ts';
 
 export type TranslationWants = Partial<Record<TranslatableEntity, Iterable<number | null | undefined>>>;
 
@@ -186,4 +187,32 @@ export async function translatedVariantLabel(
 ): Promise<string | null> {
   const set = await loadTranslations(db, locale, { product: [product.id] });
   return translated(set, 'product', product).variant_label || null;
+}
+
+/**
+ * The languages each row is fully translated into (the completeness rule in
+ * features/i18n/seo.ts), for canonical, hreflang and the sitemap. One read
+ * per entity type, whatever the number of rows.
+ */
+export async function translatedLocalesByRow<R extends { id: number }>(
+  db: D1Database,
+  entity: CompletenessEntity,
+  rows: R[],
+): Promise<Map<number, string[]>> {
+  const out = new Map<number, string[]>();
+  if (rows.length === 0) return out;
+  let stored: Awaited<ReturnType<typeof translationsByRow>>;
+  try {
+    stored = await translationsByRow(db, entity, rows.map((r) => r.id));
+  } catch (err) {
+    console.error('Reading translation coverage failed; listing originals only:', err);
+    return out;
+  }
+  for (const row of rows) {
+    const byLocale = new Map(
+      [...(stored.get(row.id) ?? [])].map(([code, t]) => [code, t.fields as Record<string, unknown>]),
+    );
+    out.set(row.id, translatedLocales(entity, row as unknown as Record<string, unknown>, byLocale));
+  }
+  return out;
 }
