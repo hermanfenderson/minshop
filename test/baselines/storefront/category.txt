@@ -74,6 +74,7 @@ cache-tag: catalog,product:prod_<id>,product:prod_<id>,product:prod_<id>,product
 </div>
 </header>
 <main class="page-shell">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"CollectionPage","@id":"https://canonical.example/categories/apparel#webpage","url":"https://canonical.example/categories/apparel","name":"Apparel","inLanguage":"en","breadcrumb":{"@id":"https://canonical.example/categories/apparel#breadcrumb"}},{"@type":"BreadcrumbList","@id":"https://canonical.example/categories/apparel#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Shop","item":"https://canonical.example/"},{"@type":"ListItem","position":2,"name":"Apparel","item":"https://canonical.example/categories/apparel"}]}]}</script>
 <nav class="mb-4 flex flex-wrap gap-x-2 text-xs uppercase tracking-widest text-faint">
 <a href="/" class="hover:text-brand">Shop</a>
 <span class="flex gap-x-2">

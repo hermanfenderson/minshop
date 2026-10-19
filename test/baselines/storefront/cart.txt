@@ -13,6 +13,7 @@ cache-control: private, no-store
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <title>Cart — My Shop</title>
 <meta name="description" content="Shop My Shop.">
+<meta name="robots" content="noindex">
 <link rel="canonical" href="https://canonical.example/cart">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="My Shop">

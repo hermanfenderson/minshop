@@ -74,6 +74,7 @@ cache-tag: catalog,shell
 </div>
 </header>
 <main class="page-shell">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://canonical.example/pages/about#webpage","url":"https://canonical.example/pages/about","name":"About","inLanguage":"en"}]}</script>
 <article class="markdown-content" data-page-layout="standard" style="--page-measure:48rem;--page-title-align:left">
 <h1>About</h1>
 <h1>About us</h1>

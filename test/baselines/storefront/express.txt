@@ -13,6 +13,7 @@ cache-control: private, no-store
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <title>Checkout — My Shop</title>
 <meta name="description" content="Express checkout.">
+<meta name="robots" content="noindex">
 <link rel="canonical" href="https://canonical.example/express">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="My Shop">

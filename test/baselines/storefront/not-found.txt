@@ -13,6 +13,7 @@ cache-control: private, no-store
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <title>Page not found — My Shop</title>
 <meta name="description" content="The page you're looking for doesn't exist.">
+<meta name="robots" content="noindex">
 <link rel="canonical" href="https://canonical.example/no-such-page">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="My Shop">
