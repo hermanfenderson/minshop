@@ -7,6 +7,7 @@ import { order } from './order.ts';
 import { account } from './account.ts';
 import { adminOrders } from './adminOrders.ts';
 import { email } from './email.ts';
+import { llms } from './llms.ts';
 
 /**
  * English: the source catalog. Its keys define MessageKey. Add areas here.
@@ -23,4 +24,5 @@ export const en = {
   ...account,
   ...adminOrders,
   ...email,
+  ...llms,
 };

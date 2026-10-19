@@ -64,11 +64,21 @@ export async function listPublishedPageLinks(db: D1Database): Promise<PageLink[]
   return results ?? [];
 }
 
+export interface PublishedPage extends PageLink {
+  id: number;
+  /** Whether the body has any text — what the translation completeness rule
+   *  needs, without reading every body into the sitemap. */
+  has_body: number;
+}
+
 /** Every published page, for the sitemap and llms.txt (no footer cap). */
-export async function listPublishedPages(db: D1Database): Promise<PageLink[]> {
+export async function listPublishedPages(db: D1Database): Promise<PublishedPage[]> {
   const { results } = await db
-    .prepare('SELECT title, slug FROM pages WHERE published = 1 ORDER BY title COLLATE NOCASE, id')
-    .all<PageLink>();
+    .prepare(
+      `SELECT id, title, slug, (TRIM(body_markdown) <> '') AS has_body
+         FROM pages WHERE published = 1 ORDER BY title COLLATE NOCASE, id`,
+    )
+    .all<PublishedPage>();
   return results ?? [];
 }
 

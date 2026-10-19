@@ -138,3 +138,27 @@ export function translatedLocales(
 ): string[] {
   return [...(byLocale ?? [])].filter(([, t]) => isCompleteTranslation(entity, source, t)).map(([code]) => code);
 }
+
+export interface SitemapEntry {
+  loc: string;
+  alternates: SeoAlternate[];
+}
+
+/**
+ * The sitemap's URLs: one per localized version of each page, each carrying
+ * the same hreflang set as that version's HTML head (pageSeo, the one rule).
+ * Fallback versions are not listed — they are not translations.
+ */
+export function sitemapEntries(
+  settings: I18nSettings,
+  registry: LocaleRegistry,
+  absolute: (path: string, locale: string) => string,
+  pages: Array<{ path: string; available: Availability }>,
+): SitemapEntry[] {
+  return pages.flatMap(({ path, available }) =>
+    localizedLocales(settings, available).map((locale) => {
+      const seo = pageSeo({ settings, registry, locale, absolute, path, available });
+      return { loc: seo.canonical, alternates: seo.alternates };
+    }),
+  );
+}

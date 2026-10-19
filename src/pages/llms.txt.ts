@@ -7,6 +7,9 @@ import { listProducts, countProducts } from '../features/products/db';
 import { listCategories } from '../features/categories/db';
 import { listPublishedPages } from '../features/pages/db';
 import { publicOrigin } from '../features/http/origin';
+import { loadTranslations } from '../features/translations/db';
+import { translatedAll } from '../features/translations/content';
+import { LOCALE_REGISTRY, languageSettings } from '../features/i18n/settings';
 
 export const prerender = false;
 
@@ -26,19 +29,41 @@ export const GET: APIRoute = async ({ url, locals }) => {
   const origin = publicOrigin(url.origin, env.CANONICAL_ORIGIN);
   // Absolute public URL for a logical path: the canonical origin + mount.
   const abs = (path: string) => `${origin}${locals.urls.href(path)}`;
-  const { storeName, currency } = getConfig();
+  const { currency } = getConfig();
+  const storeName = locals.settings?.storeName ?? getConfig().storeName;
+  const { t, intl } = locals.i18n;
 
   const total = await countProducts(env.DB);
-  const products = total > 0 ? await listProducts(env.DB, total, 0) : [];
-  const categories = await listCategories(env.DB);
-  const pages = await listPublishedPages(env.DB);
+  const sourceProducts = total > 0 ? await listProducts(env.DB, total, 0) : [];
+  const sourceCategories = await listCategories(env.DB);
+  const sourcePages = await listPublishedPages(env.DB);
+  // This file is per language (/llms.txt, /it/llms.txt): its links stay in it,
+  // and names and descriptions come from the same translations the pages show.
+  const tr = await loadTranslations(env.DB, locals.contentLocale, {
+    product: sourceProducts.map((p) => p.id),
+    category: sourceCategories.map((c) => c.id),
+    page: sourcePages.map((p) => p.id),
+  });
+  const products = translatedAll(tr, 'product', sourceProducts);
+  const categories = translatedAll(tr, 'category', sourceCategories);
+  const pages = translatedAll(tr, 'page', sourcePages);
+  const languages = languageSettings(locals.settings);
+  const others = languages.enabledLocales.filter((code) => code !== locals.locale);
+  const languageLine =
+    others.length > 0
+      ? `\n${t('llms.language', {
+          others: others
+            .map((code) => `[${LOCALE_REGISTRY[code]?.label ?? code}](${origin}${locals.urls.href('/llms.txt', { locale: code })})`)
+            .join(', '),
+        })}\n`
+      : '';
 
   const productLines = products.map((p) => {
     const desc = oneLine(p.description ? markdownExcerpt(p.description, 300) : null);
     // This whole-catalog response carries coarse tags, so checkout-frequency
     // product-tag purges cannot keep stock honest here. Omit availability; the
     // catalog API and checkout resolve it through product-scoped/live reads.
-    return `- [${linkText(p.name)}](${abs(`/products/${p.slug}`)}): ${formatPrice(p.price_cents, currency)}${desc ? ` — ${desc}` : ''}`;
+    return `- [${linkText(p.name)}](${abs(`/products/${p.slug}`)}): ${formatPrice(p.price_cents, currency, intl)}${desc ? ` — ${desc}` : ''}`;
   });
 
   const categoryLines = categories.map(
@@ -61,15 +86,15 @@ export const GET: APIRoute = async ({ url, locals }) => {
 
   const body = `# ${storeName}
 
-> ${storeName} is an online store you can browse and purchase from programmatically. All prices are in ${currency.toUpperCase()}. This file follows the llms.txt convention (https://llmstxt.org). Catalog and category links are live; an agent can complete a purchase via the JSON checkout endpoint under "For agents".
+> ${t('llms.intro', { storeName, currency: currency.toUpperCase() })}
+${languageLine}
+## ${t('llms.products')}
+${productLines.length > 0 ? productLines.join('\n') : `- ${t('llms.noProducts')}`}
 
-## Products
-${productLines.length > 0 ? productLines.join('\n') : '- (no products listed)'}
-
-## Categories
-${categoryLines.length > 0 ? categoryLines.join('\n') : '- (no categories)'}
-${pageLines.length > 0 ? `\n## Pages\n${pageLines.join('\n')}\n` : ''}
-## For agents
+## ${t('llms.categories')}
+${categoryLines.length > 0 ? categoryLines.join('\n') : `- ${t('llms.noCategories')}`}
+${pageLines.length > 0 ? `\n## ${t('llms.pages')}\n${pageLines.join('\n')}\n` : ''}
+## ${t('llms.agents')}
 - [List payment methods](${abs('/api/checkout')}): \`GET\` → \`{ available_methods, default }\`.
 - [Browse the catalog as JSON](${abs('/api/products')}): \`GET\` (\`?q=\`, \`?limit=\`, \`?offset=\`) → products with prefixed public IDs (\`id: "prod_…"\`; the detail route \`/api/products/<slug>\` adds variants \`var_…\` and extras \`xtra_…\`).
 - [Create a checkout](${abs('/api/checkout')}): \`POST\` with \`Content-Type: application/json\`, body \`{ "items": [{ "product_id": "prod_…", "quantity": number, "variant_id"?: "var_…", "extra_ids"?: ["xtra_…"] }], "method"?: string }\` → \`{ "checkout_url": string, "order_status_url": string }\`. IDs are the catalog's prefixed public IDs; \`slug\` is accepted in place of \`product_id\` as a convenience. Numeric IDs are rejected with 400. Pricing and stock are resolved server-side; CORS is open for browser-based callers. Poll \`order_status_url\` for \`confirming | expired | paid | refunded\`; a paid item may include a token-protected \`download_url\`. After submitting payment, keep polling through \`expired\` until \`paid\` or HTTP 410 because verified settlement can arrive late.

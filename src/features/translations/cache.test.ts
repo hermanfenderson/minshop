@@ -24,3 +24,14 @@ describe('translationPurgeTags', () => {
     }
   });
 });
+
+describe('SEO surfaces', () => {
+  it('every translation save reaches the sitemap and llms.txt, whose hreflang and names it changes', () => {
+    for (const file of ['/sitemap.xml', '/llms.txt']) {
+      const tags = responseCacheTags(file, 200);
+      for (const scope of ['product', 'category', 'page', 'menu', 'announcement'] as const) {
+        expect(translationPurgeTags(scope, 'prod_x').some((t) => tags.includes(t))).toBe(true);
+      }
+    }
+  });
+});

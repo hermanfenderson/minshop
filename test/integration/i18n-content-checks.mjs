@@ -286,6 +286,190 @@ await check('deleting a category removes its translations', async () => {
   equal((await get(`${IT}/categories/straps`)).status, 404, 'the Italian category page');
 });
 
+// ── Phase 6 fixes ────────────────────────────────────────────────────────────
+await check('the option name is offered only for a product with options', async () => {
+  const strap = await html(`${EN}/admin/products/${productId}/edit`, admin);
+  assert(!strap.includes('Option name (e.g. Size)'), 'shown for a product without options');
+  assert(strap.includes(`type="hidden" name="${tr('product', productId, 'variant_label')}"`), 'not carried, so a save would clear it');
+  const tee = (await (await get(`${EN}/api/products/sample-tee`)).json()).id;
+  assert((await html(`${EN}/admin/products/${tee}/edit`, admin)).includes('Option name (e.g. Size)'), 'hidden for a product with options');
+});
+
+await check('"choose a size" names the option in the shopper\'s language', async () => {
+  const tee = (await (await get(`${EN}/api/products/sample-tee`)).json()).id;
+  await translate({
+    scope: 'product',
+    id: tee,
+    return: `/admin/products/${tee}/edit`,
+    [tr('product', tee, 'name')]: '',
+    [tr('product', tee, 'description')]: '',
+    [tr('product', tee, 'variant_label')]: 'Taglia',
+  });
+  const res = await get(`${EN}/api/cart?lang=it`, form({ _action: 'add', product_id: tee, qty: '1' }));
+  assert(decodeURIComponent(location(res)).includes('Taglia'), `message: ${decodeURIComponent(location(res))}`);
+  const enRes = await get(`${EN}/api/cart`, form({ _action: 'add', product_id: tee, qty: '1' }));
+  assert(!decodeURIComponent(location(enRes)).includes('Taglia'), 'English message used the Italian option name');
+});
+
+// ── SEO: canonical, hreflang, JSON-LD, sitemap, llms.txt ─────────────────────
+const C = 'https://canonical.example';
+const links = (body) => ({
+  canonical: body.match(/<link rel="canonical" href="([^"]+)"/)?.[1],
+  hreflang: [...body.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)"/g)].map((m) => `${m[1]} ${m[2]}`),
+  ogLocale: body.match(/<meta property="og:locale" content="([^"]+)"/)?.[1],
+  ogAlternates: [...body.matchAll(/<meta property="og:locale:alternate" content="([^"]+)"/g)].map((m) => m[1]),
+  noindex: body.includes('<meta name="robots" content="noindex">'),
+});
+const graphOf = (body) => {
+  const raw = body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+  assert(raw, 'no JSON-LD');
+  return JSON.parse(raw)['@graph'];
+};
+const saveProduct = (name, description) =>
+  translate({
+    scope: 'product',
+    id: productId,
+    return: `/admin/products/${productId}/edit`,
+    [tr('product', productId, 'name')]: name,
+    [tr('product', productId, 'description')]: description,
+    [tr('product', productId, 'variant_label')]: '',
+  });
+const strapEn = `${C}${EN}/products/festival-strap`;
+const strapIt = `${C}${IT}/products/festival-strap`;
+const expectedAlternates = [`en ${strapEn}`, `it ${strapIt}`, `x-default ${strapEn}`];
+
+await check('a fully translated product: self-canonical, reciprocal hreflang, Italian og:locale', async () => {
+  await saveProduct('Tracolla del festival', 'Tracolla in cotone morbido.');
+  const en = links(await html(`${EN}/products/festival-strap`));
+  const it = links(await html(`${IT}/products/festival-strap`));
+  equal(en.canonical, strapEn, 'English canonical');
+  equal(it.canonical, strapIt, 'Italian canonical');
+  equal(JSON.stringify(en.hreflang), JSON.stringify(expectedAlternates), 'English hreflang');
+  equal(JSON.stringify(it.hreflang), JSON.stringify(expectedAlternates), 'Italian hreflang (reciprocal)');
+  equal(it.ogLocale, 'it_IT', 'og:locale');
+  equal(JSON.stringify(it.ogAlternates), JSON.stringify(['en_US']), 'og:locale:alternate');
+  assert(!it.noindex && !en.noindex, 'a product page said noindex');
+});
+
+await check('its JSON-LD is Italian in the Italian page, with the same offer', async () => {
+  const [itPage, itCrumbs, itProduct] = graphOf(await html(`${IT}/products/festival-strap`));
+  const [, , enProduct] = graphOf(await html(`${EN}/products/festival-strap`));
+  equal(itPage.inLanguage, 'it', 'inLanguage');
+  equal(itPage.url, strapIt, 'page url');
+  equal(itProduct.name, 'Tracolla del festival', 'product name');
+  equal(itProduct.description, 'Tracolla in cotone morbido.', 'product description');
+  equal(JSON.stringify({ ...itProduct.offers, url: null }), JSON.stringify({ ...enProduct.offers, url: null }), 'shared offer');
+  equal(itProduct.offers.url, strapIt, 'offer url');
+  equal(itCrumbs.itemListElement.at(-1).name, 'Tracolla del festival', 'breadcrumb');
+  assert(itCrumbs.itemListElement[0].item.startsWith(`${C}${IT}/`), 'breadcrumb links stay Italian');
+});
+
+await check('a partially translated product is not presented as a translation', async () => {
+  await saveProduct('Tracolla del festival', ''); // name only: the description falls back
+  const it = links(await html(`${IT}/products/festival-strap`));
+  const en = links(await html(`${EN}/products/festival-strap`));
+  equal(it.canonical, strapEn, 'canonical points at the original');
+  equal(it.hreflang.length, 0, 'Italian hreflang');
+  equal(en.hreflang.length, 0, 'English hreflang no longer names the Italian page');
+  equal(graphOf(await html(`${IT}/products/festival-strap`))[0].inLanguage, 'en', 'inLanguage of the main content');
+});
+
+await check('an untranslated product canonicals to the original in both languages', async () => {
+  const it = links(await html(`${IT}/products/sample-mug`));
+  equal(it.canonical, `${C}${EN}/products/sample-mug`, 'canonical');
+  equal(it.hreflang.length, 0, 'hreflang');
+});
+
+await check('transactional and private pages say noindex and carry no hreflang', async () => {
+  for (const path of [`${IT}/cart`, `${EN}/cart`, `${IT}/checkout`, `${IT}/search?q=x`, orderPath]) {
+    const res = await get(path);
+    if (res.status !== 200) continue; // a redirect is not indexed either
+    const l = links(await res.text());
+    assert(l.noindex, `${path} is indexable`);
+    equal(l.hreflang.length, 0, `${path} hreflang`);
+  }
+});
+
+let sitemap = '';
+await check('the sitemap is valid XML with the same alternates as the HTML', async () => {
+  await saveProduct('Tracolla del festival', 'Tracolla in cotone morbido.');
+  const res = await get(`${EN}/sitemap.xml`);
+  equal(res.status, 200, 'sitemap status');
+  sitemap = await res.text();
+  const { execFileSync } = await import('node:child_process');
+  execFileSync('xmllint', ['--noout', '-'], { input: sitemap });
+  const urlFor = (loc) => sitemap.match(new RegExp(`<url>\\s*<loc>${loc.replace(/[.?]/g, '\\$&')}</loc>([\\s\\S]*?)</url>`))?.[1];
+  for (const loc of [strapEn, strapIt]) {
+    const block = urlFor(loc);
+    assert(block !== undefined, `${loc} missing`);
+    const alts = [...block.matchAll(/hreflang="([^"]+)" href="([^"]+)"/g)].map((m) => `${m[1]} ${m[2]}`);
+    equal(JSON.stringify(alts), JSON.stringify(expectedAlternates), `${loc} alternates`);
+  }
+  // The Italian catalog is an interface page: listed. An untranslated product: original only.
+  assert(sitemap.includes(`<loc>${C}${IT}/</loc>`), 'Italian home');
+  assert(sitemap.includes(`<loc>${C}${EN}/products/sample-mug</loc>`), 'original of untranslated product');
+  assert(!sitemap.includes(`${IT}/products/sample-mug<`), 'untranslated Italian product listed');
+});
+
+await check('the sitemap leaves out drafts and everything private', async () => {
+  const res = await get(`${EN}/api/admin/pages`, form({ title: 'Draft notes', slug: 'draft-notes' }, admin));
+  equal(res.status, 303, 'draft created');
+  sitemap = await (await get(`${EN}/sitemap.xml`)).text();
+  assert(!sitemap.includes('draft-notes'), 'draft page listed');
+  for (const part of ['/admin', '/api/', '/cart', '/checkout', '/pay/', '/order/', '/account', '/search', '/express']) {
+    assert(!sitemap.includes(`${C}${EN}${part}`) && !sitemap.includes(`${C}${IT}${part}`), `${part} listed`);
+  }
+  // The translated page is listed in both languages.
+  assert(sitemap.includes(`<loc>${C}${IT}/pages/festival-info</loc>`), 'translated page');
+});
+
+await check('llms.txt follows the language and the mount', async () => {
+  const it = await (await get(`${IT}/llms.txt`)).text();
+  const en = await (await get(`${EN}/llms.txt`)).text();
+  assert(it.includes(`[Tracolla del festival](${C}${IT}/products/festival-strap)`), 'Italian product line');
+  assert(it.includes('## Prodotti') && it.includes(`${C}${EN}/llms.txt`), 'Italian headings and the English file');
+  assert(en.includes(`[Festival strap](${C}${EN}/products/festival-strap)`), 'English product line');
+  assert(en.includes(`${C}${IT}/llms.txt`), 'English names the Italian file');
+});
+
+await check('sitemap, llms.txt and pages carry the tags an editorial purge clears', async () => {
+  for (const path of [`${EN}/sitemap.xml`, `${IT}/llms.txt`, `${IT}/pages/festival-info`]) {
+    const tags = (await get(path)).headers.get('cache-tag') ?? '';
+    assert(tags.includes('catalog') && tags.includes('shell'), `${path} tags ${tags}`);
+  }
+});
+
+await check('disabling Italian removes it from hreflang, the sitemap and llms.txt', async () => {
+  // URLSearchParams needs repeated keys: build the body by hand.
+  const post = (enabled) =>
+    get(`${EN}/admin/settings`, {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/x-www-form-urlencoded', cookie: admin },
+      body: new URLSearchParams([
+        ['_action', 'save_languages'],
+        ['default_locale', 'en'],
+        ['content_source_locale', 'en'],
+        ['routing', 'prefix'],
+        ['detect', 'off'],
+        ...enabled.map((code) => ['enabled_locales', code]),
+      ]).toString(),
+    });
+  await post(['en']);
+  try {
+    const en = links(await html(`${EN}/products/festival-strap`));
+    equal(en.canonical, strapEn, 'canonical');
+    equal(en.hreflang.length, 0, 'hreflang');
+    equal(en.ogLocale, undefined, 'og:locale on a single-language store');
+    const map = await (await get(`${EN}/sitemap.xml`)).text();
+    assert(!map.includes(`${IT}/`) && !map.includes('xhtml:link'), 'the sitemap still names Italian');
+    assert(!(await (await get(`${EN}/llms.txt`)).text()).includes('/it'), 'llms.txt names Italian');
+    assert((await get(`${IT}/products/festival-strap`)).status !== 200, 'the Italian page still answers');
+  } finally {
+    await post(['en', 'it']);
+  }
+  equal(links(await html(`${IT}/products/festival-strap`)).hreflang.length, 3, 'Italian back after re-enabling');
+});
+
 if (failures > 0) {
   console.log(`\ntranslated content: ${failures} check(s) failed`);
   process.exit(1);
