@@ -79,7 +79,8 @@ su D1, log del Worker ed esterno):
 | SEPA che fallisce (stock liberato) | da fare |
 | Klarna, PayPal | da fare (PayPal: verificare se attivabile) |
 | Rimborso di un ordine SEPA | ⚠️ rifiutato da Stripe, non dallo shop: per un account nuovo Stripe blocca i rimborsi SEPA dopo il primo tentativo finché non rivede l'account (fino a 2 giorni lavorativi) |
-| Rimborso parziale e totale di un ordine con carta | da fare |
+| Rimborso totale di un ordine con carta, dall'Admin | ✅ ordine «refunded», un solo rimborso registrato: il `charge.refunded` che segue è riconosciuto e non lo conta due volte |
+| Rimborso parziale dalla dashboard Stripe | ✅ 7,00 € su 57,00 €: `charge.refunded` elaborato al primo tentativo, ordine ancora «paid» con 7,00 € rimborsati |
 
 ## Checklist per la produzione
 
