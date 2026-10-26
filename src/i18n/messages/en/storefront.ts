@@ -64,6 +64,8 @@ export const storefront = {
   'storefront.product.share': 'Share',
   // Swapped in by the share button's script after it copies the link.
   'storefront.product.linkCopied': 'Link copied',
+  'storefront.product.showMore': 'Show more',
+  'storefront.product.showLess': 'Show less',
   'storefront.product.details': 'Details',
   'storefront.product.youMayAlsoLike': 'You may also like',
   'storefront.product.related': 'Related',

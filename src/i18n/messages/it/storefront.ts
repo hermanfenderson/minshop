@@ -50,6 +50,8 @@ export const storefront = {
   'storefront.product.priceFrom': 'da',
   'storefront.product.share': 'Condividi',
   'storefront.product.linkCopied': 'Link copiato',
+  'storefront.product.showMore': 'Mostra di più',
+  'storefront.product.showLess': 'Mostra meno',
   'storefront.product.details': 'Dettagli',
   'storefront.product.youMayAlsoLike': 'Potrebbe piacerti anche',
   'storefront.product.related': 'Correlati',
