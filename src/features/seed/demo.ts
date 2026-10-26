@@ -25,9 +25,17 @@ export async function catalogIsEmpty(db: D1Database): Promise<boolean> {
   return (row?.n ?? 0) === 0;
 }
 
-/** Load the demo catalog into D1. Idempotent (guarded inserts); runs in one batch. */
-export async function seedDemoCatalog(db: D1Database): Promise<void> {
+/**
+ * Load the demo catalog into D1. Idempotent (guarded inserts); runs in one batch.
+ * The seed file names no currency, so its rows would take the column default
+ * ('usd'); currency is store-wide, and the wizard only offers this on an empty
+ * catalog, so the batch ends by pricing every product in the store's currency.
+ */
+export async function seedDemoCatalog(db: D1Database, currency: string): Promise<void> {
   const stmts = statements(demoSql);
   if (stmts.length === 0) return;
-  await db.batch(stmts.map((s) => db.prepare(s)));
+  await db.batch([
+    ...stmts.map((s) => db.prepare(s)),
+    db.prepare('UPDATE products SET currency = ? WHERE currency <> ?').bind(currency, currency),
+  ]);
 }

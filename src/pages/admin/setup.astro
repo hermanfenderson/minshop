@@ -69,7 +69,7 @@ if (Astro.request.method === 'POST') {
     // seed failure shouldn't block finishing — the store just starts empty).
     if (form.get('seed_demo') === 'on' && (await catalogIsEmpty(env.DB))) {
       try {
-        await seedDemoCatalog(env.DB);
+        await seedDemoCatalog(env.DB, cfg.currency);
       } catch (err) {
         console.error('Demo catalog seed failed:', err);
       }
