@@ -498,7 +498,7 @@ const featureRows = baseFeatureRows.map((row) => ({
 }));
 
 const paymentMethods: { m: PaymentMethod; label: string }[] = [
-  { m: 'stripe', label: 'Card (Stripe)' },
+  { m: 'stripe', label: 'Stripe' },
   { m: 'lightning', label: 'Lightning' },
   { m: 'opennode', label: 'Bitcoin (OpenNode)' },
   { m: 'demo', label: 'Demo checkout' },
@@ -1167,16 +1167,16 @@ const sections = [
     </form>
 
     <div class="space-y-4">
-      {/* Card (Stripe) */}
+      {/* Stripe */}
       <div class="rounded-lg border border-gray-200 bg-white p-4">
         <div class="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p class="font-medium">Card (Stripe)</p>
+            <p class="font-medium">Stripe</p>
             <p class={pmMap.stripe.installed ? 'text-xs text-gray-500' : 'text-xs text-amber-700'}>
               {pmMap.stripe.installed ? 'Live' : 'Add both Stripe keys to go live'}
             </p>
           </div>
-          {pmMap.stripe.installed && <MethodToggle method="stripe" enabled={pmMap.stripe.enabled} label="Card (Stripe)" />}
+          {pmMap.stripe.installed && <MethodToggle method="stripe" enabled={pmMap.stripe.enabled} label="Stripe" />}
         </div>
         <form method="POST" class="space-y-3 border-t border-gray-100 pt-3">
           <input type="hidden" name="_action" value="save_stripe" />

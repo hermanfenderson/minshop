@@ -39,7 +39,7 @@ if (!order) {
 const num = orderReference(order.public_id, order.id, getConfig().orderNumber);
 // Human label for the rail the order was paid on (NULL = legacy/unknown).
 const PAYMENT_LABELS: Record<string, string> = {
-  stripe: 'Card (Stripe)',
+  stripe: 'Stripe',
   lightning: 'Lightning',
   opennode: 'Bitcoin (OpenNode)',
   demo: 'Demo (no charge)',

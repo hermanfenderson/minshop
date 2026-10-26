@@ -116,11 +116,11 @@ Covers the pure functions — `slugify`, the FTS search sanitizer + edit-distanc
 
 ### Testing payments locally
 
-Paste your `sk_test_…` key in **Admin → Settings → Payments → Card (Stripe)**, then forward Stripe events to your dev server with the [Stripe CLI](https://docs.stripe.com/stripe-cli):
+Paste your `sk_test_…` key in **Admin → Settings → Payments → Stripe**, then forward Stripe events to your dev server with the [Stripe CLI](https://docs.stripe.com/stripe-cli):
 
 ```sh
 stripe listen --forward-to localhost:4321/api/webhook
-# paste the printed whsec_… into Settings → Payments → Card (Stripe) → webhook signing secret
+# paste the printed whsec_… into Settings → Payments → Stripe → webhook signing secret
 stripe trigger checkout.session.completed
 ```
 

@@ -16,7 +16,6 @@ export const order = {
   'order.confirmed.refundedFull': 'Refunded {amount}.',
   'order.confirmed.refundedPartial': 'Refunded {amount} — {remaining} still paid.',
   'order.confirmed.continueShopping': 'Continue shopping',
-  'order.payment.card': 'Card',
   'order.payment.demo': 'Demo (no charge)',
   'order.downloads.heading': 'Downloads',
   'order.downloads.sizeKb': '{size} KB',

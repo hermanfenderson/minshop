@@ -16,7 +16,6 @@ export const order = {
   'order.confirmed.refundedPartial':
     'Rimborso di {amount} effettuato; resta pagato un importo di {remaining}.',
   'order.confirmed.continueShopping': 'Continua gli acquisti',
-  'order.payment.card': 'Carta',
   'order.payment.demo': 'Demo (nessun addebito)',
   'order.downloads.heading': 'Download',
   'order.downloads.sizeKb': '{size} KB',

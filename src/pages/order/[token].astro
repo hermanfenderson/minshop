@@ -44,9 +44,11 @@ const orderRef = order
   : null;
 
 // Human label for the rail the order was paid on (NULL = legacy, hidden).
-// Lightning and Bitcoin are names, so they stay as they are in every language.
+// Stripe, Lightning and Bitcoin are names, so they stay as they are in every
+// language. Stripe is named rather than "Card": its Checkout also takes SEPA,
+// wallets, Klarna… and the order does not record which one the buyer chose.
 const PAYMENT_LABELS: Record<string, string> = {
-  stripe: t('order.payment.card'),
+  stripe: 'Stripe',
   lightning: 'Lightning',
   opennode: 'Bitcoin',
   demo: t('order.payment.demo'),
