@@ -9,6 +9,8 @@ import { isAccessToken } from '../../features/ids/token.ts';
 import { resolveAccessToken } from '../../features/orders/guestAccess.ts';
 import { clearCart } from '../../features/cart/cart';
 import { catalogPath } from '../../features/settings/home';
+import { getReservationStatusSnapshot } from '../../features/orders/reservations';
+import { pendingOrderState } from '../../features/orders/pendingState';
 
 // Guest access: new orders are addressed ONLY by their otk_ access token
 // (resolved through the registry); legacy orders keep their pre-cutover
@@ -17,8 +19,9 @@ import { catalogPath } from '../../features/settings/home';
 const { t, th } = Astro.locals.i18n;
 const { token } = Astro.params;
 let order = null;
+let access = null;
 if (token && isAccessToken(token)) {
-  const access = await resolveAccessToken(env.DB, token);
+  access = await resolveAccessToken(env.DB, token);
   order = access ? await getOrderByPublicId(env.DB, access.order_public_id) : null;
 } else if (token && isLegacyPublicId(token)) {
   order = await getOrderByPublicId(env.DB, token);
@@ -56,9 +59,27 @@ const PAYMENT_LABELS: Record<string, string> = {
 const paymentLabel = order?.payment_method ? PAYMENT_LABELS[order.payment_method] ?? null : null;
 // The catalog is at / until the home page is pointed elsewhere.
 const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
+
+// No order yet: the reservation behind the link says whether one is coming. A
+// failed or expired payment never becomes an order, so it must not read as
+// "confirming"; a clearing bank debit can take days, so it polls slowly.
+const pending = !order && access
+  ? pendingOrderState((await getReservationStatusSnapshot(env.DB, access.order_public_id))?.status)
+  : 'confirming';
+const REFRESH_SECONDS: Record<string, number> = { confirming: 3, processing: 30 };
+const refresh = REFRESH_SECONDS[pending];
+const PENDING_TEXT = {
+  processing: { heading: t('order.processing.heading'), body: t('order.processing.body') },
+  failed: { heading: t('order.failed.heading'), body: t('order.failed.body') },
+  expired: { heading: t('order.expired.heading'), body: t('order.expired.body') },
+};
+const pendingText = pending === 'confirming' ? null : PENDING_TEXT[pending];
+const pageTitle = order
+  ? t('order.page.titleConfirmed')
+  : pendingText?.heading ?? t('order.page.titleConfirming');
 ---
 
-<Layout title={order ? t('order.page.titleConfirmed') : t('order.page.titleConfirming')}>
+<Layout title={pageTitle}>
   {
     order ? (
       <Fragment>
@@ -143,12 +164,26 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
       </Fragment>
     ) : (
       <Fragment>
-        {/* Order not recorded yet — poll until the webhook lands (no JS). */}
-        <meta http-equiv="refresh" content="3" />
-        <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">{t('order.confirming.heading')}</h1>
-        <p class="text-muted">
-          <Fragment set:html={th('order.confirming.body')} />
-        </p>
+        {/* Order not recorded yet — poll while one can still arrive (no JS). */}
+        {refresh && <meta http-equiv="refresh" content={String(refresh)} />}
+        {!pendingText ? (
+          <Fragment>
+            <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">{t('order.confirming.heading')}</h1>
+            <p class="text-muted">
+              <Fragment set:html={th('order.confirming.body')} />
+            </p>
+          </Fragment>
+        ) : (
+          <Fragment>
+            <h1 class="mb-2 font-serif text-3xl tracking-tight sm:text-4xl">{pendingText.heading}</h1>
+            <p class="text-muted">{pendingText.body}</p>
+            {pending !== 'processing' && (
+              <a href={Astro.locals.urls.href('/cart')} class="mt-6 inline-block text-accent hover:underline">
+                &larr; {t('order.pending.backToCart')}
+              </a>
+            )}
+          </Fragment>
+        )}
       </Fragment>
     )
   }

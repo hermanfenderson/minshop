@@ -24,6 +24,13 @@ export const order = {
   'order.confirming.heading': 'Conferma del tuo ordine in corso…',
   'order.confirming.body':
     'Il pagamento è andato a buon fine e stiamo registrando il tuo ordine. Questa pagina si aggiorna automaticamente: di solito bastano pochi secondi.',
+  'order.processing.heading': 'Pagamento in elaborazione',
+  'order.processing.body': "Il tuo pagamento è stato autorizzato ed è in elaborazione. Gli addebiti bancari come il SEPA possono richiedere alcuni giorni lavorativi: l'ordine viene confermato, con la ricevuta via email, appena arriva il pagamento. Puoi chiudere questa pagina.",
+  'order.failed.heading': 'Pagamento non riuscito',
+  'order.failed.body': 'Il pagamento non è andato a buon fine, quindi nessun ordine è stato registrato e non ti verrà addebitato nulla. Il carrello è ancora salvato: puoi riprovare, anche con un altro metodo di pagamento.',
+  'order.expired.heading': 'Pagamento scaduto',
+  'order.expired.body': 'Il pagamento non è stato completato in tempo, quindi nessun ordine è stato registrato. Il carrello è ancora salvato.',
+  'order.pending.backToCart': 'Torna al carrello',
   'order.download.notFound': 'Non trovato',
   'order.download.unsettled': 'Il pagamento non è ancora stato completato.',
   'order.download.refunded': 'I download non sono disponibili per un ordine rimborsato per intero.',

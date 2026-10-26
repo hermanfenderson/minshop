@@ -24,6 +24,13 @@ export const order = {
   'order.confirming.heading': 'Confirming your order…',
   'order.confirming.body':
     "Your payment went through and we're recording your order. This page refreshes automatically — it usually takes just a few seconds.",
+  'order.processing.heading': 'Payment processing',
+  'order.processing.body': 'Your payment has been authorised and is being processed. Bank debits such as SEPA can take a few business days to clear: your order is confirmed, and its receipt emailed, as soon as the payment arrives. You can close this page.',
+  'order.failed.heading': 'Payment not completed',
+  'order.failed.body': "Your payment didn't go through, so no order was placed and nothing will be charged. Your cart is still saved: you can try again, also with another payment method.",
+  'order.expired.heading': 'Checkout expired',
+  'order.expired.body': "This payment wasn't completed in time, so no order was placed. Your cart is still saved.",
+  'order.pending.backToCart': 'Back to cart',
 
   // /order/<token>/download/<item> (plain-text refusals)
   'order.download.notFound': 'Not found',
