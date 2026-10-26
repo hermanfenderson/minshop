@@ -264,8 +264,9 @@ await check('interface text and prices follow the page language', async () => {
   const enCart = await html(`${EN}/cart`, { headers: { cookie: cart } });
   assert(itCart.includes('Il tuo carrello') && !itCart.includes('>Your cart<'), 'Italian cart heading');
   assert(enCart.includes('Your cart'), 'English cart heading');
-  assert(/24,00\s*USD/.test(itCart), 'Italian price format');
-  assert(enCart.includes('$24.00'), 'English price format');
+  // The store currency is a per-fork build setting: check the number format only.
+  assert(/24,00/.test(itCart) && !/24\.00/.test(itCart), 'Italian price format');
+  assert(/24\.00/.test(enCart) && !/24,00/.test(enCart), 'English price format');
   const itProduct = await html(`${IT}/products/sample-tee`);
   assert(/Aggiungi al carrello/i.test(itProduct), 'Italian add-to-cart button');
   assert(/Add to cart/i.test(await html(`${EN}/products/sample-tee`)), 'English add-to-cart button');

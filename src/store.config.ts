@@ -15,4 +15,7 @@ import type { DeepPartial, SiteConfig } from './config';
  *
  * Operational switches and integrations belong in Admin → Settings.
  */
-export const storeOverrides: DeepPartial<SiteConfig> = {};
+export const storeOverrides: DeepPartial<SiteConfig> = {
+  // Every store this fork serves (Monopolele, L'Altracittà) sells in euro.
+  currency: 'eur',
+};
