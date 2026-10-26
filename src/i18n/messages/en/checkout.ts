@@ -2,9 +2,9 @@ import type { Message } from '../../format.ts';
 
 export const checkout = {
   // Payment-method buttons on /cart and /express
-  'checkout.method.stripe.label': 'Pay with card',
-  'checkout.method.stripe.hint': 'Visa, Mastercard, Apple Pay & more',
-  'checkout.method.stripe.setup': 'Set up card payments',
+  'checkout.method.stripe.label': 'Proceed to payment',
+  'checkout.method.stripe.hint': 'Card, wallets, bank debit & more',
+  'checkout.method.stripe.setup': 'Set up Stripe payments',
   'checkout.method.lightning.label': 'Pay with Lightning ⚡',
   'checkout.method.lightning.hint': 'Instant — from any Lightning wallet',
   'checkout.method.lightning.setup': 'Set up Lightning',

@@ -1,9 +1,9 @@
 import type { Catalog } from '../../catalog.ts';
 
 export const checkout = {
-  'checkout.method.stripe.label': 'Paga con carta',
-  'checkout.method.stripe.hint': 'Visa, Mastercard, Apple Pay e altro',
-  'checkout.method.stripe.setup': 'Configura i pagamenti con carta',
+  'checkout.method.stripe.label': 'Procedi al pagamento',
+  'checkout.method.stripe.hint': 'Carta, wallet, addebito bancario e altro',
+  'checkout.method.stripe.setup': 'Configura i pagamenti Stripe',
   'checkout.method.lightning.label': 'Paga con Lightning ⚡',
   'checkout.method.lightning.hint': 'Istantaneo, da qualsiasi wallet Lightning',
   'checkout.method.lightning.setup': 'Configura Lightning',
