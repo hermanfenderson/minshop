@@ -3,6 +3,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 import type { StoreSettings } from '../settings/db';
 import { getProductBySlug, listProductImages, type Product } from '../products/db';
 import { listVariants, listExtras } from '../products/variants';
+import { axisField, translatedAxes, variantAxes } from '../products/variantAxes';
 import { categoriesForProduct, relatedProducts } from '../categories/db';
 import { getRelatedStored, storeRelatedIds } from '../search';
 import { enabledMethods } from '../payments';
@@ -161,6 +162,10 @@ export async function loadProductDetail(
     return image ? requirePublicId(image.public_id, image.id, 'product image') : '';
   };
   const firstInStockIndex = variants.findIndex((v) => v.stock > 0);
+  // Axes are read from the SOURCE labels, which the cart resolves against; a
+  // translation only renames what the selectors show.
+  const axes = variantAxes(source.variant_label, sourceVariants.map((v) => v.label));
+  const shownAxes = axes ? translatedAxes(axes, product.variant_label, variants.map((v) => v.label)) : null;
 
   const images: StorefrontGalleryImage[] = gallery.map((image, index) => {
     const hero = productImageSources(image.image_key, {
@@ -273,6 +278,21 @@ export async function loadProductDetail(
       // switched off — but not the absence of any rail that can take money.
       showBuyNow: buyNowEnabled && canCheckout,
       variantLabel: product.variant_label,
+      axes: axes
+        ? axes.names.map((name, axis) => ({
+            name: shownAxes!.names[axis],
+            field: axisField(axis),
+            values: axes.values[axis].map((_, index) => {
+              const rows = axes.combos.flatMap((combo, row) => (combo[axis] === index ? [row] : []));
+              return {
+                index,
+                label: shownAxes!.values[axis][index],
+                soldOut: rows.every((row) => variants[row].stock <= 0),
+                defaultSelected: firstInStockIndex !== -1 && axes.combos[firstInStockIndex][axis] === index,
+              };
+            }),
+          }))
+        : null,
       variants: variants.map((variant, index) => ({
         id: requirePublicId(variant.public_id, variant.id, 'variant'),
         label: variant.label,
@@ -281,6 +301,7 @@ export async function loadProductDetail(
         soldOut: variant.stock <= 0,
         defaultSelected: index === firstInStockIndex,
         imageAnchor: galleryAnchor(variant.image_id),
+        options: axes ? axes.combos[index] : [],
       })),
       extras: extras.map((extra) => ({
         id: requirePublicId(extra.public_id, extra.id, 'extra'),

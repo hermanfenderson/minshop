@@ -16,6 +16,7 @@ import { stripeDestination } from '../features/shipping/destination';
 import { readCart, resolveCart } from '../features/cart/cart';
 import { enabledMethods } from '../features/payments';
 import ProductImage from '../features/products/ProductImage.astro';
+import { chosenVariantPublicId } from '../features/products/variantAxes';
 
 // Express checkout — a single payment-method-picker step (first listed = the
 // store's default). Two sources: "Buy now" (a single product_id [+ variant/extras])
@@ -51,12 +52,14 @@ if (isBuyNow && productPublicId) {
   if (!product || !product.active) return Astro.redirect(Astro.locals.urls.home(), 303);
   backHref = Astro.locals.urls.product(product.slug);
 
-  const variantPublicId = parsePublicId(fld('variant_id'), 'variant');
+  const requestedVariant = parsePublicId(fld('variant_id'), 'variant');
   const extraPublicIds = (isPost ? form!.getAll('extra') : Astro.url.searchParams.getAll('extra'))
     .map((e) => parsePublicId(e, 'extra'))
     .filter((x): x is string => x !== null);
 
   const variants = await listVariants(env.DB, product.id);
+  // variant_id, or the multi-axis selector's option_<i> fields without JavaScript.
+  const variantPublicId = chosenVariantPublicId(variants, product.variant_label, requestedVariant, fld);
   const variant =
     variants.length > 0 && variantPublicId
       ? (variants.find((v) => v.public_id === variantPublicId) ?? null)

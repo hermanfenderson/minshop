@@ -86,8 +86,53 @@ if (loaded.backfillRelated) {
         }
       };
 
+      // Multi-axis selector ("Color", then "Size"): each later axis offers only
+      // values with an in-stock variant matching the choices before it, and the
+      // matched variant's public ID goes into the hidden variant_id.
+      const axesBox = form.querySelector('[data-variant-axes]');
+      const hiddenId = axesBox?.querySelector('[data-variant-id]');
+      const known = axesBox
+        ? [...axesBox.querySelectorAll('[data-variant]')].map((el) => ({
+            el,
+            options: (el.getAttribute('data-options') || '').split(',').map(Number),
+            soldOut: el.hasAttribute('data-sold-out'),
+          }))
+        : [];
+      const axisCount = known[0]?.options.length || 0;
+      const radiosOf = (axis) => [...form.querySelectorAll(`input[name="option_${axis}"]`)];
+      const chosen = () => Array.from({ length: axisCount }, (_, axis) => {
+        const r = radiosOf(axis).find((x) => x.checked);
+        return r ? Number(r.value) : -1;
+      });
+      const preferred = chosen().map(String);
+      form.addEventListener('change', (event) => {
+        const name = event.target instanceof HTMLInputElement ? event.target.name : '';
+        if (name.startsWith('option_')) preferred[Number(name.slice(7))] = event.target.value;
+      });
+      const syncAxes = () => {
+        for (let axis = 1; axis < axisCount; axis++) {
+          const before = chosen().slice(0, axis);
+          const radios = radiosOf(axis);
+          for (const r of radios) {
+            r.disabled = !known.some((k) =>
+              !k.soldOut && k.options[axis] === Number(r.value) && before.every((o, j) => k.options[j] === o));
+          }
+          // Keep the visitor's own pick for this axis whenever it is available
+          // again (M stays M across colors that have it); else the first option.
+          const current = radios.find((r) => r.checked);
+          const wanted = radios.find((r) => r.value === preferred[axis] && !r.disabled);
+          const next = wanted || (current && !current.disabled ? current : radios.find((r) => !r.disabled));
+          if (current && current !== next) current.checked = false;
+          if (next) next.checked = true;
+        }
+        const sel = chosen();
+        const match = known.find((k) => k.options.every((o, j) => o === sel[j]));
+        if (hiddenId instanceof HTMLInputElement) hiddenId.value = match && !match.soldOut ? match.el.getAttribute('data-variant') || '' : '';
+        return match ? match.el : null;
+      };
+
       const update = (scroll) => {
-        const v = form.querySelector('input[name="variant_id"]:checked');
+        const v = axesBox ? syncAxes() : form.querySelector('input[name="variant_id"]:checked');
         let cents = v ? Number(v.getAttribute('data-price')) : base;
         for (const e of form.querySelectorAll('input[name="extra"]:checked')) {
           cents += Number(e.getAttribute('data-price')) || 0;

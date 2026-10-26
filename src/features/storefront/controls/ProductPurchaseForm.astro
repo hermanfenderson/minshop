@@ -15,6 +15,11 @@ import { storefrontI18n, type I18n } from './i18n';
  * /express gets a real full-page navigation. Losing it silently routes buy-now
  * through the cart drawer instead.
  *
+ * A variant group that reads as several axes ("Color / Size", see
+ * products/variantAxes.ts) renders one selector per axis, posting `option_<i>`
+ * value indexes the server maps back to a variant, plus `variant_id` once the
+ * page script has matched them.
+ *
  * Two shapes, because they are genuinely different contracts. With options,
  * ONE form holds the selectors so both buttons share the chosen variant and
  * add-ons; Buy now overrides method and action so /express is a safe history
@@ -38,7 +43,52 @@ const showAny = model.showAddToCart || model.showBuyNow;
         <input type="hidden" name="_action" value="add" />
         <input type="hidden" name="product_id" value={model.productId} />
 
-        {model.variants.length > 0 && (
+        {model.axes && (
+          <div data-variant-axes>
+            {/* With JavaScript the page script fills variant_id with the matching
+                variant; without it the server resolves the option_<i> fields. */}
+            <input type="hidden" name="variant_id" value="" data-variant-id />
+            {model.axes.map((axis) => (
+              <fieldset class="mb-6">
+                <legend class="mb-2 text-xs uppercase tracking-widest text-muted">{axis.name}</legend>
+                <div class="flex flex-wrap gap-2">
+                  {axis.values.map((value) => (
+                    <label class="cursor-pointer rounded-md border border-line px-4 py-2 text-sm transition hover:border-brand has-[:checked]:border-brand has-[:checked]:text-brand has-[:disabled]:cursor-not-allowed has-[:disabled]:text-faint has-[:disabled]:line-through has-[:disabled]:hover:border-line has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand">
+                      <input
+                        type="radio"
+                        name={axis.field}
+                        value={value.index}
+                        required
+                        disabled={value.soldOut}
+                        checked={value.defaultSelected}
+                        class="sr-only"
+                      />
+                      <span>{value.label}</span>
+                      {value.soldOut && (
+                        <span class="sr-only">
+                          {t('storefront.product.variantSoldOut', { variant: value.label })}
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
+            <div hidden>
+              {model.variants.map((variant) => (
+                <span
+                  data-variant={variant.id}
+                  data-options={variant.options.join(',')}
+                  data-price={variant.priceCents}
+                  data-image-id={variant.imageAnchor}
+                  data-sold-out={variant.soldOut ? '' : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!model.axes && model.variants.length > 0 && (
           <fieldset class="mb-6">
             <legend class="mb-2 text-xs uppercase tracking-widest text-muted">
               {model.variantLabel || t('storefront.product.option')}

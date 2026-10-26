@@ -10,7 +10,7 @@ store in the code.
 | 2 | Failed and pending payment follow-up (below) | Planned — before production |
 | 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | In progress — catalog import done |
 | 4 | `monopolele` theme (below) | Before production, after the connector |
-| 4a | Two-axis variant picker (below) | Before production |
+| 4a | Two-axis variant picker (below) | Done 2026-10-26 (option A) |
 | 5 | Production instance — includes Turnstile (below) | After the connector is tested |
 | 6 | Benefit Mode | [Specification](ROADMAP_BENEFIT_MODE.md) |
 
@@ -52,12 +52,17 @@ WooCommerce photos and descriptions; tried on the test shop first.
 
 ## Two-axis variant picker
 
-Minshop has one variant group per product, so the WooCommerce import turns
+Minshop has one variant group per product, so the WooCommerce import turned
 color × size into a single list ("Black / M"): 20 entries on a t-shirt with
-four colors and five sizes. Wanted (Mauro, 2026-10-26): pick the color, then
-the size, with the photo following the color and unavailable combinations
-disabled. Server-rendered, so it must still work without JavaScript; the
-variants stay rows of `product_variants`, with the axes stored per variant.
+four colors and five sizes. Done 2026-10-26 without a schema change (option
+A): a group named `Color / Size` whose labels all split the same way shows one
+selector per axis (`src/features/products/variantAxes.ts`); the variant row
+stays the unit of price, stock and image. Without JavaScript the form posts
+the axis choices and the server maps them back to the variant.
+
+Later, if translating ~170 labels one by one gets heavy (option B): options
+and values as real rows, so "Black" is translated once, with a two-axis
+editor in the admin.
 
 ## Production checklist items
 

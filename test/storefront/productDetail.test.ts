@@ -40,6 +40,7 @@ const purchase = (overrides: Partial<ProductPurchaseModel> = {}): ProductPurchas
   showBuyNow: true,
   variantLabel: null,
   variants: [],
+  axes: null,
   extras: [],
   ...overrides,
 });
@@ -57,6 +58,7 @@ const withOptions = (overrides: Partial<ProductPurchaseModel> = {}) =>
         soldOut: false,
         defaultSelected: true,
         imageAnchor: 'pimg_front0001',
+        options: [],
       },
       {
         id: 'var_bbbbbbbbbb',
@@ -66,6 +68,7 @@ const withOptions = (overrides: Partial<ProductPurchaseModel> = {}) =>
         soldOut: true,
         defaultSelected: false,
         imageAnchor: '',
+        options: [],
       },
     ],
     extras: [
@@ -158,6 +161,55 @@ describe('the purchase form', () => {
     // unpurchasable option by default.
     expect(soldOut).not.toContain('checked');
     expect(soldOut).toContain('disabled');
+  });
+
+  describe('with variant axes', () => {
+    const variant = (id: string, label: string, options: number[], soldOut = false, defaultSelected = false) => ({
+      id, label, formattedPrice: '$20.00', priceCents: 2000, soldOut, defaultSelected, imageAnchor: '', options,
+    });
+    const axes = () =>
+      withOptions({
+        variantLabel: 'Color / Size',
+        variants: [
+          variant('var_aaaaaaaaaa', 'White / S', [0, 0], false, true),
+          variant('var_bbbbbbbbbb', 'White / M', [0, 1]),
+          variant('var_cccccccccc', 'Black / S', [1, 0], true),
+        ],
+        axes: [
+          { name: 'Color', field: 'option_0', values: [
+            { index: 0, label: 'White', soldOut: false, defaultSelected: true },
+            { index: 1, label: 'Black', soldOut: true, defaultSelected: false },
+          ] },
+          { name: 'Size', field: 'option_1', values: [
+            { index: 0, label: 'S', soldOut: false, defaultSelected: true },
+            { index: 1, label: 'M', soldOut: false, defaultSelected: false },
+          ] },
+        ],
+        extras: [],
+      });
+
+    it('renders one selector per axis instead of the variant list', async () => {
+      const html = await render(ProductPurchaseForm, { model: axes() });
+      const option0 = html.match(/<input[^>]*name="option_0"[^>]*>/g) ?? [];
+      const option1 = html.match(/<input[^>]*name="option_1"[^>]*>/g) ?? [];
+
+      expect(option0).toHaveLength(2);
+      expect(option1).toHaveLength(2);
+      expect(html).not.toMatch(/<input[^>]*type="radio"[^>]*name="variant_id"/);
+      expect(html).toContain('>Color</legend>');
+      // Pre-selected from the default variant; a value sold out everywhere is disabled.
+      expect(option0[0]).toContain('checked');
+      expect(option0[1]).toContain('disabled');
+      expect(option1[0]).toContain('checked');
+    });
+
+    it('gives the page script every variant by public ID, and an empty variant_id to fill', async () => {
+      const html = await render(ProductPurchaseForm, { model: axes() });
+
+      expect(html).toMatch(/<input[^>]*name="variant_id"[^>]*value=""/);
+      expect(html).toMatch(/data-variant="var_bbbbbbbbbb"[^>]*data-options="0,1"/);
+      expect(html).not.toMatch(/value="\d{2,}"/);
+    });
   });
 
   it('renders no purchase controls at all when sold out', async () => {

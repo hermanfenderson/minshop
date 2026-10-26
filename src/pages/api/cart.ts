@@ -8,6 +8,7 @@ import { listVariants, getExtrasByPublicIds } from '../../features/products/vari
 import { parsePublicId } from '../../features/ids/publicId.ts';
 import { getStoreSettings } from '../../features/settings/db';
 import { translatedVariantLabel } from '../../features/translations/db';
+import { chosenVariantPublicId } from '../../features/products/variantAxes';
 
 export const prerender = false;
 
@@ -53,7 +54,14 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect, locals }
   const variants = await listVariants(env.DB, product.id);
   let variantPublicId: string | null = null;
   if (variants.length > 0) {
-    const wanted = parsePublicId(form.get('variant_id'), 'variant');
+    // variant_id, or — from the multi-axis selector without JavaScript — the
+    // option_<i> fields.
+    const wanted = chosenVariantPublicId(
+      variants,
+      product.variant_label,
+      parsePublicId(form.get('variant_id'), 'variant'),
+      (field) => form.get(field),
+    );
     const chosen = wanted ? variants.find((v) => v.public_id === wanted) : undefined;
     if (!chosen) {
       if (partial) return new Response(null, { status: 204 });

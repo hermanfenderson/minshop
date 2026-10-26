@@ -165,6 +165,27 @@ export interface StorefrontVariant {
   defaultSelected: boolean;
   /** Gallery anchor to scroll to when this variant is chosen; '' when none. */
   imageAnchor: string;
+  /** With `axes`: the value index this variant takes on each axis; else []. */
+  options: number[];
+}
+
+/** One value of a variant axis ("Black" on Color). `index` is what the form
+ *  submits; the server maps the indexes back to a variant. */
+export interface StorefrontAxisValue {
+  index: number;
+  label: string;
+  /** Every variant with this value is sold out, whatever the other axes. */
+  soldOut: boolean;
+  /** Part of the pre-selected variant. */
+  defaultSelected: boolean;
+}
+
+/** One selector of a multi-axis variant group ("Color", then "Size"). */
+export interface StorefrontVariantAxis {
+  name: string;
+  /** Form field name for this axis (`option_<i>`). */
+  field: string;
+  values: StorefrontAxisValue[];
 }
 
 /** A checkbox add-on layered on the line price. */
@@ -195,6 +216,12 @@ export interface ProductPurchaseModel {
   /** Merchant's name for the variant group, e.g. "Size". */
   variantLabel: string | null;
   variants: StorefrontVariant[];
+  /**
+   * Set when the variant group reads as several axes ("Color / Size" with
+   * labels like "Black / M"): one selector per axis replaces the single list.
+   * Null means the single list.
+   */
+  axes: StorefrontVariantAxis[] | null;
   extras: StorefrontExtra[];
 }
 
