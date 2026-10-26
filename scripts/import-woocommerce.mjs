@@ -18,7 +18,9 @@
 //        refuses to run over products whose slug already exists.
 //
 // Re-running is safe: a photo whose file name and size are already in the
-// media library is reused, not uploaded again.
+// media library is reused, and one uploaded by a run whose SQL failed is
+// taken from .import/woocommerce/uploaded-<target>.json — neither is uploaded
+// again.
 //
 // The mapping itself is src/features/import/woocommerce.ts (unit-tested).
 
@@ -182,6 +184,9 @@ async function apply() {
   // Photos: reuse a library row with the same file name and size, else upload.
   const library = d1Rows(t, 'SELECT image_key, public_id, original_name, size_bytes, mime_type, width, height FROM media');
   const media = new Map();
+  // Photos already in this target's bucket, by WooCommerce image id.
+  const manifestFile = join(DIR, `uploaded-${t.label}.json`);
+  const manifest = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, 'utf8')) : {};
   const skipped = [];
   let uploaded = 0;
   const wanted = new Map();
@@ -202,6 +207,13 @@ async function apply() {
     }
     const originalName = basename(new URL(img.src).pathname);
     const reuse = library.find((m) => m.original_name === originalName && m.size_bytes === size);
+    const sent = manifest[img.wooImageId];
+    if (!reuse && sent) {
+      // Uploaded by an earlier run whose SQL did not go through: the object
+      // is in the bucket, only the row is missing.
+      media.set(img.wooImageId, { ...sent, existing: false });
+      continue;
+    }
     if (reuse) {
       media.set(img.wooImageId, {
         key: reuse.image_key, publicId: reuse.public_id, originalName, mime: reuse.mime_type, sizeBytes: size,
@@ -214,7 +226,7 @@ async function apply() {
       key: mediaKey(ext), publicId: generatePublicId('media'), originalName, mime, sizeBytes: size,
       width: dims?.width ?? null, height: dims?.height ?? null, existing: false,
     });
-    uploads.push({ file, entry: media.get(img.wooImageId) });
+    uploads.push({ file, wooImageId: img.wooImageId, entry: media.get(img.wooImageId) });
   }
   // Objects before rows, as in uploadMedia(): a failure leaves orphan objects
   // at worst (the SQL never runs), never a row pointing at nothing.
@@ -223,6 +235,8 @@ async function apply() {
       for (let u = uploads.shift(); u; u = uploads.shift()) {
         await wranglerAsync(['r2', 'object', 'put', `${t.bucket}/${u.entry.key}`, '--file', u.file, '--content-type', u.entry.mime, ...t.r2]);
         uploaded++;
+        manifest[u.wooImageId] = u.entry;
+        writeFileSync(manifestFile, JSON.stringify(manifest));
         process.stdout.write(`\rphotos uploaded: ${uploaded}`);
       }
     }),

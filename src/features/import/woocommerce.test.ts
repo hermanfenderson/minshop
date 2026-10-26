@@ -149,6 +149,9 @@ describe('buildImportSql', () => {
       newId: (kind) => `${kind}_${++n}`,
     });
     expect(sql[0]).toMatch(/^DELETE FROM/);
+    // Unlinking order lines must come before the products they point at go.
+    expect(sql.indexOf('UPDATE order_items SET product_id = NULL WHERE product_id IS NOT NULL'))
+      .toBeLessThan(sql.indexOf('DELETE FROM products'));
     const inserts = sql.filter((s) => s.startsWith('INSERT'));
     expect(inserts.map((s) => s.split(' ')[2])).toEqual([
       'categories', 'media', 'products', 'product_categories', 'product_images', 'product_variants',

@@ -8,8 +8,9 @@ store in the code.
 |---|---|---|
 | 1 | Test shop on Cloudflare, Stripe only (Monopolele, step 1) | Done 2026-10-26 — [report](SHOP_TEST_MONOPOLELE.md) |
 | 2 | Failed and pending payment follow-up (below) | Planned — before production |
-| 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | Next |
+| 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | In progress — catalog import done |
 | 4 | `monopolele` theme (below) | Before production, after the connector |
+| 4a | Two-axis variant picker (below) | Before production |
 | 5 | Production instance — includes Turnstile (below) | After the connector is tested |
 | 6 | Benefit Mode | [Specification](ROADMAP_BENEFIT_MODE.md) |
 
@@ -48,6 +49,15 @@ WooCommerce photos and descriptions; tried on the test shop first.
 - Catalog and product pages keep Minshop's structure, restyled.
 - The site shows the cart count from the `minshop_cart_n` cookie once both are
   on the same host. L'Altracittà gets its own theme; the core stays neutral.
+
+## Two-axis variant picker
+
+Minshop has one variant group per product, so the WooCommerce import turns
+color × size into a single list ("Black / M"): 20 entries on a t-shirt with
+four colors and five sizes. Wanted (Mauro, 2026-10-26): pick the color, then
+the size, with the photo following the color and unavailable combinations
+disabled. Server-rendered, so it must still work without JavaScript; the
+variants stay rows of `product_variants`, with the axes stored per variant.
 
 ## Production checklist items
 

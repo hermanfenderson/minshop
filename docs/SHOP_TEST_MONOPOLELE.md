@@ -45,7 +45,8 @@ lavora: lo shop si raggiunge dalla rete dati. Non riguarda i visitatori.
   record `resend._domainkey` (TXT), `rsend` e `send` (CNAME); MX, SPF, DKIM e
   DMARC di Google invariati. Mittente e avvisi di nuovo ordine per ora
   sull'indirizzo di Mauro; tracciamento di clic e aperture spento.
-- Catalogo: i 30 prodotti demo del setup (senza foto: segnaposto).
+- Catalogo: dal 2026-10-26 quello di WooCommerce (sotto); prima i 30 prodotti
+  demo del setup.
 
 ## Correzioni fatte durante il passo 1
 
@@ -88,6 +89,26 @@ su D1, log del Worker ed esterno):
 | Rimborso di un ordine SEPA | ⚠️ rifiutato da Stripe, non dallo shop: per un account nuovo Stripe blocca i rimborsi SEPA dopo il primo tentativo finché non rivede l'account (fino a 2 giorni lavorativi) |
 | Rimborso totale di un ordine con carta, dall'Admin | ✅ ordine «refunded», un solo rimborso registrato: il `charge.refunded` che segue è riconosciuto e non lo conta due volte |
 | Rimborso parziale dalla dashboard Stripe | ✅ 7,00 € su 57,00 €: `charge.refunded` elaborato al primo tentativo, ordine ancora «paid» con 7,00 € rimborsati |
+
+## Catalogo importato da WooCommerce (passo 2, punto 3 del piano)
+
+Il 2026-10-26, con `scripts/import-woocommerce.mjs` (chiave WooCommerce di sola
+lettura; prima provato sulla copia locale): 7 categorie, 24 prodotti, 173
+varianti, 407 foto nella libreria media. I prodotti e le categorie demo sono
+stati tolti; i 4 ordini di prova restano, con nome e prezzo degli articoli.
+
+- Colore e taglia diventano un'unica lista («Black / M»): il doppio selettore
+  è in [roadmap](ROADMAP.md#two-axis-variant-picker).
+- Gratitude è disattivato (prezzo 0: un carrello a 0 € non si paga).
+- Disponibilità 100 per ogni variante: WooCommerce non conta i pezzi.
+  Segnaposto, anche per gli ukulele.
+- Prezzi e slug come in WooCommerce; la tazza 2023 arrotondata a 15,00 €.
+- Non riportate: immagini e descrizioni delle categorie (Minshop non le ha).
+- Traduzioni italiane: da rifare nell'Admin.
+
+Il primo tentativo sullo shop si è fermato senza cambiare nulla: D1, a
+differenza della copia locale, applica il vincolo tra righe d'ordine e
+prodotti. Ora la sostituzione del catalogo scollega prima le righe d'ordine.
 
 ## Checklist per la produzione
 

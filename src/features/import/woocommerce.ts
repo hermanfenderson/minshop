@@ -363,8 +363,9 @@ export interface SqlOptions {
 /**
  * Statements that load the catalog. Rows reference each other by public_id
  * subqueries, so the file needs no generated row ids and runs as one
- * `wrangler d1 execute --file`. Orders are never touched: their lines keep
- * their own name and price snapshot when a product is replaced.
+ * `wrangler d1 execute --file`, which D1 applies all-or-nothing. With
+ * `replace`, order lines are unlinked from the products being removed (they
+ * keep their own name and price snapshot); nothing else about orders changes.
  */
 export function buildImportSql(categories: ImportCategory[], products: ImportProduct[], o: SqlOptions): string[] {
   const out: string[] = [];
@@ -380,6 +381,9 @@ export function buildImportSql(categories: ImportCategory[], products: ImportPro
       'DELETE FROM product_variants',
       'DELETE FROM product_extras',
       "DELETE FROM menu_items WHERE target_type IN ('product', 'category')",
+      // D1 enforces order_items → products. Order lines keep their own name
+      // and price, so they only lose the link to a product that is going away.
+      'UPDATE order_items SET product_id = NULL WHERE product_id IS NOT NULL',
       'DELETE FROM products',
       'DELETE FROM categories',
     );
