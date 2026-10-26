@@ -82,7 +82,7 @@ su D1, log del Worker ed esterno):
 | SEPA che fallisce (`DE62…3001`) | ✅ nessun ordine; prenotazione chiusa come «failed» 16 s dopo, stock liberato |
 | Pagina d'ordine dopo un SEPA fallito | ❌→✅ diceva «payment went through» per sempre; corretta: «Payment not completed», con il ritorno al carrello |
 | PayPal dentro Stripe | ✅ attivabile e visibile in cassa (punto aperto del brief chiuso) |
-| Klarna | da confermare |
+| Klarna | non provato: non interessa a Mauro (2026-10-26); si può spegnere nella dashboard Stripe |
 | Carrello abbandonato su Stripe | ✅ stock liberato da un webhook di Stripe (prenotazione chiusa come «failed», non per scadenza naturale: da osservare ancora) |
 | Account cliente (link d'accesso via email) | ✅ funziona: accesso e storico degli ordini |
 | Rimborso di un ordine SEPA | ⚠️ rifiutato da Stripe, non dallo shop: per un account nuovo Stripe blocca i rimborsi SEPA dopo il primo tentativo finché non rivede l'account (fino a 2 giorni lavorativi) |
