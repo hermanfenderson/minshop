@@ -14,6 +14,8 @@ dist/
 
 # Per-instance provisioning artifacts (scripts/provision-cf.sh)
 .instances/
+# Local copy of an imported catalog (scripts/import-woocommerce.mjs)
+.import/
 wrangler.jsonc.bak
 # NOTE: /wrangler.jsonc is now COMMITTED (free-plan default + Deploy-button config,
 # with a placeholder database_id). provision-cf.sh renders instance ids over it and
