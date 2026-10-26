@@ -9,8 +9,9 @@ store in the code.
 | 1 | Test shop on Cloudflare, Stripe only (Monopolele, step 1) | Done 2026-10-26 — [report](SHOP_TEST_MONOPOLELE.md) |
 | 2 | Failed and pending payment follow-up (below) | Planned — before production |
 | 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | Next |
-| 4 | Production instance — includes Turnstile (below) | After the connector is tested |
-| 5 | Benefit Mode | [Specification](ROADMAP_BENEFIT_MODE.md) |
+| 4 | `monopolele` theme (below) | Before production, after the connector |
+| 5 | Production instance — includes Turnstile (below) | After the connector is tested |
+| 6 | Benefit Mode | [Specification](ROADMAP_BENEFIT_MODE.md) |
 
 ## Failed and pending payment follow-up
 
@@ -32,6 +33,21 @@ today neither the buyer nor the merchant learns about it.
 
 Already done: the order page says when a payment failed, expired or is still
 clearing (it used to say "your payment went through" in every case).
+
+## `monopolele` theme
+
+A store-owned theme (`src/themes/monopolele/`) so the shop looks like
+monopolele.com, built after the connector so it is checked against the real
+WooCommerce photos and descriptions; tried on the test shop first.
+
+- Tokens (colors, fonts, radii) and logo only from the approved files of the
+  festival's graphics page.
+- Header and footer reproduce the site's (menu, logo, EN/IT switch), linking
+  back to monopolele.com pages. They are a copy: a menu change on the site must
+  be repeated here until a shared header/footer package is worth building.
+- Catalog and product pages keep Minshop's structure, restyled.
+- The site shows the cart count from the `minshop_cart_n` cookie once both are
+  on the same host. L'Altracittà gets its own theme; the core stays neutral.
 
 ## Production checklist items
 
