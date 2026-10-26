@@ -89,6 +89,9 @@ declare namespace Cloudflare {
     // Set when a custom domain is the sole ingress; fresh workers.dev instances
     // omit it and use their request origin until a custom domain is attached.
     CANONICAL_ORIGIN?: string;
+    // Test/staging instance: "true" sends X-Robots-Tag noindex on every response,
+    // noindex on every page and a Disallow-all robots.txt (features/http/robots.ts).
+    NOINDEX?: string;
     // Admin auth (src/middleware.ts): the password is set in the first-run setup
     // wizard and stored as a PBKDF2 hash in D1 — there is no ADMIN_PASSWORD env var.
     // Until one is set the wizard is reachable to create it (bootstrap); Cloudflare

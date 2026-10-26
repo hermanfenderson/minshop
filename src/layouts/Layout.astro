@@ -5,6 +5,7 @@ import { COUNT_COOKIE } from '../features/cart/cart';
 import { env } from 'cloudflare:workers';
 import { getConfig } from '../config';
 import { publicOrigin } from '../features/http/origin';
+import { instanceNoindex } from '../features/http/robots';
 import { normalizeSearchQuery } from '../features/search/query';
 import { EMPTY_MENUS, visibleItems } from '../features/navigation/db';
 import { getEmailProvider } from '../features/email';
@@ -88,7 +89,7 @@ const origin = publicOrigin(Astro.url.origin, env.CANONICAL_ORIGIN);
 // (features/i18n/seo.ts). A store with one language gets its canonical only.
 const seo = Astro.props.seo ?? requestSeo(Astro.locals, origin, seoPath ?? path);
 const canonical = seo.canonical;
-const indexable = !noindex && isIndexablePage(path);
+const indexable = !noindex && !instanceNoindex(env.NOINDEX) && isIndexablePage(path);
 const multilingual = languages.enabledLocales.length > 1;
 const ogImage = image ? new URL(image, origin).href : undefined;
 

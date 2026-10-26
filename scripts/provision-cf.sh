@@ -9,6 +9,11 @@
 #   Usage:  scripts/provision-cf.sh <slug>
 #   <slug>: lowercase letters/digits/hyphens, e.g. "acme-store".
 #
+#   Optional instance settings, read from the environment and recorded in
+#   .instances/<slug>.env so scripts/deploy-instance.sh redeploys the same shape:
+#     MINSHOP_MOUNT_PATH, MINSHOP_COOKIE_PREFIX  build-time mount and cookie prefix
+#     MINSHOP_NOINDEX=1                          test/staging instance: NOINDEX var
+#
 # Deploys via the SAME path as `npm run deploy` (the Astro adapter integrates with
 # ./wrangler.jsonc), so we temporarily swap in the instance config and restore the
 # original on exit — even if the script fails partway.
@@ -72,6 +77,14 @@ sed -e "s/__NAME__/$SLUG/g" \
     -e "s/__BUCKET__/$BUCKET/g" \
     -e "s/__FILES_BUCKET__/$FILES_BUCKET/g" \
     wrangler.template.jsonc > wrangler.jsonc
+if [[ "${MINSHOP_NOINDEX:-}" =~ ^(1|true|yes|on)$ ]]; then
+  perl -0pi -e 's/("STORE_NAME": "My Shop",\n)/$1    "NOINDEX": "true",\n/' wrangler.jsonc
+  grep -q '"NOINDEX": "true"' wrangler.jsonc || { echo "✗ could not add NOINDEX to wrangler.jsonc"; exit 1; }
+  echo "    NOINDEX=true (kept out of search engines)"
+fi
+# Keep the rendered config for later deploys (scripts/deploy-instance.sh).
+cp wrangler.jsonc ".instances/${SLUG}.wrangler.jsonc"
+echo "    mount=${MINSHOP_MOUNT_PATH:-/} cookiePrefix=${MINSHOP_COOKIE_PREFIX:-}"
 
 echo "▸ [4/5] Applying migrations + building…"
 $W d1 migrations apply DB --remote
@@ -86,7 +99,8 @@ openssl rand -base64 32 | $W secret put AUTH_SECRET
 openssl rand -base64 32 | $W secret put SECRETS_KEK
 
 # Record what was created so destroy-cf.sh can find it.
-{ echo "SLUG=$SLUG"; echo "DB_NAME=$DB_NAME"; echo "DB_ID=$DB_ID"; echo "BUCKET=$BUCKET"; echo "FILES_BUCKET=$FILES_BUCKET"; } > "$META"
+{ echo "SLUG=$SLUG"; echo "DB_NAME=$DB_NAME"; echo "DB_ID=$DB_ID"; echo "BUCKET=$BUCKET"; echo "FILES_BUCKET=$FILES_BUCKET"
+  echo "MINSHOP_MOUNT_PATH=${MINSHOP_MOUNT_PATH:-}"; echo "MINSHOP_COOKIE_PREFIX=${MINSHOP_COOKIE_PREFIX:-}"; } > "$META"
 
 cat <<EOF
 
@@ -103,5 +117,6 @@ cat <<EOF
   with Cloudflare Access on a public deploy.
 
   Then open the store and finish onboarding at /admin/setup.
+  Redeploy later with:    scripts/deploy-instance.sh $SLUG
   Tear it all down with:  scripts/destroy-cf.sh $SLUG
 EOF

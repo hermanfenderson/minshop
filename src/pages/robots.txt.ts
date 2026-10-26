@@ -2,10 +2,16 @@ import { withMount } from '../deployment';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { publicOrigin } from '../features/http/origin';
+import { instanceNoindex } from '../features/http/robots';
 
 export const prerender = false;
 
 export const GET: APIRoute = ({ url }) => {
+  if (instanceNoindex(env.NOINDEX)) {
+    return new Response(`User-agent: *\nDisallow: ${withMount('/')}\n`, {
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    });
+  }
   const origin = publicOrigin(url.origin, env.CANONICAL_ORIGIN);
   // Under a mount this file is not the host's robots.txt (crawlers only read the
   // root one); it still names the store's own paths, for the host site to copy.

@@ -34,6 +34,7 @@ import { addCacheTags, responseCacheTags } from './features/cache/tags';
 import { normalizeSearchQuery } from './features/search/query';
 import { isForbiddenFormOrigin } from './features/auth/formOrigin';
 import { MOUNT, cookieName } from './deployment';
+import { instanceNoindex, NOINDEX_ROBOTS_TAG } from './features/http/robots';
 import { createRouting, resolveRequestLocale } from './i18n';
 import { LOCALE_REGISTRY, languageSettings } from './features/i18n/settings';
 import { namesLanguage, preParsePath, requestLanguage } from './features/i18n/request';
@@ -412,6 +413,9 @@ const SECURITY_HEADERS: Record<string, string> = {
   'x-content-type-options': 'nosniff', // don't MIME-sniff responses
   'x-frame-options': 'DENY', // block framing (clickjacking) — nothing here is meant to be embedded
   'strict-transport-security': 'max-age=31536000; includeSubDomains', // force HTTPS for a year
+  // A test instance (NOINDEX var) keeps every response, images and JSON
+  // included, out of search engines — the meta tag alone covers only HTML.
+  ...(instanceNoindex(env.NOINDEX) ? { 'x-robots-tag': NOINDEX_ROBOTS_TAG } : {}),
 };
 
 /** Add the security headers, rebuilding when the response's headers are immutable
