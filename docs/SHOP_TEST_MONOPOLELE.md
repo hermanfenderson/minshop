@@ -83,6 +83,8 @@ su D1, log del Worker ed esterno):
 | Pagina d'ordine dopo un SEPA fallito | ❌→✅ diceva «payment went through» per sempre; corretta: «Payment not completed», con il ritorno al carrello |
 | PayPal dentro Stripe | ✅ attivabile e visibile in cassa (punto aperto del brief chiuso) |
 | Klarna | da confermare |
+| Carrello abbandonato su Stripe | ✅ stock liberato da un webhook di Stripe (prenotazione chiusa come «failed», non per scadenza naturale: da osservare ancora) |
+| Account cliente (link d'accesso via email) | ✅ funziona: accesso e storico degli ordini |
 | Rimborso di un ordine SEPA | ⚠️ rifiutato da Stripe, non dallo shop: per un account nuovo Stripe blocca i rimborsi SEPA dopo il primo tentativo finché non rivede l'account (fino a 2 giorni lavorativi) |
 | Rimborso totale di un ordine con carta, dall'Admin | ✅ ordine «refunded», un solo rimborso registrato: il `charge.refunded` che segue è riconosciuto e non lo conta due volte |
 | Rimborso parziale dalla dashboard Stripe | ✅ 7,00 € su 57,00 €: `charge.refunded` elaborato al primo tentativo, ordine ancora «paid» con 7,00 € rimborsati |
@@ -96,10 +98,11 @@ su D1, log del Worker ed esterno):
   Indispensabile se si attivano gli account clienti (ogni accesso spedisce un'email).
 - Chiavi Stripe live e webhook live con gli stessi eventi e la stessa versione API.
 - Demo spento; in cassa solo i metodi Stripe attivi e provati.
-- **Email «pagamento non riuscito»** al cliente quando un pagamento differito
-  (SEPA) fallisce: nella realtà accade giorni dopo, a pagina chiusa, e oggi lo
-  shop non avvisa nessuno (l'ordine semplicemente non nasce). Valutare anche un
-  avviso all'admin. Da sviluppare prima della produzione.
+- **Pagamenti non riusciti o in sospeso** ([roadmap](ROADMAP.md#failed-and-pending-payment-follow-up)):
+  email al cliente e avviso all'admin quando un pagamento differito (SEPA)
+  fallisce, e in Admin una vista dei pagamenti falliti, scaduti e in
+  elaborazione. Oggi l'ordine semplicemente non nasce e nessuno lo sa: lo si
+  vede solo nella dashboard Stripe. Da sviluppare prima della produzione.
 - Valutare Cloudflare Access su `/shop/admin` e `/shop/api/admin`.
 - `robots.txt` del sito ospite con la sitemap del negozio ed esclusione di
   `/shop/admin` e `/shop/api/`.

@@ -1,0 +1,42 @@
+# Roadmap
+
+Planned work on the `hermanfenderson/minshop` fork, in order. Each item is a
+reusable Minshop feature or a deployment step; nothing here is specific to one
+store in the code.
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Test shop on Cloudflare, Stripe only (Monopolele, step 1) | Done 2026-10-26 — [report](SHOP_TEST_MONOPOLELE.md) |
+| 2 | Failed and pending payment follow-up (below) | Planned — before production |
+| 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | Next |
+| 4 | Production instance — includes Turnstile (below) | After the connector is tested |
+| 5 | Benefit Mode | [Specification](ROADMAP_BENEFIT_MODE.md) |
+
+## Failed and pending payment follow-up
+
+Found while testing the Monopolele test shop (2026-10-26). Orders are
+paid-only, so a payment that never settles leaves no order, only a checkout
+reservation that Admin does not show. With delayed methods (SEPA Direct Debit)
+the failure arrives days after checkout, when the buyer has closed the page:
+today neither the buyer nor the merchant learns about it.
+
+1. **Buyer email** when a delayed payment fails: no order was placed, nothing
+   was charged, and how to try again. Sent from
+   `checkout.session.async_payment_failed`, in the checkout's language, through
+   the existing email outbox (retried by the cron).
+2. **Merchant alert** to the new-order notification address for the same event.
+3. **Admin view** of failed, expired and still-processing checkouts — read-only:
+   buyer email, items, amount, method, date, state — so the merchant can follow
+   up. The data is already in `checkout_reservations`; abandoned checkouts with
+   no email stay out.
+
+Already done: the order page says when a payment failed, expired or is still
+clearing (it used to say "your payment went through" in every case).
+
+## Production checklist items
+
+- **Turnstile** on admin login and customer sign-in: a free widget in the
+  Cloudflare dashboard, sitekey and secret in Admin → Settings → Bot
+  protection. Required once customer accounts are on, since every sign-in
+  request sends an email.
+- The rest of the checklist is in the [test shop report](SHOP_TEST_MONOPOLELE.md#checklist-per-la-produzione).
