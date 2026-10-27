@@ -51,10 +51,14 @@ interface ProductPublicIdRow {
   public_id: string | null;
 }
 
-/** Combine lines that share the same finite stock target (for example extras). */
+/**
+ * Combine lines that share the same finite stock target (for example extras).
+ * Untracked lines have no target: nothing is held or put back for them.
+ */
 export function aggregateStockTargets(items: ReservationItem[]): StockTarget[] {
   const targets = new Map<string, StockTarget>();
   for (const item of items) {
+    if (item.untracked) continue;
     const variantId = item.variantId ?? null;
     const key = variantId == null ? `p:${item.productId}` : `v:${variantId}`;
     const current = targets.get(key);
@@ -84,6 +88,7 @@ export function parseItems(value: string): ReservationItem[] | null {
           (item.fileName != null && typeof item.fileName !== 'string') ||
           (item.fileMime != null && typeof item.fileMime !== 'string') ||
           (item.fileSizeBytes != null && (!Number.isInteger(item.fileSizeBytes) || item.fileSizeBytes < 0)) ||
+          (item.untracked != null && typeof item.untracked !== 'boolean') ||
           typeof item.name !== 'string',
       )
     ) {
@@ -301,6 +306,11 @@ export async function reserveInventory(
       checks.push('COALESCE((SELECT stock FROM product_variants WHERE id = ? AND active = 1), -1) >= ?');
       checkValues.push(target.variantId, target.quantity);
     }
+  }
+  // An untracked line holds no stock, but its product must still be on sale.
+  for (const productId of new Set(items.filter((item) => item.untracked).map((item) => item.productId))) {
+    checks.push('EXISTS (SELECT 1 FROM products WHERE id = ? AND active = 1)');
+    checkValues.push(productId);
   }
 
   let results: D1Result<(StockUpdateRow & { public_id?: string })>[] | null = null;

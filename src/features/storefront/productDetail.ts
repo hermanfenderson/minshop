@@ -9,7 +9,7 @@ import { getRelatedStored, storeRelatedIds } from '../search';
 import { enabledMethods } from '../payments';
 import { markdownExcerpt, renderMarkdown } from '../pages/markdown.ts';
 import { productImageSources, productImageUrl, type ImageDelivery } from '../products/image';
-import { stockState } from '../products/stock';
+import { sellableStock, stockState } from '../products/stock';
 import { catalogPath } from '../settings/home';
 import { formatMoney, toMajorUnits, currencyDecimals } from '../../money';
 import { requirePublicId } from '../catalog/serialize';
@@ -143,10 +143,10 @@ export async function loadProductDetail(
   const categories = translatedAll(tr, 'category', sourceCategories);
 
   const hasVariants = variants.length > 0;
-  const state = stockState(product.stock);
+  const state = stockState(sellableStock(source, source.stock));
   // With variants the inventory unit is the variant, so availability comes from
   // them; otherwise from the product's own stock.
-  const soldOut = hasVariants ? variants.every((v) => v.stock <= 0) : state === 'out';
+  const soldOut = hasVariants ? variants.every((v) => sellableStock(source, v.stock) <= 0) : state === 'out';
 
   const variantPrices = variants.map((v) => v.price_cents);
   const displayPriceCents = hasVariants ? Math.min(...variantPrices) : product.price_cents;
@@ -161,7 +161,7 @@ export async function loadProductDetail(
     const image = imageId == null ? undefined : gallery.find((g) => g.id === imageId);
     return image ? requirePublicId(image.public_id, image.id, 'product image') : '';
   };
-  const firstInStockIndex = variants.findIndex((v) => v.stock > 0);
+  const firstInStockIndex = variants.findIndex((v) => sellableStock(source, v.stock) > 0);
   // Axes are read from the SOURCE labels, which the cart resolves against; a
   // translation only renames what the selectors show.
   const axes = variantAxes(source.variant_label, sourceVariants.map((v) => v.label));
@@ -287,7 +287,7 @@ export async function loadProductDetail(
               return {
                 index,
                 label: shownAxes!.values[axis][index],
-                soldOut: rows.every((row) => variants[row].stock <= 0),
+                soldOut: rows.every((row) => sellableStock(source, variants[row].stock) <= 0),
                 defaultSelected: firstInStockIndex !== -1 && axes.combos[firstInStockIndex][axis] === index,
               };
             }),
@@ -298,7 +298,7 @@ export async function loadProductDetail(
         label: variant.label,
         formattedPrice: formatMoney(variant.price_cents, options.currency, options.intl),
         priceCents: variant.price_cents,
-        soldOut: variant.stock <= 0,
+        soldOut: sellableStock(source, variant.stock) <= 0,
         defaultSelected: index === firstInStockIndex,
         imageAnchor: galleryAnchor(variant.image_id),
         options: axes ? axes.combos[index] : [],

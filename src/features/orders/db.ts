@@ -62,6 +62,9 @@ export interface OrderItemInput {
   fileName?: string | null;
   fileMime?: string | null;
   fileSizeBytes?: number | null;
+  /** The product was not counted in stock when checkout began (0045): no
+   *  reservation, no decrement. Snapshotted so a later toggle cannot unbalance it. */
+  untracked?: boolean;
 }
 
 /** A persisted order_items row. */
@@ -606,8 +609,9 @@ export async function recordPaidOrder(
           settlementToken,
         ),
     );
-    // A reservation already consumed this inventory before provider handoff.
-    if (skipStock) continue;
+    // A reservation already consumed this inventory before provider handoff;
+    // an untracked line never had any to consume.
+    if (skipStock || it.untracked) continue;
     const exceptionPublicId = await mintInventoryExceptionId();
     if (variantId != null) {
       stmts.push(

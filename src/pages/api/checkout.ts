@@ -7,6 +7,7 @@ import { LOCALE_REGISTRY, languageSettings } from '../../features/i18n/settings'
 import { MOUNT } from '../../deployment';
 import { env } from 'cloudflare:workers';
 import { getProductByPublicId, getProductBySlug, type Product } from '../../features/products/db';
+import { sellableStock } from '../../features/products/stock';
 import {
   listVariants,
   getExtrasByPublicIds,
@@ -190,7 +191,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
         qty: 1,
         name: purchaseLineName(shown.product, shown.variant, shown.extras),
         unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
-        availableStock: variant ? variant.stock : product.stock,
+        availableStock: sellableStock(product, variant ? variant.stock : product.stock),
         variantId: variant?.id ?? null,
       },
     ];
@@ -620,7 +621,7 @@ async function handleJsonCheckout(
             error: `"${slug}" requires a valid "variant_id" (${product.variant_label || 'option'}).`,
             product_id: product.public_id,
             slug,
-            variants: variants.map((v) => ({ id: v.public_id, label: v.label, in_stock: v.stock > 0 })),
+            variants: variants.map((v) => ({ id: v.public_id, label: v.label, in_stock: sellableStock(product, v.stock) > 0 })),
           },
           400,
         );
@@ -647,7 +648,7 @@ async function handleJsonCheckout(
       extras = wantExtras.length ? await getExtrasByPublicIds(env.DB, product.id, wantExtras) : [];
     }
 
-    const availableStock = variant ? variant.stock : product.stock;
+    const availableStock = sellableStock(product, variant ? variant.stock : product.stock);
     if (availableStock < qty) {
       const label = variant ? `${product.name} — ${variant.label}` : product.name;
       return cjson(

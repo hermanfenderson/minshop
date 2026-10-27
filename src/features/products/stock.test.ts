@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stockState, LOW_STOCK, visibleStockChanged } from './stock';
+import { stockState, LOW_STOCK, visibleStockChanged, sellableStock, UNTRACKED_STOCK } from './stock';
 
 describe('stockState', () => {
   it('is "out" at zero or negative stock', () => {
@@ -34,5 +34,14 @@ describe('visibleStockChanged', () => {
     expect(visibleStockChanged(true, 3, 2)).toBe(false);
     expect(visibleStockChanged(true, 1, 0)).toBe(true);
     expect(visibleStockChanged(true, 0, 1)).toBe(true);
+  });
+});
+
+describe('sellableStock', () => {
+  it('passes a tracked count through and never runs an untracked product out', () => {
+    expect(sellableStock({ track_inventory: 1 }, 0)).toBe(0);
+    expect(sellableStock({}, 3)).toBe(3);
+    expect(sellableStock({ track_inventory: 0 }, 0)).toBe(UNTRACKED_STOCK);
+    expect(stockState(sellableStock({ track_inventory: 0 }, 0))).toBe('in');
   });
 });

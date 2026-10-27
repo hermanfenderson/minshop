@@ -27,9 +27,10 @@ export const PRODUCT_STOCK_OPTIONS: { value: StockState; label: string }[] = [
 // The same boundaries stockState() uses for display, so a product badged "Low"
 // is exactly one the Low filter returns.
 const STOCK: Record<StockState, string> = {
-  out: 'p.stock <= 0',
-  low: `p.stock > 0 AND p.stock <= ${LOW_STOCK}`,
-  in: `p.stock > ${LOW_STOCK}`,
+  // An untracked product (0045) is always available, whatever its stored count.
+  out: 'p.track_inventory = 1 AND p.stock <= 0',
+  low: `p.track_inventory = 1 AND p.stock > 0 AND p.stock <= ${LOW_STOCK}`,
+  in: `(p.track_inventory = 0 OR p.stock > ${LOW_STOCK})`,
 };
 
 /** Escape LIKE wildcards so a name containing % or _ is searched literally. */

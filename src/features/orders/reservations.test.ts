@@ -22,4 +22,13 @@ describe('aggregateStockTargets', () => {
       { productId: 1, variantId: 11, quantity: 1 },
     ]);
   });
+
+  it('holds nothing for an untracked line', () => {
+    expect(
+      aggregateStockTargets([
+        { productId: 1, name: 'Tee', priceCents: 1000, quantity: 2 },
+        { productId: 2, name: 'Gratitude', priceCents: 2500, quantity: 1, untracked: true },
+      ]),
+    ).toEqual([{ productId: 1, variantId: null, quantity: 2 }]);
+  });
 });

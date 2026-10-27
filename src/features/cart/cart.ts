@@ -1,6 +1,7 @@
 import type { AstroCookies } from 'astro';
 import type { D1Database } from '@cloudflare/workers-types';
 import { getProductsByPublicIds, type Product } from '../products/db';
+import { sellableStock } from '../products/stock';
 import {
   getActiveExtrasByPublicIds,
   getActiveVariantsByPublicIds,
@@ -163,7 +164,7 @@ export async function resolveCart(
       qty,
       unitPriceCents,
       lineTotalCents: unitPriceCents * qty,
-      availableStock: variant ? variant.stock : product.stock,
+      availableStock: sellableStock(product, variant ? variant.stock : product.stock),
     });
   }
   const subtotalCents = lines.reduce((sum, l) => sum + l.lineTotalCents, 0);

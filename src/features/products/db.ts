@@ -11,6 +11,9 @@ export interface Product {
   currency: string;
   image_key: string | null;
   stock: number;
+  /** 0 = not counted: always available, never reserved or decremented (0045).
+   *  Every D1 row has it; optional so hand-built rows read as tracked. */
+  track_inventory?: number;
   active: number;
   variant_label: string | null; // variant group display name (e.g. "Size"); null = no variants
   /** Packed item weight in grams; NULL = unknown (never "zero" — see 0030). */
@@ -38,6 +41,8 @@ export interface ProductFields {
   price_cents: number;
   currency: string;
   stock: number;
+  /** Optional so callers that predate 0045 keep products tracked. */
+  track_inventory?: number;
   active: number;
   weight_grams: number | null;
   requires_shipping: number;
@@ -219,7 +224,7 @@ export async function lowStockProducts(
 ): Promise<Product[]> {
   const { results } = await db
     .prepare(
-      'SELECT * FROM products WHERE active = 1 AND stock <= ? ORDER BY stock ASC, name LIMIT ?',
+      'SELECT * FROM products WHERE active = 1 AND track_inventory = 1 AND stock <= ? ORDER BY stock ASC, name LIMIT ?',
     )
     .bind(threshold, limit)
     .all<Product>();
@@ -397,11 +402,11 @@ export async function createProduct(db: D1Database, p: ProductInput): Promise<nu
   return withPublicId('product', async (publicId) => {
     const row = await db
       .prepare(
-        `INSERT INTO products (name, slug, description, price_cents, currency, image_key, stock, active, weight_grams, requires_shipping, public_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO products (name, slug, description, price_cents, currency, image_key, stock, active, weight_grams, requires_shipping, track_inventory, public_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          RETURNING id`,
       )
-      .bind(p.name, p.slug, p.description, p.price_cents, p.currency, p.image_key, p.stock, p.active, p.weight_grams, p.requires_shipping, publicId)
+      .bind(p.name, p.slug, p.description, p.price_cents, p.currency, p.image_key, p.stock, p.active, p.weight_grams, p.requires_shipping, p.track_inventory ?? 1, publicId)
       .first<{ id: number }>();
     return row!.id;
   });
@@ -412,10 +417,10 @@ export async function updateProduct(db: D1Database, id: number, p: ProductInput)
     .prepare(
       `UPDATE products
          SET name = ?, slug = ?, description = ?, price_cents = ?, currency = ?, image_key = ?, stock = ?, active = ?,
-             weight_grams = ?, requires_shipping = ?
+             weight_grams = ?, requires_shipping = ?, track_inventory = ?
        WHERE id = ?`,
     )
-    .bind(p.name, p.slug, p.description, p.price_cents, p.currency, p.image_key, p.stock, p.active, p.weight_grams, p.requires_shipping, id)
+    .bind(p.name, p.slug, p.description, p.price_cents, p.currency, p.image_key, p.stock, p.active, p.weight_grams, p.requires_shipping, p.track_inventory ?? 1, id)
     .run();
 }
 

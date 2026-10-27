@@ -102,6 +102,16 @@ const inputClass =
       <input id="stock" name="stock" type="number" step="1" min="0" value={product?.stock ?? 0} class={inputClass} />
     </div>
   </div>
+  <div>
+    <label class="flex items-center gap-2 text-sm">
+      <input name="untracked" type="checkbox" checked={product?.track_inventory === 0} class="h-4 w-4" />
+      Don't track stock (always available)
+    </label>
+    <p class="mt-1 text-xs text-muted">
+      For things with no limited quantity, such as a contribution with nothing to ship. Stock is
+      then ignored for this product and all its variants.
+    </p>
+  </div>
 
   {attachmentActive() && <fieldset class="rounded-md border border-line p-4">
     <legend class="px-1 text-sm font-medium">Shipping</legend>

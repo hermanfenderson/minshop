@@ -764,7 +764,36 @@ try {
   assert.equal(listedFailed?.customerNotice, 'sent');
   assert.equal(unpaid.some((c) => c.publicId === abandonedId), false);
 
-  console.log('Reservation integration passed: concurrency + pending + terminal settlement + inventory exception + legacy + cross-release rollback + stock purge offset + failed-payment follow-up');
+  // Untracked products (0045): a Gratitude with a stored stock of 0 reserves,
+  // settles and late-settles without touching stock; an inactive one is refused.
+  await db.prepare(
+    `INSERT INTO products (public_id, name, slug, description, price_cents, currency, stock, active)
+     VALUES ('prod_gratitude01', 'Gratitude', 'gratitude', '', 1000, 'eur', 0, 1)`,
+  ).run();
+  const gratitude = await db.prepare("SELECT id FROM products WHERE slug = 'gratitude'").first();
+  const gratitudeItem = { productId: gratitude.id, name: 'Gratitude', priceCents: 2500, quantity: 1, untracked: true };
+  const gratitudeId = crypto.randomUUID();
+  assert.equal(await reserveInventory(db, gratitudeId, [gratitudeItem], 600, 'stripe'), true);
+  const [heldGratitude] = await getActiveReservationItems(db, gratitudeId);
+  assert.equal(heldGratitude.untracked, true, 'the snapshot keeps the line untracked');
+  assert(await recordPaidOrder(db, {
+    providerSessionId: 'gratitude-session', publicId: gratitudeId, reservationId: gratitudeId,
+    email: 'buyer@example.com', amountTotalCents: 2500, currency: 'eur', items: [heldGratitude],
+  }));
+  assert(await recordPaidOrder(db, {
+    providerSessionId: 'gratitude-late', publicId: crypto.randomUUID(),
+    email: 'buyer@example.com', amountTotalCents: 2500, currency: 'eur', items: [gratitudeItem],
+  }));
+  assert.equal((await db.prepare('SELECT stock FROM products WHERE id = ?').bind(gratitude.id).first()).stock, 0);
+  assert.equal(
+    (await db.prepare('SELECT COUNT(*) AS n FROM order_inventory_exceptions WHERE product_id = ?').bind(gratitude.id).first()).n,
+    0,
+    'an untracked line is never a stock shortfall',
+  );
+  await db.prepare('UPDATE products SET active = 0 WHERE id = ?').bind(gratitude.id).run();
+  assert.equal(await reserveInventory(db, crypto.randomUUID(), [gratitudeItem], 600, 'stripe'), false);
+
+  console.log('Reservation integration passed: concurrency + pending + terminal settlement + inventory exception + legacy + cross-release rollback + stock purge offset + failed-payment follow-up + untracked stock');
 } finally {
   await mf.dispose();
 }

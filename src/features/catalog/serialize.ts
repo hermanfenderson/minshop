@@ -2,6 +2,7 @@ import { storeUrls } from '../i18n/urls';
 import type { Product } from '../products/db';
 import type { ProductVariant, ProductExtra } from '../products/variants';
 import { productImageUrl } from '../products/image';
+import { sellableStock } from '../products/stock';
 import { toMajorUnits } from '../../money';
 
 /** A purchasable variant in catalog form (price in both major + minor units). */
@@ -88,7 +89,9 @@ export function toCatalogProduct(
     description: p.description,
     price: money(p.price_cents, p.currency),
     // With variants, availability comes from them (the variant is the SKU).
-    in_stock: hasVariants ? variants!.some((v) => v.stock > 0) : p.stock > 0,
+    in_stock: hasVariants
+      ? variants!.some((v) => sellableStock(p, v.stock) > 0)
+      : sellableStock(p, p.stock) > 0,
     variant_label: p.variant_label,
     categories: categoryNames,
     image: new URL(productImageUrl(p.image_key, options?.imageBaseUrl ?? ''), origin).href,
@@ -100,7 +103,7 @@ export function toCatalogProduct(
       id: requirePublicId(v.public_id, v.id, 'variant'),
       label: v.label,
       price: money(v.price_cents, p.currency),
-      in_stock: v.stock > 0,
+      in_stock: sellableStock(p, v.stock) > 0,
       sku: v.sku,
     }));
   }

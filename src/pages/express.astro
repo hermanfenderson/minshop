@@ -5,6 +5,7 @@ import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
 import { formatPrice } from '../config';
 import { getProductByPublicId } from '../features/products/db';
+import { sellableStock } from '../features/products/stock';
 import { listVariants, getExtrasByPublicIds } from '../features/products/variants';
 import { parsePublicId } from '../features/ids/publicId.ts';
 import { lineUnitPriceCents } from '../features/cart/key';
@@ -81,7 +82,7 @@ if (isBuyNow && productPublicId) {
   const extras = extraPublicIds.length
     ? await getExtrasByPublicIds(env.DB, product.id, extraPublicIds)
     : [];
-  if ((variant ? variant.stock : product.stock) <= 0) {
+  if (sellableStock(product, variant ? variant.stock : product.stock) <= 0) {
     return Astro.redirect(
       Astro.locals.urls.href(`/products/${product.slug}?${new URLSearchParams({ error: t('checkout.error.soldOut') })}`),
       303,

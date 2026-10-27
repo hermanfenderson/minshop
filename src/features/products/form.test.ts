@@ -29,6 +29,13 @@ describe('parseProductForm', () => {
     if ('data' in r) expect(r.data.active).toBe(0);
   });
 
+  it('counts stock unless "untracked" is checked', () => {
+    const tracked = parseProductForm(form({ name: 'Tee', price: '5', stock: '1' }));
+    if ('data' in tracked) expect(tracked.data.track_inventory).toBe(1);
+    const untracked = parseProductForm(form({ name: 'Gratitude', price: '5', stock: '0', untracked: 'on' }));
+    if ('data' in untracked) expect(untracked.data.track_inventory).toBe(0);
+  });
+
   it('rounds fractional cents', () => {
     const r = parseProductForm(form({ name: 'X', price: '9.999', stock: '1' }));
     if ('data' in r) expect(r.data.price_cents).toBe(1000);

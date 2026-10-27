@@ -63,7 +63,7 @@ describe('productFilterClause', () => {
   it('combines filters with AND', () => {
     const { where, params } = productFilterClause(parse('status=active&stock=out&q=tee'));
     expect(where).toBe(
-      "WHERE p.active = 1 AND (p.stock <= 0) AND p.name LIKE ? ESCAPE '\\' COLLATE NOCASE",
+      "WHERE p.active = 1 AND (p.track_inventory = 1 AND p.stock <= 0) AND p.name LIKE ? ESCAPE '\\' COLLATE NOCASE",
     );
     expect(params).toEqual(['%tee%']);
   });
@@ -72,10 +72,10 @@ describe('productFilterClause', () => {
     // A product badged "Low" must be one the Low filter returns, so the two
     // read from the same threshold rather than drifting apart.
     expect(productFilterClause(parse('stock=low')).where).toBe(
-      `WHERE (p.stock > 0 AND p.stock <= ${LOW_STOCK})`,
+      `WHERE (p.track_inventory = 1 AND p.stock > 0 AND p.stock <= ${LOW_STOCK})`,
     );
     expect(stockState(LOW_STOCK)).toBe('low');
-    expect(productFilterClause(parse('stock=in')).where).toBe(`WHERE (p.stock > ${LOW_STOCK})`);
+    expect(productFilterClause(parse('stock=in')).where).toBe(`WHERE ((p.track_inventory = 0 OR p.stock > ${LOW_STOCK}))`);
     expect(stockState(LOW_STOCK + 1)).toBe('in');
     expect(stockState(0)).toBe('out');
   });

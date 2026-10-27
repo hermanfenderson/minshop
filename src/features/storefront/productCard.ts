@@ -2,7 +2,7 @@ import { rootHref, type Href } from '../../i18n/urls';
 import type { Product } from '../products/db';
 import { productImageSources, type ImageDelivery } from '../products/image';
 import { requirePublicId } from '../catalog/serialize';
-import { stockState } from '../products/stock';
+import { sellableStock, stockState } from '../products/stock';
 import { formatMoney } from '../../money';
 import type { ProductCardModel, StorefrontImage } from './models';
 
@@ -90,6 +90,6 @@ export function buildProductCard(
     formattedPrice: formatMoney(product.price_cents, options.currency, options.intl),
     // Availability only — never the count. `stockState` is the authoritative
     // classification; re-deriving `stock > 0` here would fork that rule.
-    inStock: stockState(product.stock) !== 'out',
+    inStock: stockState(sellableStock(product, product.stock)) !== 'out',
   };
 }

@@ -475,6 +475,7 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
           // column, so omitting these would silently clear them.
           weight_grams: cur.weight_grams,
           requires_shipping: cur.requires_shipping,
+          track_inventory: cur.track_inventory,
         };
         await updateProduct(db, cur.id, input);
         return result({ id: requirePublicId(cur.public_id, cur.id, 'product'), slug: cur.slug });

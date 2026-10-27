@@ -39,6 +39,7 @@ export const reservationItems = (lines: ReservationLine[]): ReservationItem[] =>
     name: line.name,
     priceCents: line.unitPriceCents,
     quantity: line.qty,
+    ...(line.product.track_inventory === 0 ? { untracked: true } : {}),
     ...(entitlementWriterActive() && line.product.file_key
       ? {
           fileKey: line.product.file_key,
