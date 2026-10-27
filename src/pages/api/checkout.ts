@@ -36,6 +36,8 @@ import { getStoreSettings } from '../../features/settings/db';
 import { createConfigRatesCalculator } from '../../features/shipping/calculator';
 import { shippingFor } from '../../features/shipping/effective';
 import { shipmentWeightFor } from '../../features/shipping/lines';
+import { quoteFulfillerShipping } from '../../features/fulfillment';
+import { combineShippingOptions } from '../../features/fulfillment/shippingQuote';
 import { stripeAllowedCountries, stripeSessionDestination } from '../../features/payments/stripeCountries.ts';
 import { getConfig } from '../../config';
 import {
@@ -360,12 +362,38 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       303,
     );
   }
+  // Items made and shipped by the fulfiller (Printful) are priced by it, for the
+  // chosen country; the shop's zone rates still cover anything it ships itself.
+  // No answer in time → the zone rates alone, so checkout never waits on it.
+  const fulfiller =
+    quote && sessionCountries && shipCountry
+      ? await quoteFulfillerShipping(
+          env.DB,
+          lines.map((l) => ({
+            variantId: l.variantId,
+            productRef: l.product.fulfillment_ref ?? null,
+            productRateRef: l.product.fulfillment_rate_ref ?? null,
+            quantity: l.qty,
+            requiresShipping: l.product.requires_shipping !== 0,
+          })),
+          shipCountry,
+          storeCurrency,
+        )
+      : null;
+  const shippingOptions =
+    quote && fulfiller ? combineShippingOptions(quote.options, fulfiller.cents, fulfiller.shipsEverything) : quote?.options;
+  if (quote && shippingOptions?.length === 0) {
+    return redirect(
+      `${errorPath}?error=${encodeURIComponent(t('checkout.shipping.errorNoShip', { country: shipCountry ?? '' }))}`,
+      303,
+    );
+  }
   const shipping =
-    quote && sessionCountries
+    quote && sessionCountries && shippingOptions
       ? {
           addressCountries: sessionCountries,
           hasCatchAll: false,
-          options: quote.options,
+          options: shippingOptions,
           shipmentWeightGrams: quote.shipmentWeightGrams,
         }
       : undefined;

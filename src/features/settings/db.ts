@@ -42,6 +42,7 @@ export type SettingKey =
   | 'shipping_config' // the merchant-managed shipping document (JSON; see features/shipping/settings.ts)
   | 'weight_unit' // 'g' | 'kg' | 'oz' | 'lb' — Admin input/display unit; storage is always grams
   | 'ship_from' // JSON ShipFrom — the store's return address for label purchase (read at label time, not in locals)
+  | 'printful_shipping_surcharge_pct' // % added to Printful's shipping rate (its rates are before tax); absent = 22
   | 'printful_confirm_orders' // '1' = Printful orders go straight to production; absent = drafts a person confirms
   | 'parcel_default' // JSON {length,width,height} — remembered box dimensions for label purchase
   | 'admin_password_hash' // PBKDF2 hash of the admin password (set at setup). NOT in StoreSettings — read only by the auth layer, never loaded into locals.

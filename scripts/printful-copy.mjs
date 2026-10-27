@@ -16,7 +16,7 @@
 // missing. Without --apply it prints what it would do.
 //
 // link: sets product_variants.fulfillment_ref to the API store's sync variant
-// id, matched on SKU (the WooCommerce import kept Printful's SKUs). Without
+// id (and fulfillment_rate_ref to its catalog variant id), matched on SKU (the WooCommerce import kept Printful's SKUs). Without
 // --apply it prints the SQL instead of running it.
 
 import { execFileSync } from 'node:child_process';
@@ -148,8 +148,9 @@ async function link() {
         continue;
       }
       variants++;
+      // Two ids: the store variant places orders, the catalog variant prices shipping.
       statements.push(
-        `UPDATE product_variants SET fulfillment_ref = ${sqlString(v.id)} WHERE sku = ${sqlString(v.sku)};`,
+        `UPDATE product_variants SET fulfillment_ref = ${sqlString(v.id)}, fulfillment_rate_ref = ${sqlString(v.variant_id)} WHERE sku = ${sqlString(v.sku)};`,
       );
     }
   }

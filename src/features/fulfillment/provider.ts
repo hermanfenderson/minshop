@@ -44,8 +44,20 @@ export type SubmitOutcome =
   /** `retryable`: the fulfiller was unreachable or busy; anything else needs a person. */
   | { ok: false; retryable: boolean; error: string };
 
+export interface RateQuoteInput {
+  countryCode: string;
+  /** Catalog ids (fulfillment_rate_ref) with quantities. */
+  lines: { rateRef: string; quantity: number }[];
+  currency: string;
+  signal?: AbortSignal;
+}
+
+export type RateOutcome = { ok: true; amountCents: number } | { ok: false; error: string };
+
 export interface FulfillmentProvider {
   readonly name: string;
+  /** The fulfiller's own cheapest standard delivery for these units, before tax. */
+  quoteShipping(input: RateQuoteInput): Promise<RateOutcome>;
   submitOrder(input: FulfillmentOrderInput): Promise<SubmitOutcome>;
   /** Where the merchant sees this order in the fulfiller's dashboard. */
   dashboardUrl(providerOrderId: string): string;

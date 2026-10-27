@@ -56,6 +56,7 @@ import { normalizeTimeZone, allTimeZones } from '../../features/settings/timeZon
 import { WEIGHT_UNITS, isWeightUnit } from '../../features/shipping/weight';
 import { shippingFor } from '../../features/shipping/effective';
 import SecretField from '../../components/SecretField.astro';
+import { DEFAULT_SHIPPING_SURCHARGE_PCT, parseSurchargePct } from '../../features/fulfillment/shippingQuote';
 import MethodToggle from '../../components/MethodToggle.astro';
 import { onDemandImageDeliveryAvailable } from '../../features/products/image';
 import { catalogIsOrphaned } from '../../features/navigation/db';
@@ -316,6 +317,9 @@ if (Astro.request.method === 'POST') {
     // Drafts unless the merchant explicitly picks production: a confirmed
     // Printful order is charged and made, a draft costs nothing.
     await setSetting(env.DB, 'printful_confirm_orders', form.get('printful_confirm_orders') === '1' ? '1' : '');
+    // Stored only when it differs from the default, so a later default change reaches it.
+    const pct = parseSurchargePct(String(form.get('printful_shipping_surcharge_pct') ?? ''));
+    await setSetting(env.DB, 'printful_shipping_surcharge_pct', pct === DEFAULT_SHIPPING_SURCHARGE_PCT ? '' : String(pct));
   } else if (action === 'save_languages') {
     const current = languageSettings(Astro.locals.settings);
     const next: I18nSettings = {
@@ -530,6 +534,7 @@ const payments = {
 const vault = capabilities.vault;
 const inD1 = (name: string) => settings.configuredSecrets.includes(name);
 const printfulConfirms = (await getSetting(env.DB, 'printful_confirm_orders')) === '1';
+const printfulSurchargePct = parseSurchargePct(await getSetting(env.DB, 'printful_shipping_surcharge_pct'));
 // Per-method toggle/installed state, keyed by method for the cards below.
 const pmMap = Object.fromEntries(pmRows.map((r) => [r.m, r])) as Record<
   string,
@@ -907,6 +912,15 @@ const sections = [
             <option value="" selected={!printfulConfirms}>Draft — you confirm each one in Printful</option>
             <option value="1" selected={printfulConfirms}>Confirmed — straight to production (charged by Printful)</option>
           </select>
+        </label>
+        <label class="block text-sm">
+          <span class="text-xs uppercase tracking-widest text-gray-400">Shipping: add to Printful's rate (%)</span>
+          <input type="number" name="printful_shipping_surcharge_pct" min="0" max="100" step="0.1" value={printfulSurchargePct} class="mt-1 block w-32 rounded-md border border-line bg-paper px-3 py-2 text-sm" />
+          <span class="mt-1 block text-xs text-gray-500">
+            At checkout, Printful's items ship at Printful's own rate for the buyer's country plus this
+            percentage (its rates are before VAT), rounded up to the next 0.50. Items you ship yourself
+            keep your shipping zones' rates, added on top. If Printful does not answer, the zone rates apply.
+          </span>
         </label>
         {vault && (
           <button type="submit" class="mt-1 rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">

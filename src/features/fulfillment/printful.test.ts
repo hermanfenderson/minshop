@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PrintfulProvider, printfulExternalId, printfulOrderPayload } from './printful';
+import { PrintfulProvider, pickStandardRate, printfulExternalId, printfulOrderPayload, printfulRatePayload } from './printful';
 import type { FulfillmentOrderInput } from './provider';
 
 const input: FulfillmentOrderInput = {
@@ -89,5 +89,38 @@ describe('PrintfulProvider.submitOrder', () => {
     expect(await new PrintfulProvider('t', busy.impl).submitOrder(input)).toMatchObject({ ok: false, retryable: true });
     const down = fakeFetch([new Error('connection reset')]);
     expect(await new PrintfulProvider('t', down.impl).submitOrder(input)).toMatchObject({ ok: false, retryable: true });
+  });
+});
+
+describe('shipping quotes', () => {
+  it('asks by catalog variant, with a stand-in region where Printful needs one', () => {
+    const it_ = printfulRatePayload({ countryCode: 'it', currency: 'eur', lines: [{ rateRef: '8947', quantity: 2 }] });
+    expect(it_).toEqual({ recipient: { country_code: 'IT' }, items: [{ variant_id: 8947, quantity: 2 }], currency: 'EUR' });
+    expect(printfulRatePayload({ countryCode: 'US', currency: 'EUR', lines: [] }).recipient).toEqual({
+      country_code: 'US',
+      state_code: 'NY',
+    });
+  });
+
+  it('takes the STANDARD rate in minor units', () => {
+    const result = [
+      { id: 'STANDARD_CARBON_OFFSET', rate: '4.77', currency: 'EUR' },
+      { id: 'STANDARD', rate: '4.69', currency: 'EUR' },
+    ];
+    expect(pickStandardRate(result, 'EUR')).toBe(469);
+    expect(pickStandardRate([{ id: 'FLAT', rate: '6.10', currency: 'EUR' }, { id: 'X', rate: '5.00', currency: 'EUR' }], 'EUR')).toBe(500);
+    expect(pickStandardRate([{ id: 'STANDARD', rate: '4.69', currency: 'USD' }], 'EUR')).toBeNull();
+    expect(pickStandardRate('Not found', 'EUR')).toBeNull();
+  });
+
+  it('reports a refusal or an outage as a failed quote', async () => {
+    const refused = fakeFetch([[400, { error: { message: 'State code is missing' } }]]);
+    expect(
+      await new PrintfulProvider('t', refused.impl).quoteShipping({ countryCode: 'IT', currency: 'EUR', lines: [] }),
+    ).toEqual({ ok: false, error: 'Printful 400: State code is missing' });
+    const down = fakeFetch([new Error('timeout')]);
+    expect(
+      await new PrintfulProvider('t', down.impl).quoteShipping({ countryCode: 'IT', currency: 'EUR', lines: [] }),
+    ).toMatchObject({ ok: false });
   });
 });

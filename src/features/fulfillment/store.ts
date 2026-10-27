@@ -175,3 +175,19 @@ export async function listDueFulfillments(db: D1Database, limit = 10): Promise<n
     .all<{ order_id: number }>();
   return (results ?? []).map((r) => r.order_id);
 }
+
+/** Fulfiller ids of the given variants, for a checkout quote. */
+export async function loadVariantRefs(
+  db: D1Database,
+  variantIds: number[],
+): Promise<Map<number, { fulfillment_ref: string | null; fulfillment_rate_ref: string | null }>> {
+  const ids = [...new Set(variantIds)];
+  if (ids.length === 0) return new Map();
+  const { results } = await db
+    .prepare(
+      `SELECT id, fulfillment_ref, fulfillment_rate_ref FROM product_variants WHERE id IN (${ids.map(() => '?').join(', ')})`,
+    )
+    .bind(...ids)
+    .all<{ id: number; fulfillment_ref: string | null; fulfillment_rate_ref: string | null }>();
+  return new Map((results ?? []).map((r) => [r.id, r]));
+}

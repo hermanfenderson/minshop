@@ -18,6 +18,9 @@ export interface Product {
   /** 0 = digital/no fulfillment: excluded from shipment weight and from the
    *  missing-weight check, so a mixed cart can still check out. */
   requires_shipping: number;
+  /** Fulfiller ids for a product without variants (see ProductVariant). */
+  fulfillment_ref?: string | null;
+  fulfillment_rate_ref?: string | null;
   file_key: string | null;
   file_name: string | null;
   file_mime: string | null;

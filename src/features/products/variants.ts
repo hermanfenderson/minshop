@@ -19,6 +19,10 @@ export interface ProductVariant {
   /** Overrides the product's weight in grams; NULL inherits it. An explicit 0 is a
    *  known weight, so this is `?? product.weight_grams`, never `|| `. */
   weight_grams: number | null;
+  /** The fulfiller's store id for this unit (Printful sync variant); NULL = the shop ships it. */
+  fulfillment_ref?: string | null;
+  /** The fulfiller's catalog id, for shipping quotes (Printful variant_id). */
+  fulfillment_rate_ref?: string | null;
 }
 
 /** A checkbox add-on: a price delta on top of the line, no stock of its own. */

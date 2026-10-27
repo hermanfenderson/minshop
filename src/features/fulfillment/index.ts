@@ -3,10 +3,12 @@ import { getSecret } from '../secrets/store';
 import { getSetting } from '../settings/db';
 import { buildFulfillmentInput } from './order';
 import { PrintfulProvider } from './printful';
+import { buyerShippingCents, parseSurchargePct } from './shippingQuote';
 import type { FulfillmentProvider } from './provider';
 import {
   claimFulfillment,
   listDueFulfillments,
+  loadVariantRefs,
   loadFulfillableOrder,
   markFulfillmentFailed,
   markFulfillmentSubmitted,
@@ -80,4 +82,70 @@ export async function pushFulfillment(db: D1Database, orderId: number, provider:
   }
   const state = await markFulfillmentFailed(db, orderId, attempts, outcome.error, outcome.retryable);
   if (state === 'failed') console.error(`Fulfillment for order ${orderId} needs attention: ${outcome.error}`);
+}
+
+export interface FulfillerShippingLine {
+  /** The line's variant, whose refs win; null = the product's refs apply. */
+  variantId: number | null;
+  productRef: string | null;
+  productRateRef: string | null;
+  quantity: number;
+  requiresShipping: boolean;
+}
+
+/** How long checkout waits for the fulfiller's rate before using the shop's own. */
+const QUOTE_TIMEOUT_MS = 4000;
+
+/**
+ * The buyer's price for the fulfiller's part of a cart, or null when there is
+ * none or it cannot be had (not configured, no catalog id, the fulfiller slow
+ * or down) — the caller then keeps the shop's own zone rates, so checkout
+ * never stops because of the fulfiller.
+ */
+export async function quoteFulfillerShipping(
+  db: D1Database,
+  lines: FulfillerShippingLine[],
+  countryCode: string,
+  currency: string,
+): Promise<{ cents: number; shipsEverything: boolean } | null> {
+  try {
+    const variantRefs = await loadVariantRefs(
+      db,
+      lines.flatMap((l) => (l.variantId == null ? [] : [l.variantId])),
+    );
+    const resolved = lines.map((l) => {
+      const v = l.variantId == null ? null : variantRefs.get(l.variantId);
+      return {
+        ...l,
+        ref: l.variantId == null ? l.productRef : (v?.fulfillment_ref ?? null),
+        rateRef: l.variantId == null ? l.productRateRef : (v?.fulfillment_rate_ref ?? null),
+      };
+    });
+    const theirs = resolved.filter((l) => l.ref);
+    if (theirs.length === 0) return null;
+    const provider = await getFulfillmentProvider(db);
+    if (!provider) return null;
+    if (theirs.some((l) => !l.rateRef)) {
+      console.error('Fulfiller shipping quote skipped: a linked line has no catalog id (rerun the link script).');
+      return null;
+    }
+    const outcome = await provider.quoteShipping({
+      countryCode,
+      currency,
+      lines: theirs.map((l) => ({ rateRef: l.rateRef!, quantity: l.quantity })),
+      signal: AbortSignal.timeout(QUOTE_TIMEOUT_MS),
+    });
+    if (!outcome.ok) {
+      console.error(`Fulfiller shipping quote failed (${countryCode}): ${outcome.error}`);
+      return null;
+    }
+    const pct = parseSurchargePct(await getSetting(db, 'printful_shipping_surcharge_pct'));
+    return {
+      cents: buyerShippingCents(outcome.amountCents, pct),
+      shipsEverything: resolved.every((l) => !l.requiresShipping || l.ref),
+    };
+  } catch (err) {
+    console.error('Fulfiller shipping quote failed:', err);
+    return null;
+  }
 }

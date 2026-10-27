@@ -1,5 +1,11 @@
-import { toMajorUnits } from '../../money.ts';
-import type { FulfillmentOrderInput, FulfillmentProvider, SubmitOutcome } from './provider';
+import { toMajorUnits, toMinorUnits } from '../../money.ts';
+import type {
+  FulfillmentOrderInput,
+  FulfillmentProvider,
+  RateOutcome,
+  RateQuoteInput,
+  SubmitOutcome,
+} from './provider';
 
 /**
  * Printful adapter (API v1, plain fetch, no SDK). The token is a private one
@@ -48,6 +54,33 @@ export function printfulOrderPayload(input: FulfillmentOrderInput) {
   };
 }
 
+/**
+ * Where these countries need a region the cart does not know yet (the address
+ * is typed on Stripe's page, after the quote), a populous one stands in: rates
+ * barely differ between regions, and the order itself carries the real one.
+ */
+const QUOTE_STATE: Record<string, string> = { US: 'NY', CA: 'ON', AU: 'NSW' };
+
+export function printfulRatePayload(input: RateQuoteInput) {
+  const country = input.countryCode.toUpperCase();
+  return {
+    recipient: { country_code: country, ...(QUOTE_STATE[country] ? { state_code: QUOTE_STATE[country] } : {}) },
+    items: input.lines.map((line) => ({ variant_id: Number(line.rateRef), quantity: line.quantity })),
+    currency: input.currency.toUpperCase(),
+  };
+}
+
+/** The STANDARD rate in minor units, or the cheapest one if Printful renames it. */
+export function pickStandardRate(result: unknown, currency: string): number | null {
+  if (!Array.isArray(result) || result.length === 0) return null;
+  const rates = result
+    .filter((r) => r && typeof r.rate === 'string' && String(r.currency ?? '').toUpperCase() === currency.toUpperCase())
+    .map((r) => ({ id: String(r.id), cents: toMinorUnits(Number(r.rate), currency) }))
+    .filter((r) => Number.isFinite(r.cents) && r.cents >= 0);
+  if (rates.length === 0) return null;
+  return (rates.find((r) => r.id === 'STANDARD') ?? rates.sort((a, b) => a.cents - b.cents)[0]).cents;
+}
+
 type Fetch = typeof fetch;
 
 interface PrintfulBody {
@@ -85,6 +118,21 @@ export class PrintfulProvider implements FulfillmentProvider {
     });
     const body = (await res.json().catch(() => null)) as PrintfulBody | null;
     return { status: res.status, body };
+  }
+
+  async quoteShipping(input: RateQuoteInput): Promise<RateOutcome> {
+    try {
+      const { status, body } = await this.call('/shipping/rates', {
+        method: 'POST',
+        body: JSON.stringify(printfulRatePayload(input)),
+        signal: input.signal,
+      });
+      if (status !== 200) return { ok: false, error: errorText(status, body) };
+      const cents = pickStandardRate(body?.result, input.currency);
+      return cents == null ? { ok: false, error: 'Printful returned no usable rate' } : { ok: true, amountCents: cents };
+    } catch (err) {
+      return { ok: false, error: `Printful unreachable: ${err instanceof Error ? err.message : String(err)}` };
+    }
   }
 
   async submitOrder(input: FulfillmentOrderInput): Promise<SubmitOutcome> {
