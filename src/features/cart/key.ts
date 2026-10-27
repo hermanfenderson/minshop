@@ -11,6 +11,12 @@
  *   "prod_x:var_y#xtra_a,xtra_b" product + variant + extras
  * Extras are de-duped + sorted so the same selection always yields the same key.
  * Legacy numeric keys are NOT parsed — they fail validation and the line drops.
+ *
+ * Benefit Mode appends the chosen contribution per unit, in minor units:
+ *   "prod_x:var_y@2500"          the same line at 25.00
+ * The amount is part of the line's identity (two of a product at different
+ * amounts are two lines). It is only a REQUEST: the server re-checks it against
+ * the current minimum on every read, and standard mode ignores it entirely.
  */
 import { parsePublicId } from '../ids/publicId.ts';
 
@@ -18,6 +24,8 @@ export interface ParsedKey {
   productPublicId: string;
   variantPublicId: string | null;
   extraPublicIds: string[];
+  /** Benefit Mode's chosen contribution per unit; null = none chosen. */
+  amountCents: number | null;
 }
 
 /** Canonical extras list: valid xtra_ IDs only, de-duped, sorted lexicographically. */
@@ -29,17 +37,29 @@ export function cartKey(
   productPublicId: string,
   variantPublicId?: string | null,
   extraPublicIds: string[] = [],
+  amountCents: number | null = null,
 ): string {
   let key = productPublicId;
   if (variantPublicId) key += `:${variantPublicId}`;
   const ex = canonicalExtras(extraPublicIds);
   if (ex.length) key += `#${ex.join(',')}`;
+  if (amountCents != null) key += `@${amountCents}`;
   return key;
 }
 
+/** An amount suffix: a plain positive integer of minor units, nothing else. */
+const AMOUNT = /^[1-9]\d{0,8}$/;
+
 /** Parse a cart key back to its parts, or null if ANY part is malformed (never trust cookies). */
 export function parseCartKey(key: string): ParsedKey | null {
-  const [left, extrasPart, spill] = key.split('#');
+  const [lineKey, amountPart, amountSpill] = key.split('@');
+  if (amountSpill !== undefined) return null; // more than one '@' → malformed
+  let amountCents: number | null = null;
+  if (amountPart !== undefined) {
+    if (!AMOUNT.test(amountPart)) return null;
+    amountCents = Number(amountPart);
+  }
+  const [left, extrasPart, spill] = lineKey.split('#');
   if (spill !== undefined) return null; // more than one '#' → malformed
   const [pidStr, vidStr, extra] = left.split(':');
   if (extra !== undefined) return null; // more than one ':' → malformed
@@ -60,7 +80,7 @@ export function parseCartKey(key: string): ParsedKey | null {
     if (extraPublicIds.length !== new Set(parts).size) return null; // any invalid extra → reject
     if (extraPublicIds.length === 0) return null; // bare '#' → malformed
   }
-  return { productPublicId, variantPublicId, extraPublicIds };
+  return { productPublicId, variantPublicId, extraPublicIds, amountCents };
 }
 
 /**

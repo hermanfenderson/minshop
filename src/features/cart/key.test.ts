@@ -39,7 +39,16 @@ describe('parseCartKey', () => {
         productPublicId: pid,
         variantPublicId: vid,
         extraPublicIds: [...ex],
+        amountCents: null,
       });
+    }
+  });
+  it('carries a Benefit Mode amount and refuses a malformed one', () => {
+    expect(cartKey(P, V, [], 2500)).toBe(`${P}:${V}@2500`);
+    expect(parseCartKey(`${P}:${V}@2500`)).toMatchObject({ variantPublicId: V, amountCents: 2500 });
+    expect(parseCartKey(`${P}#${XA}@2500`)).toMatchObject({ extraPublicIds: [XA], amountCents: 2500 });
+    for (const bad of [`${P}@`, `${P}@0`, `${P}@-5`, `${P}@25.5`, `${P}@0250`, `${P}@1@2`, `${P}@1e3`, `${P}@1234567890`]) {
+      expect(parseCartKey(bad)).toBeNull();
     }
   });
   it('rejects legacy numeric keys', () => {
