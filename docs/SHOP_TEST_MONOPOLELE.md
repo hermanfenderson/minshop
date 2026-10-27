@@ -119,6 +119,27 @@ Il primo tentativo sullo shop si è fermato senza cambiare nulla: D1, a
 differenza della copia locale, applica il vincolo tra righe d'ordine e
 prodotti. Ora la sostituzione del catalogo scollega prima le righe d'ordine.
 
+## Connettore Printful, primo passo (2026-10-27)
+
+- **Store Printful di test** «Monopolele TEST» (tipo API), token privato limitato
+  allo store, nel vault dell'Admin. I 20 prodotti dello store collegato a
+  WooCommerce copiati con `scripts/printful-copy.mjs copy` (store d'origine solo
+  letto, con un token di sola lettura): stesse varianti di catalogo, stessi file
+  di stampa (per id della libreria), SKU e prezzi.
+- **Varianti collegate per SKU** con `scripts/printful-copy.mjs link`: le 173
+  varianti dello shop hanno il loro `fulfillment_ref` (migrazione `0043`);
+  ukulele e Gratitude restano senza, quindi non partono mai verso Printful.
+- **Ordine dopo il pagamento**: le righe collegate partono come **bozza**
+  (impostazione «New orders: Draft»), con l'id pubblico dell'ordine come
+  `external_id`; la scheda Printful dell'ordine in Admin mostra lo stato e un
+  pulsante per riprovare, il cron riprova da solo.
+
+| Prova | Esito |
+|---|---|
+| Tazza 2023 «Dark green / 11 oz», carta di test | ❌→✅ primo invio fallito per un errore del codice su Workers (`fetch` chiamato come metodo), corretto e ripubblicato; il cron l'ha riprovato da solo |
+| Bozza in Printful | ✅ ordine `draft`, external id = ordine dello shop, variante e SKU giusti, file di stampa presenti, indirizzo IT completo, prezzo al pubblico 15,00 € |
+| Costo Printful della bozza | 7,25 € articolo + 4,69 € spedizione = 14,57 € (il cliente ha pagato 20,00 € con la spedizione dello shop): dato utile per le tariffe in cassa |
+
 ## Checklist per la produzione
 
 - Istanza `monopolele-shop` creata pulita, stesso codice e mount, senza `NOINDEX`.
