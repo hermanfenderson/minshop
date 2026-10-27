@@ -1,0 +1,70 @@
+---
+import type { StorefrontShellModel } from '../../features/storefront/models';
+import { siteShell } from '../../features/storefront/controls/site-shell';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
+
+/**
+ * The WEBSITE's footer, from its shell (docs/SITE_SHELL.md), plus the store's
+ * own footer links (Admin → Navigation: terms, privacy, …) on the legal line.
+ * The language switcher is in the header, as on the website.
+ */
+interface Props {
+  model: StorefrontShellModel;
+  i18n?: I18n;
+}
+
+const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
+const shell = siteShell(i18n.locale);
+const footer = shell.footer;
+const legalLinks = [
+  ...(footer?.links ?? []).filter((l) => l.href).map((l) => ({ text: l.label, href: l.href! })),
+  ...model.footerLinks,
+];
+---
+
+<footer class="mt-16 bg-footer font-sans text-on-footer">
+  <div class="mx-auto max-w-(--page-max) px-(--page-pad-x) pb-8 pt-14">
+    {
+      footer && (footer.about.length > 0 || footer.columns.length > 0) && (
+        <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div>
+            {shell.logo ? (
+              <span class="inline-block rounded-md bg-white px-3.5 py-2.5">
+                <img src={shell.logo.src} alt={shell.logo.alt} loading="lazy" class="h-[30px] w-auto" />
+              </span>
+            ) : (
+              <span class="font-serif text-xl">{shell.name}</span>
+            )}
+            {footer.about.length > 0 && (
+              <p class="mt-4 max-w-sm text-sm leading-relaxed text-footer-muted">
+                {footer.about.map((s) => (s.href ? <a href={s.href} class="text-on-footer underline underline-offset-2">{s.text}</a> : s.text))}
+              </p>
+            )}
+          </div>
+          {footer.columns.map((column) => (
+            <div>
+              <h4 class="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-footer-muted">{column.title}</h4>
+              <ul class="space-y-1.5 text-sm">
+                {column.links.map((l) => (
+                  <li>{l.href ? <a href={l.href} class="no-underline hover:underline">{l.label}</a> : l.label}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    <div class="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/15 pt-5 text-xs text-footer-muted">
+      <span>{footer?.legal ?? `© ${shell.name}`}</span>
+      {
+        legalLinks.length > 0 && (
+          <nav aria-label={t('storefront.footer.nav')} class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {legalLinks.map((link) => <a href={link.href} class="hover:text-on-footer">{link.text}</a>)}
+          </nav>
+        )
+      }
+    </div>
+  </div>
+</footer>

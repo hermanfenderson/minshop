@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { resolveTheme } from './scripts/themes.mjs';
 import { themeCssPath, writeThemeArtifacts } from './scripts/theme-css.mjs';
 import { resolveDeployment } from './scripts/deployment.mjs';
+import { resolveSiteShell } from './scripts/site-shell.mjs';
 import { storeOverrides } from './src/store.config.ts';
 
 // SSR on Cloudflare Workers. platformProxy lets `astro dev` read bindings
@@ -25,6 +26,12 @@ writeThemeArtifacts();
 // are build-time: the mount is baked into asset URLs, so it becomes Astro's
 // `base`; the prefix reaches src/deployment.ts as a compile-time constant.
 const deployment = resolveDeployment(process.env, storeOverrides);
+
+// The website's header, footer and menu for the `site-shell` theme
+// (docs/SITE_SHELL.md). Resolved for every theme so the alias always exists;
+// only site-shell reads it.
+const siteShell = await resolveSiteShell();
+if (theme.id === 'site-shell') console.log(`[site-shell] ${siteShell.source}`);
 
 // Stamp every build with the theme it was compiled for. The deploy scripts
 // refuse to ship an artifact whose stamp disagrees with the current
@@ -69,6 +76,7 @@ export default defineConfig({
         // one global.css's @import resolves to. Tailwind v4's plugin follows
         // Vite aliases in CSS @import (probed before relying on it).
         '#theme-css': themeCssPath(theme.id),
+        '#site-shell': siteShell.path,
       },
     },
   },

@@ -133,3 +133,10 @@ declare namespace Cloudflare {
     EMAIL?: import('./features/email/cloudflare').EmailBinding;
   }
 }
+
+// The website's shell for the `site-shell` theme, aliased at build time to the
+// JSON named by SITE_SHELL (scripts/site-shell.mjs).
+declare module '#site-shell' {
+  const shell: import('./features/storefront/controls/site-shell').SiteShellSource;
+  export default shell;
+}

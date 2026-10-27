@@ -1,0 +1,158 @@
+---
+import type { StorefrontShellModel } from '../../features/storefront/models';
+import StoreCartControl from '../../features/storefront/controls/StoreCartControl.astro';
+import StoreAccountControl from '../../features/storefront/controls/StoreAccountControl.astro';
+import StoreLanguageSwitcher from '../../features/storefront/controls/StoreLanguageSwitcher.astro';
+import { siteShell } from '../../features/storefront/controls/site-shell';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
+
+/**
+ * The WEBSITE's header, from the shell it publishes (SITE_SHELL,
+ * docs/SITE_SHELL.md): same logo, same menu, same colours. The store keeps
+ * its own controls at the right — search, cart, account — because this header
+ * renders on cart, checkout and account pages too.
+ *
+ * The merchant's header links (Admin → Navigation) are not shown: in a store
+ * that lives inside a website the menu is the website's. Footer links still are.
+ */
+interface Props {
+  model: StorefrontShellModel;
+  i18n?: I18n;
+}
+
+const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
+const shell = siteShell(i18n.locale);
+const logo = shell.logo;
+const ext = (external: boolean) => (external ? { rel: 'noopener' } : {});
+---
+
+{shell.head.stylesheet && <link rel="stylesheet" href={shell.head.stylesheet} />}
+<style is:inline set:html={shell.head.css}></style>
+
+{
+  shell.banner && shell.banner.length > 0 && (
+    <div class="bg-footer px-4 py-1.5 text-center font-sans text-xs font-medium tracking-wide text-on-footer">
+      {shell.banner.map((s) => (s.href ? <a href={s.href} class="text-banner-link underline-offset-2 hover:underline">{s.text}</a> : s.text))}
+    </div>
+  )
+}
+{
+  model.announcement && (
+    <div class="bg-brand px-4 py-2 text-center text-xs tracking-wide text-on-brand">
+      {model.announcement.href ? (
+        <a href={model.announcement.href} class="underline-offset-2 hover:underline">{model.announcement.text}</a>
+      ) : (
+        model.announcement.text
+      )}
+    </div>
+  )
+}
+
+<header class="site-shell-header sticky top-0 z-20 border-b border-header-line bg-header/95 text-on-header backdrop-blur">
+  <div class="mx-auto flex min-h-[76px] max-w-(--page-max) items-center gap-6 px-(--page-pad-x)">
+    <a href={shell.homeHref} aria-label={`${shell.name} — home`} class="flex shrink-0 items-center gap-3 no-underline">
+      {
+        logo ? (
+          <img src={logo.src} alt={logo.alt} width={logo.width} height={logo.height} class="h-[30px] w-auto lg:h-[38px]" />
+        ) : model.logo ? (
+          <img src={model.logo.src} alt={model.logo.alt} class="h-8 max-w-48 object-contain sm:h-10" />
+        ) : (
+          <span class="font-serif text-2xl tracking-tight">{shell.name}</span>
+        )
+      }
+      {
+        logo?.text && (
+          <span class="hidden font-serif leading-tight xl:block">
+            <b class="block">{logo.text}</b>
+            {logo.tagline && <small class="block text-xs opacity-80">{logo.tagline}</small>}
+          </span>
+        )
+      }
+    </a>
+
+    <nav aria-label={t('storefront.header.primaryNav')} class="ml-auto hidden items-center gap-6 font-sans text-base font-medium lg:flex">
+      {
+        shell.nav.map((item) =>
+          item.children.length > 0 ? (
+            <details class="shell-group relative">
+              <summary class="shell-link cursor-pointer list-none py-1.5">{item.label} <span aria-hidden="true">▾</span></summary>
+              <div class="absolute left-0 top-full z-30 mt-2 min-w-48 border-t-[3px] border-nav-accent bg-paper p-2 text-ink shadow-lg">
+                {item.children.map((child) => child.href && (
+                  <a href={child.href} class="block px-2 py-2 no-underline hover:bg-surface" {...ext(child.external)}>{child.label}</a>
+                ))}
+              </div>
+            </details>
+          ) : (
+            item.href && (
+              <a href={item.href} class="shell-link py-1.5 no-underline" aria-current={item.current ? 'page' : undefined} {...ext(item.external)}>
+                {item.label}
+              </a>
+            )
+          ),
+        )
+      }
+    </nav>
+
+    <div class="ml-auto flex items-center gap-3 font-sans text-sm font-semibold lg:ml-0">
+      <a href={model.search.action} class="hidden hover:text-nav-accent sm:inline" aria-label={t('storefront.header.search')}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+      </a>
+      {model.account.enabled && <StoreAccountControl href={model.account.href} i18n={i18n} />}
+      {
+        model.cart.enabled && (
+          <StoreCartControl
+            href={model.cart.href}
+            i18n={i18n}
+            class="inline-flex items-center rounded-full border-[1.5px] border-current px-3.5 py-2 transition hover:bg-on-header hover:text-header"
+          />
+        )
+      }
+      <details class="shell-mobile lg:hidden">
+        <summary class="cursor-pointer list-none rounded-full border-[1.5px] border-current px-3.5 py-2">Menu</summary>
+        <nav aria-label={t('storefront.header.primaryNav')} class="absolute inset-x-0 top-full border-b border-header-line bg-header px-(--page-pad-x) pb-5 pt-2 text-base font-medium">
+          {
+            shell.nav.map((item) => (
+              <>
+                {item.href ? (
+                  <a href={item.href} class="block border-b border-header-line py-3 no-underline" aria-current={item.current ? 'page' : undefined} {...ext(item.external)}>{item.label}</a>
+                ) : (
+                  <span class="block border-b border-header-line py-3 opacity-70">{item.label}</span>
+                )}
+                {item.children.map((child) => child.href && (
+                  <a href={child.href} class="block border-b border-header-line py-3 pl-4 no-underline" {...ext(child.external)}>{child.label}</a>
+                ))}
+              </>
+            ))
+          }
+          <a href={model.search.action} class="block py-3 no-underline">{t('storefront.header.search')}</a>
+        </nav>
+      </details>
+      <StoreLanguageSwitcher languages={model.languages} class="flex items-center gap-2 text-xs" linkClass="hover:text-nav-accent" />
+    </div>
+  </div>
+</header>
+
+<style>
+  .shell-link {
+    border-bottom: 3px solid transparent;
+  }
+  .shell-link:hover,
+  .shell-link[aria-current] {
+    border-color: var(--color-nav-accent);
+  }
+  .shell-group summary::-webkit-details-marker,
+  .shell-mobile summary::-webkit-details-marker {
+    display: none;
+  }
+</style>
+
+<script>
+  // @ts-nocheck -- plain-JS client script
+  // One open menu at a time; a click outside or Escape closes them.
+  const groups = [...document.querySelectorAll('.site-shell-header details')];
+  for (const g of groups) g.addEventListener('toggle', () => g.open && groups.forEach((o) => o !== g && (o.open = false)));
+  document.addEventListener('click', (e) => groups.forEach((g) => !g.contains(e.target) && (g.open = false)));
+  document.addEventListener('keydown', (e) => e.key === 'Escape' && groups.forEach((g) => (g.open = false)));
+</script>
