@@ -7,7 +7,7 @@ store in the code.
 | # | Item | Status |
 |---|---|---|
 | 1 | Test shop on Cloudflare, Stripe only (Monopolele, step 1) | Done 2026-10-26 — [report](SHOP_TEST_MONOPOLELE.md) |
-| 2 | Failed and pending payment follow-up (below) | Planned — before production |
+| 2 | Failed and pending payment follow-up (below) | Done 2026-10-27 — live test on the test shop pending |
 | 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | In progress — catalog import done |
 | 4 | `monopolele` theme (below) | Before production, after the connector |
 | 4a | Two-axis variant picker (below) | Done 2026-10-26 (option A) |
@@ -34,6 +34,12 @@ today neither the buyer nor the merchant learns about it.
 
 Already done: the order page says when a payment failed, expired or is still
 clearing (it used to say "your payment went through" in every case).
+
+Done 2026-10-27: migration `0042` stores the buyer email, amount, currency and
+locale on the reservation as Stripe reports them, and adds a
+`checkout_notifications` outbox (same state machine as `order_notifications`,
+swept by the cron). Both emails go out once per failed checkout; the admin list
+is at `/admin/orders/unpaid`, linked from Orders.
 
 ## `monopolele` theme
 

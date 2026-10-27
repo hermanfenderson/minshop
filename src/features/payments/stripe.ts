@@ -4,6 +4,7 @@ import type {
   CreateCheckoutParams,
   CheckoutResult,
   WebhookResult,
+  CheckoutContact,
 } from './provider';
 import { STRIPE_CHECKOUT_TTL_SECONDS } from './provider';
 import { stripeCheckoutLocale } from './stripeLocale';
@@ -21,6 +22,19 @@ export function classifyRateDelivery(
 ): 'pickup' | 'shipping' | 'unknown' {
   const d = metadata?.delivery;
   return d === 'pickup' ? 'pickup' : d === 'shipping' ? 'shipping' : 'unknown';
+}
+
+/** What a session tells us about the buyer, for checkouts that end unpaid. */
+function checkoutContact(session: Stripe.Checkout.Session): CheckoutContact | undefined {
+  const reservationId = session.metadata?.reservation_id;
+  if (!reservationId) return undefined;
+  return {
+    reservationId,
+    email: session.customer_details?.email ?? session.customer_email ?? null,
+    amountCents: session.amount_total ?? null,
+    currency: session.currency ? session.currency.toUpperCase() : null,
+    locale: session.metadata?.locale ?? null,
+  };
 }
 
 // Shipping details have moved across Stripe API versions (session.shipping_details
@@ -134,9 +148,13 @@ export function createStripeProvider(
         event.type === 'checkout.session.expired' ||
         event.type === 'checkout.session.async_payment_failed'
       ) {
+        const failed = event.type === 'checkout.session.async_payment_failed';
         return {
           type: event.type,
           releaseReservationId: event.data.object.metadata?.reservation_id ?? undefined,
+          releaseAs: failed ? 'failed' : 'expired',
+          delayedPaymentFailed: failed,
+          checkoutContact: checkoutContact(event.data.object),
         };
       }
 
@@ -157,6 +175,7 @@ export function createStripeProvider(
           return {
             type: event.type,
             pendingReservationId: session.metadata?.reservation_id ?? undefined,
+            checkoutContact: checkoutContact(session),
           };
         }
 

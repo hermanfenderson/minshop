@@ -1,0 +1,107 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { formatPrice, formatDate, getConfig } from '../../../config';
+import { listUnpaidCheckouts, type UnpaidCheckoutState } from '../../../features/orders/unpaidCheckouts';
+import { ORDER_METHOD_OPTIONS } from '../../../features/orders/filter';
+
+// Read-only: checkouts that never became orders. Orders are paid-only, so a
+// delayed payment that is still clearing, failed, or a checkout that expired
+// after the buyer typed an email lives here, on its reservation.
+const checkouts = await listUnpaidCheckouts(env.DB);
+const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
+const methodLabel = (m: string) => ORDER_METHOD_OPTIONS.find((o) => o.value === m)?.label ?? m;
+
+const STATE: Record<UnpaidCheckoutState, { label: string; tone: string }> = {
+  processing: { label: 'Processing', tone: 'bg-amber-50 text-amber-800 border-amber-200' },
+  failed: { label: 'Failed', tone: 'bg-red-50 text-red-800 border-red-200' },
+  expired: { label: 'Expired', tone: 'bg-gray-50 text-gray-600 border-line' },
+};
+const NOTICE: Record<string, string> = {
+  sent: 'Emailed',
+  pending: 'Queued',
+  processing: 'Sending',
+  skipped: 'Not sent (email off)',
+  dead: 'Failed to send',
+};
+---
+
+<AdminLayout title="Unpaid checkouts" active="orders">
+  <a href={Astro.locals.urls.href('/admin/orders')} class="text-xs uppercase tracking-widest text-gray-400 hover:text-brand">
+    &larr; Orders
+  </a>
+  <h1 class="mb-2 mt-4 font-serif text-3xl tracking-tight">Unpaid checkouts</h1>
+  <p class="mb-8 max-w-prose text-sm text-gray-500">
+    Checkouts that did not become orders: delayed payments (such as SEPA debits) still clearing, payments that
+    failed, and checkouts that expired after the buyer gave an email. No order exists for these and their items are
+    back in stock (except while processing). When a delayed payment fails, the buyer and you are emailed once.
+  </p>
+
+  <div class="sm:overflow-x-auto">
+    <table class="admin-table w-full text-left text-sm sm:min-w-[48rem]">
+      <thead>
+        <tr class="border-b border-line text-xs uppercase tracking-widest text-gray-400">
+          <th class="py-3 pr-4 font-normal">Started</th>
+          <th class="py-3 pr-4 font-normal">Buyer</th>
+          <th class="py-3 pr-4 font-normal">Items</th>
+          <th class="py-3 pr-4 font-normal">Amount</th>
+          <th class="py-3 pr-4 font-normal">State</th>
+          <th class="py-3 font-normal">Buyer notice</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          checkouts.map((c) => (
+            <tr class="border-b border-line align-top">
+              <td class="py-3 pr-4 text-gray-500">
+                {formatDate(c.createdAt, { dateStyle: 'medium', timeStyle: 'short' }, timeZone)}
+                <div class="text-xs text-gray-400">{methodLabel(c.paymentMethod)}</div>
+              </td>
+              <td data-label="Buyer" class="py-3 pr-4">
+                {c.email ? (
+                  <a href={`mailto:${c.email}`} class="text-accent hover:underline">
+                    {c.email}
+                  </a>
+                ) : (
+                  <span class="text-gray-400">—</span>
+                )}
+              </td>
+              <td data-label="Items" class="py-3 pr-4">
+                {c.items.map((item) => (
+                  <div>
+                    {item.name} <span class="text-gray-400">× {item.quantity}</span>
+                  </div>
+                ))}
+              </td>
+              <td data-label="Amount" class="py-3 pr-4 tabular-nums">
+                {c.amountCents != null ? formatPrice(c.amountCents, c.currency ?? undefined) : '—'}
+              </td>
+              <td data-label="State" class="py-3 pr-4">
+                <span class={`inline-block rounded border px-2 py-0.5 text-xs ${STATE[c.state].tone}`}>
+                  {STATE[c.state].label}
+                </span>
+                {c.endedAt && (
+                  <div class="mt-1 text-xs text-gray-400">
+                    {formatDate(c.endedAt, { dateStyle: 'medium', timeStyle: 'short' }, timeZone)}
+                  </div>
+                )}
+              </td>
+              <td data-label="Buyer notice" class="py-3 text-gray-500">
+                {c.customerNotice ? (NOTICE[c.customerNotice] ?? c.customerNotice) : '—'}
+              </td>
+            </tr>
+          ))
+        }
+        {
+          checkouts.length === 0 && (
+            <tr>
+              <td colspan="6" class="py-8 text-center text-gray-400">
+                Nothing to follow up.
+              </td>
+            </tr>
+          )
+        }
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

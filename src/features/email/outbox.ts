@@ -9,6 +9,13 @@ import {
   isGuestLinkReissueKind,
   reissueGeneration,
   type NotificationKind,
+  CHECKOUT_NOTIFICATION_KINDS,
+  claimCheckoutNotification,
+  markCheckoutNotificationSent,
+  markCheckoutNotificationSkipped,
+  markCheckoutNotificationFailed,
+  listUndeliveredCheckoutKinds,
+  type CheckoutNotificationKind,
 } from './outboxStore';
 
 export { NOTIFICATION_KINDS, type NotificationKind } from './outboxStore';
@@ -23,6 +30,9 @@ import { emailLanguage } from '../i18n/email';
 import { orderLocale } from '../i18n/order';
 import { languageSettings } from '../i18n/settings';
 import { shouldSendCustomerOrderEmail } from './orderPolicy';
+import { getUnpaidCheckout } from '../orders/unpaidCheckouts';
+import { paymentFailedCustomerEmail, paymentFailedOwnerEmail } from './paymentFailed';
+import { withMount } from '../../deployment';
 
 /**
  * Transactional-email outbox (see migration 0032). recordPaidOrder commits one
@@ -218,6 +228,78 @@ export async function deliverOrderNotifications(
 }
 
 /**
+ * Deliver a checkout's undelivered failed-payment notices (checkout outbox,
+ * migration 0042). Same claim → build → send → mark cycle as the order
+ * outbox, keyed by the reservation because no order exists.
+ */
+export async function deliverCheckoutNotifications(
+  db: D1Database,
+  reservationId: string,
+  origin: string,
+  settings?: StoreSettings,
+): Promise<void> {
+  const s = settings ?? (await getStoreSettings(db));
+  await rememberStoreUrl(db, origin);
+  const kinds = (await listUndeliveredCheckoutKinds(db, reservationId)).filter(
+    (k): k is CheckoutNotificationKind => (CHECKOUT_NOTIFICATION_KINDS as readonly string[]).includes(k),
+  );
+  let checkout: Awaited<ReturnType<typeof getUnpaidCheckout>> | undefined;
+
+  for (const kind of kinds) {
+    const attempts = await claimCheckoutNotification(db, reservationId, kind);
+    if (attempts == null) continue;
+    try {
+      const emailer = await getEmailProvider(s);
+      if (!emailer) {
+        await markCheckoutNotificationSkipped(db, reservationId, kind, attempts);
+        continue;
+      }
+      checkout ??= await getUnpaidCheckout(db, reservationId);
+      if (!checkout) {
+        await markCheckoutNotificationFailed(db, reservationId, kind, attempts, 'Reservation not found', true);
+        continue;
+      }
+      const storeName = s.storeName || getConfig().storeName;
+      const failed = {
+        items: checkout.items.map((i) => ({ name: i.name, quantity: i.quantity, priceCents: i.priceCents })),
+        amountCents: checkout.amountCents,
+        currency: checkout.currency ?? getConfig().currency,
+      };
+      let msg;
+      if (kind === 'payment-failed-customer') {
+        if (!checkout.email) {
+          await markCheckoutNotificationSkipped(db, reservationId, kind, attempts);
+          continue;
+        }
+        // The buyer's checkout language, and a link back to the shop in it.
+        const customer = emailLanguage(s, orderLocale(checkout.locale), origin);
+        msg = paymentFailedCustomerEmail(checkout.email, failed, storeName, customer.urls.absolute('/'), customer.i18n);
+      } else {
+        const notifyTo = s.emailNotifyTo || getConfig().email.notifyTo;
+        if (!notifyTo) {
+          await markCheckoutNotificationSkipped(db, reservationId, kind, attempts);
+          continue;
+        }
+        msg = paymentFailedOwnerEmail(
+          notifyTo,
+          checkout.email,
+          failed,
+          storeName,
+          origin + withMount('/admin/orders/unpaid'),
+          emailLanguage(s, languageSettings(s).adminLocale, origin).i18n,
+        );
+      }
+      // The reservation's public ID is globally random, like an order's.
+      await emailer.send({ ...msg, idempotencyKey: `${kind}/${reservationId}` });
+      await markCheckoutNotificationSent(db, reservationId, kind, attempts);
+    } catch (err) {
+      console.error(`Checkout notification ${kind}/${reservationId} failed:`, err);
+      await markCheckoutNotificationFailed(db, reservationId, kind, attempts, err);
+    }
+  }
+}
+
+/**
  * Recover a few stale rows: expired-lease claims from dead deliverers, and
  * pending rows old enough that their own settlement clearly isn't coming back
  * for them. Piggybacks on live settlements (no cron in the Astro worker yet),
@@ -243,5 +325,18 @@ export async function sweepStaleNotifications(db: D1Database, origin: string): P
     .all<{ order_id: number }>();
   for (const row of results ?? []) {
     await deliverOrderNotifications(db, row.order_id, origin);
+  }
+  // The checkout outbox drains on the same cadence.
+  const { results: checkouts } = await db
+    .prepare(
+      `SELECT DISTINCT reservation_id FROM checkout_notifications
+        WHERE (state = 'pending' AND created_at < datetime('now', '-${SWEEP_MIN_AGE_SECONDS} seconds'))
+           OR (state = 'processing' AND lease_expires_at < datetime('now'))
+        ORDER BY created_at
+        LIMIT ${SWEEP_BATCH}`,
+    )
+    .all<{ reservation_id: string }>();
+  for (const row of checkouts ?? []) {
+    await deliverCheckoutNotifications(db, row.reservation_id, origin);
   }
 }

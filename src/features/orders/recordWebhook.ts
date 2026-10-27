@@ -1,7 +1,13 @@
 import { env } from 'cloudflare:workers';
 import type { WebhookResult } from '../payments/provider';
 import { recordPaidOrder, getOrderByProviderSessionId } from './db';
-import { deliverOrderNotifications, sweepStaleNotifications } from '../email/outbox';
+import {
+  deliverCheckoutNotifications,
+  deliverOrderNotifications,
+  sweepStaleNotifications,
+} from '../email/outbox';
+import { queueCheckoutFailureNotices } from '../email/outboxStore';
+import { recordCheckoutContact } from './unpaidCheckouts';
 import { persistRefundEvent, applyRefundEvent } from '../refunds/sync';
 import { sendRefundNotice } from '../refunds/notify';
 import { getPaymentProvider, type PaymentMethod } from '../payments';
@@ -46,13 +52,25 @@ export async function recordPaidWebhookOrder(
       await markPendingSettled(env.DB, result.settlePendingPaymentId);
     }
   };
+  // Who the buyer was, before the reservation ends: the failed-payment emails
+  // and the admin's unpaid-checkout list read it back.
+  if (result.checkoutContact) {
+    await recordCheckoutContact(env.DB, result.checkoutContact);
+  }
   if (result.releaseReservationId) {
     await markInventoryReservationTerminal(
       env.DB,
       result.releaseReservationId,
-      'failed',
+      result.releaseAs ?? 'failed',
       purgeStockProductCache,
     );
+  }
+  // A delayed payment that failed after the buyer left: no order exists, so
+  // tell both sides once. Queued only while the reservation reads 'failed', so
+  // a redelivered event changes nothing; a failed send is left to the sweep.
+  if (result.delayedPaymentFailed && result.releaseReservationId) {
+    await queueCheckoutFailureNotices(env.DB, result.releaseReservationId);
+    await deliverCheckoutNotifications(env.DB, result.releaseReservationId, origin, settings);
   }
   if (result.pendingReservationId) {
     await markInventoryReservationPaymentPending(env.DB, result.pendingReservationId);

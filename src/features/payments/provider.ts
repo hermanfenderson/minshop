@@ -106,11 +106,34 @@ export interface CheckoutResult {
   };
 }
 
+export interface CheckoutContact {
+  reservationId: string;
+  email: string | null;
+  amountCents: number | null;
+  currency: string | null;
+  /** The checkout's language, as sent to the provider. */
+  locale: string | null;
+}
+
 export interface WebhookResult {
   /** Provider event type, for logging/branching. */
   type: string;
   /** Abandoned/expired checkout whose held inventory should be released. */
   releaseReservationId?: string;
+  /**
+   * How the released checkout ended: 'expired' (abandoned, never paid) or
+   * 'failed' (a payment was attempted and did not go through). Defaults to
+   * 'failed' for providers that do not say.
+   */
+  releaseAs?: 'expired' | 'failed';
+  /**
+   * A delayed payment (bank debit) failed after the buyer left: the buyer and
+   * the merchant are told once, through the checkout outbox.
+   */
+  delayedPaymentFailed?: boolean;
+  /** Who the buyer was and what they were asked to pay, as far as the provider
+   *  knows when the checkout ends or starts waiting for a delayed payment. */
+  checkoutContact?: CheckoutContact;
   /** Delayed payment started; protect its hold from ordinary checkout expiry. */
   pendingReservationId?: string;
   /** Pending-payment row to mark settled only after the paid order commits. */

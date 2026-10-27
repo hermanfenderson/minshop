@@ -17,7 +17,12 @@ import {
   claimNotification,
   markNotificationSent,
   MAX_ATTEMPTS,
+  queueCheckoutFailureNotices,
+  claimCheckoutNotification,
+  markCheckoutNotificationSent,
+  listUndeliveredCheckoutKinds,
 } from '../../src/features/email/outboxStore.ts';
+import { recordCheckoutContact, listUnpaidCheckouts, getUnpaidCheckout } from '../../src/features/orders/unpaidCheckouts.ts';
 
 const mf = new Miniflare({
   modules: true,
@@ -35,13 +40,15 @@ try {
     'CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, provider_session_id TEXT NOT NULL UNIQUE, public_id TEXT NOT NULL UNIQUE, email TEXT, amount_total_cents INTEGER NOT NULL, shipping_cents INTEGER NOT NULL DEFAULT 0, shipping_label TEXT, shipping_weight_grams INTEGER, delivery_method TEXT, discount_cents INTEGER NOT NULL DEFAULT 0, tax_cents INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL, ship_address TEXT, status TEXT NOT NULL, payment_method TEXT, settlement_token TEXT, provider_payment_id TEXT, locale TEXT)',
     'CREATE TABLE order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, product_id INTEGER, variant_id INTEGER, name TEXT NOT NULL, price_cents INTEGER NOT NULL, quantity INTEGER NOT NULL, public_id TEXT UNIQUE, file_key TEXT, file_name TEXT, file_mime TEXT, file_size_bytes INTEGER, downloads INTEGER NOT NULL DEFAULT 0)',
     'CREATE TABLE product_variants (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, label TEXT NOT NULL, price_delta_cents INTEGER NOT NULL DEFAULT 0, stock INTEGER NOT NULL, active INTEGER NOT NULL DEFAULT 1)',
-    "CREATE TABLE checkout_reservations (public_id TEXT PRIMARY KEY, items TEXT NOT NULL, payment_method TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', expires_at TEXT NOT NULL, terminal_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+    "CREATE TABLE checkout_reservations (public_id TEXT PRIMARY KEY, items TEXT NOT NULL, payment_method TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', expires_at TEXT NOT NULL, terminal_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), customer_email TEXT, amount_total_cents INTEGER, currency TEXT, locale TEXT)",
     "CREATE TABLE order_item_ids (public_id TEXT PRIMARY KEY, order_public_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
     "CREATE TABLE order_inventory_exceptions (id INTEGER PRIMARY KEY AUTOINCREMENT, public_id TEXT NOT NULL UNIQUE, order_id INTEGER NOT NULL, product_id INTEGER NOT NULL, variant_id INTEGER, requested_qty INTEGER NOT NULL, consumed_qty INTEGER NOT NULL, shortfall_qty INTEGER NOT NULL, resolved_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
     // Just the columns recordPaidOrder's batched settle statement touches.
     "CREATE TABLE pending_payments (payment_hash TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending')",
     // Outbox rows are born inside the same batch (0032).
     "CREATE TABLE order_notifications (order_id INTEGER NOT NULL, kind TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, lease_expires_at TEXT, last_error TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), sent_at TEXT, PRIMARY KEY (order_id, kind))",
+    // Failed-payment notices for checkouts that never became orders (0042).
+    "CREATE TABLE checkout_notifications (reservation_id TEXT NOT NULL, kind TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, lease_expires_at TEXT, last_error TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), sent_at TEXT, PRIMARY KEY (reservation_id, kind))",
   ]) {
     await db.exec(sql);
   }
@@ -717,7 +724,47 @@ try {
   );
   assert.deepEqual(purged, ['prod_purgeboundary'], 'crossing In stock → Sold out purged the product');
 
-  console.log('Reservation integration passed: concurrency + pending + terminal settlement + inventory exception + legacy + cross-release rollback + stock purge offset');
+  // Failed delayed payment: contact capture, notices queued only for a FAILED
+  // reservation and only once, the checkout outbox claim/send, and the admin list.
+  const failedId = crypto.randomUUID();
+  const abandonedId = crypto.randomUUID();
+  for (const [id, status] of [[failedId, 'failed'], [abandonedId, 'expired']]) {
+    await db
+      .prepare(
+        `INSERT INTO checkout_reservations (public_id, items, payment_method, status, expires_at, terminal_at)
+         VALUES (?, ?, 'stripe', ?, datetime('now'), datetime('now'))`,
+      )
+      .bind(id, JSON.stringify([{ productId: 1, name: 'Tee', priceCents: 2500, quantity: 2 }]), status)
+      .run();
+  }
+  await recordCheckoutContact(db, { reservationId: failedId, email: 'buyer@example.com', amountCents: 5000, currency: 'EUR', locale: 'it' });
+  // A later event that knows less never blanks what an earlier one recorded.
+  await recordCheckoutContact(db, { reservationId: failedId, email: null, amountCents: null, currency: null, locale: null });
+  const failed = await getUnpaidCheckout(db, failedId);
+  assert.equal(failed.state, 'failed');
+  assert.equal(failed.email, 'buyer@example.com');
+  assert.equal(failed.amountCents, 5000);
+  assert.equal(failed.locale, 'it');
+  assert.equal(failed.items[0].quantity, 2);
+
+  await queueCheckoutFailureNotices(db, abandonedId);
+  assert.deepEqual(await listUndeliveredCheckoutKinds(db, abandonedId), [], 'an expired checkout gets no failure notice');
+  await queueCheckoutFailureNotices(db, failedId);
+  await queueCheckoutFailureNotices(db, failedId);
+  assert.deepEqual(await listUndeliveredCheckoutKinds(db, failedId), ['payment-failed-customer', 'payment-failed-owner']);
+  assert.equal(await claimCheckoutNotification(db, failedId, 'payment-failed-customer'), 1);
+  assert.equal(await claimCheckoutNotification(db, failedId, 'payment-failed-customer'), null);
+  await markCheckoutNotificationSent(db, failedId, 'payment-failed-customer', 1);
+  assert.deepEqual(await listUndeliveredCheckoutKinds(db, failedId), ['payment-failed-owner']);
+
+  // The admin list: the failed one with its notice state; the expired one has
+  // no email, so nobody could follow it up and it stays out.
+  const unpaid = await listUnpaidCheckouts(db);
+  const listedFailed = unpaid.find((c) => c.publicId === failedId);
+  assert.equal(listedFailed?.customerNotice, 'sent');
+  assert.equal(unpaid.some((c) => c.publicId === abandonedId), false);
+
+  console.log('Reservation integration passed: concurrency + pending + terminal settlement + inventory exception + legacy + cross-release rollback + stock purge offset + failed-payment follow-up');
 } finally {
   await mf.dispose();
 }

@@ -49,6 +49,7 @@ fi
 # here (orders, catalog, content, navigation, media, settings).
 RESET_SQL="
 DELETE FROM order_notifications;
+DELETE FROM checkout_notifications;
 DELETE FROM order_item_ids;
 DELETE FROM order_guest_access;
 DELETE FROM order_inventory_exceptions;

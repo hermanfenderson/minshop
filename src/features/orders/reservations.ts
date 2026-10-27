@@ -64,7 +64,7 @@ export function aggregateStockTargets(items: ReservationItem[]): StockTarget[] {
   return [...targets.values()];
 }
 
-function parseItems(value: string): ReservationItem[] | null {
+export function parseItems(value: string): ReservationItem[] | null {
   try {
     const items = JSON.parse(value) as ReservationItem[];
     if (

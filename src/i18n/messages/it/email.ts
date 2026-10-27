@@ -84,4 +84,18 @@ export const email = {
   'email.login.textIntro': 'Clicca per accedere a {store}:',
   'email.login.textExpiry':
     'Questo link scade tra 15 minuti. Se non l’hai richiesto, ignora questa email.',
+  // Pagamento differito (per esempio SEPA) non riuscito dopo la cassa: nessun ordine
+  'email.paymentFailed.subject': 'Il tuo pagamento a {store} non è andato a buon fine',
+  'email.paymentFailed.heading': 'Il pagamento non è andato a buon fine',
+  'email.paymentFailed.subheading':
+    'La banca non ha completato il pagamento: l’ordine non è stato registrato e non ti è stato addebitato nulla.',
+  'email.paymentFailed.retry': 'Riprova',
+  'email.paymentFailed.textRetry': 'Per riprovare, rifai l’ordine: {url}',
+  'email.paymentFailed.footer': 'Domande? Rispondi pure a questa email.',
+  'email.paymentFailedOwner.subject': 'Pagamento non riuscito su {store}: {amount} da {email}',
+  'email.paymentFailedOwner.heading': 'Un pagamento non è andato a buon fine',
+  'email.paymentFailedOwner.subheading': '{amount} da {email}',
+  'email.paymentFailedOwner.explain':
+    'La banca non ha completato questo pagamento differito. Nessun ordine è stato creato e gli articoli sono tornati disponibili.',
+  'email.paymentFailedOwner.view': 'Vedi i pagamenti non completati',
 } satisfies Catalog;

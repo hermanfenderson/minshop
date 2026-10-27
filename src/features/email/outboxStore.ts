@@ -1,8 +1,10 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
 /**
- * The order_notifications state machine — every statement that moves a row
- * between states, and nothing else. Split from outbox.ts (which owns message
+ * The outbox state machine — every statement that moves a row between states,
+ * and nothing else. Two tables share it: order_notifications (keyed by the
+ * order) and checkout_notifications (keyed by the reservation of a checkout
+ * that never became an order, see migration 0042). Split from outbox.ts (which owns message
  * building and sending) so this half has NO `cloudflare:workers` dependency:
  * test/integration/reservations.mjs runs these exact statements against a real
  * miniflare D1, where a unit-test fake would let malformed SQL or bind
@@ -10,6 +12,18 @@ import type { D1Database } from '@cloudflare/workers-types';
  */
 
 export const NOTIFICATION_KINDS = ['customer-receipt', 'owner-notification', 'order-shipped'] as const;
+
+/** Emails about a checkout whose delayed payment failed (no order exists). */
+export const CHECKOUT_NOTIFICATION_KINDS = ['payment-failed-customer', 'payment-failed-owner'] as const;
+export type CheckoutNotificationKind = (typeof CHECKOUT_NOTIFICATION_KINDS)[number];
+
+/** Which outbox a statement runs against. Constants only: never user input. */
+interface Outbox {
+  table: 'order_notifications' | 'checkout_notifications';
+  key: 'order_id' | 'reservation_id';
+}
+const ORDERS: Outbox = { table: 'order_notifications', key: 'order_id' };
+const CHECKOUTS: Outbox = { table: 'checkout_notifications', key: 'reservation_id' };
 
 /**
  * Versioned-kind family for guest-link reissue (see the public-ID plan): each
@@ -64,15 +78,19 @@ export async function listUndeliveredKinds(
   db: D1Database,
   orderId: number,
 ): Promise<string[]> {
+  return listUndelivered(ORDERS, db, orderId);
+}
+
+async function listUndelivered(o: Outbox, db: D1Database, id: number | string): Promise<string[]> {
   const { results } = await db
     .prepare(
-      `SELECT kind FROM order_notifications
-        WHERE order_id = ?
+      `SELECT kind FROM ${o.table}
+        WHERE ${o.key} = ?
           AND (state = 'pending'
                OR (state = 'processing' AND lease_expires_at < datetime('now')))
         ORDER BY created_at, kind`,
     )
-    .bind(orderId)
+    .bind(id)
     .all<{ kind: string }>();
   return (results ?? []).map((r) => r.kind);
 }
@@ -93,32 +111,36 @@ export async function claimNotification(
   orderId: number,
   kind: NotificationKind,
 ): Promise<number | null> {
+  return claim(ORDERS, db, orderId, kind);
+}
+
+async function claim(o: Outbox, db: D1Database, id: number | string, kind: string): Promise<number | null> {
   // An abandoned claim (deliverer cancelled mid-send — waitUntil is bounded to
   // ~30s after the response) consumed its attempt at claim time. Once the
   // attempts are spent, park the row instead of reclaiming it forever: HTTP
   // cancellation is exactly the failure mode this table exists to bound.
   await db
     .prepare(
-      `UPDATE order_notifications
+      `UPDATE ${o.table}
           SET state = 'dead', lease_expires_at = NULL,
               last_error = COALESCE(last_error, 'delivery repeatedly interrupted (lease expired)')
-        WHERE order_id = ? AND kind = ? AND state = 'processing'
+        WHERE ${o.key} = ? AND kind = ? AND state = 'processing'
           AND lease_expires_at < datetime('now') AND attempts >= ${MAX_ATTEMPTS}`,
     )
-    .bind(orderId, kind)
+    .bind(id, kind)
     .run();
   const row = await db
     .prepare(
-      `UPDATE order_notifications
+      `UPDATE ${o.table}
           SET state = 'processing',
               attempts = attempts + 1,
               lease_expires_at = datetime('now', '+${LEASE_SECONDS} seconds')
-        WHERE order_id = ? AND kind = ? AND attempts < ${MAX_ATTEMPTS}
+        WHERE ${o.key} = ? AND kind = ? AND attempts < ${MAX_ATTEMPTS}
           AND (state = 'pending'
                OR (state = 'processing' AND lease_expires_at < datetime('now')))
         RETURNING attempts`,
     )
-    .bind(orderId, kind)
+    .bind(id, kind)
     .first<{ attempts: number }>();
   return row?.attempts ?? null;
 }
@@ -134,13 +156,23 @@ export async function markNotificationSent(
   kind: NotificationKind,
   attempts: number,
 ): Promise<void> {
+  return markSent(ORDERS, db, orderId, kind, attempts);
+}
+
+async function markSent(
+  o: Outbox,
+  db: D1Database,
+  id: number | string,
+  kind: string,
+  attempts: number,
+): Promise<void> {
   await db
     .prepare(
-      `UPDATE order_notifications
+      `UPDATE ${o.table}
           SET state = 'sent', sent_at = datetime('now'), lease_expires_at = NULL, last_error = NULL
-        WHERE order_id = ? AND kind = ? AND state = 'processing' AND attempts = ?`,
+        WHERE ${o.key} = ? AND kind = ? AND state = 'processing' AND attempts = ?`,
     )
-    .bind(orderId, kind, attempts)
+    .bind(id, kind, attempts)
     .run();
 }
 
@@ -150,13 +182,23 @@ export async function markNotificationSkipped(
   kind: NotificationKind,
   attempts: number,
 ): Promise<void> {
+  return markSkipped(ORDERS, db, orderId, kind, attempts);
+}
+
+async function markSkipped(
+  o: Outbox,
+  db: D1Database,
+  id: number | string,
+  kind: string,
+  attempts: number,
+): Promise<void> {
   await db
     .prepare(
-      `UPDATE order_notifications
+      `UPDATE ${o.table}
           SET state = 'skipped', lease_expires_at = NULL
-        WHERE order_id = ? AND kind = ? AND state = 'processing' AND attempts = ?`,
+        WHERE ${o.key} = ? AND kind = ? AND state = 'processing' AND attempts = ?`,
     )
-    .bind(orderId, kind, attempts)
+    .bind(id, kind, attempts)
     .run();
 }
 
@@ -174,19 +216,67 @@ export async function markNotificationFailed(
   error: unknown,
   terminal = false,
 ): Promise<void> {
+  return markFailed(ORDERS, db, orderId, kind, attempts, error, terminal);
+}
+
+async function markFailed(
+  o: Outbox,
+  db: D1Database,
+  id: number | string,
+  kind: string,
+  attempts: number,
+  error: unknown,
+  terminal = false,
+): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
   await db
     .prepare(
-      `UPDATE order_notifications
+      `UPDATE ${o.table}
           SET state = ?, lease_expires_at = NULL, last_error = ?
-        WHERE order_id = ? AND kind = ? AND state = 'processing' AND attempts = ?`,
+        WHERE ${o.key} = ? AND kind = ? AND state = 'processing' AND attempts = ?`,
     )
     .bind(
       terminal || attempts >= MAX_ATTEMPTS ? 'dead' : 'pending',
       message.slice(0, 500),
-      orderId,
+      id,
       kind,
       attempts,
     )
     .run();
 }
+
+// ── Checkout outbox (migration 0042) ─────────────────────────────────────────
+
+/**
+ * Queue the failed-payment notices for a reservation, only while it is in the
+ * 'failed' state. INSERT OR IGNORE on the (reservation_id, kind) key makes a
+ * redelivered provider event a no-op.
+ */
+export function queueCheckoutFailureNotices(db: D1Database, reservationId: string) {
+  return db.batch(
+    CHECKOUT_NOTIFICATION_KINDS.map((kind) =>
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO checkout_notifications (reservation_id, kind)
+           SELECT ?, ? WHERE EXISTS (
+             SELECT 1 FROM checkout_reservations WHERE public_id = ? AND status = 'failed')`,
+        )
+        .bind(reservationId, kind, reservationId),
+    ),
+  );
+}
+
+export const listUndeliveredCheckoutKinds = (db: D1Database, reservationId: string) =>
+  listUndelivered(CHECKOUTS, db, reservationId);
+export const claimCheckoutNotification = (db: D1Database, reservationId: string, kind: CheckoutNotificationKind) =>
+  claim(CHECKOUTS, db, reservationId, kind);
+export const markCheckoutNotificationSent = (
+  db: D1Database, reservationId: string, kind: CheckoutNotificationKind, attempts: number,
+) => markSent(CHECKOUTS, db, reservationId, kind, attempts);
+export const markCheckoutNotificationSkipped = (
+  db: D1Database, reservationId: string, kind: CheckoutNotificationKind, attempts: number,
+) => markSkipped(CHECKOUTS, db, reservationId, kind, attempts);
+export const markCheckoutNotificationFailed = (
+  db: D1Database, reservationId: string, kind: CheckoutNotificationKind, attempts: number,
+  error: unknown, terminal = false,
+) => markFailed(CHECKOUTS, db, reservationId, kind, attempts, error, terminal);

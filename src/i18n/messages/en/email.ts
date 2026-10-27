@@ -92,4 +92,18 @@ export const email = {
   'email.login.footer': "If you didn't request this, you can safely ignore this email.",
   'email.login.textIntro': 'Click to sign in to {store}:',
   'email.login.textExpiry': "This link expires in 15 minutes. If you didn't request it, ignore this email.",
+  // Delayed payment (e.g. SEPA) that failed after checkout — no order exists
+  'email.paymentFailed.subject': 'Your payment to {store} did not go through',
+  'email.paymentFailed.heading': 'Your payment did not go through',
+  'email.paymentFailed.subheading':
+    'Your bank could not complete the payment, so no order was placed and nothing was charged.',
+  'email.paymentFailed.retry': 'Try again',
+  'email.paymentFailed.textRetry': 'To try again, place the order once more: {url}',
+  'email.paymentFailed.footer': 'Questions? Just reply to this email.',
+  'email.paymentFailedOwner.subject': 'Payment failed on {store}: {amount} from {email}',
+  'email.paymentFailedOwner.heading': 'A payment failed',
+  'email.paymentFailedOwner.subheading': '{amount} from {email}',
+  'email.paymentFailedOwner.explain':
+    'The bank did not complete this delayed payment. No order was created and the items are back in stock.',
+  'email.paymentFailedOwner.view': 'See unpaid checkouts',
 } satisfies Record<`email.${string}`, Message>;
