@@ -2,6 +2,7 @@ import { handle } from '@astrojs/cloudflare/handler';
 import { env } from 'cloudflare:workers';
 import { sweepStaleNotifications } from './features/email/outbox';
 import { releaseExpiredReservations } from './features/orders/reservations';
+import { sweepFulfillments } from './features/fulfillment';
 import { getSetting } from './features/settings/db';
 
 /**
@@ -47,6 +48,14 @@ async function runScheduledSweeps(): Promise<void> {
     }
   } catch (err) {
     console.error('Scheduled notification sweep failed:', err);
+  }
+
+  // Paid orders the fulfiller could not take yet (outage, rate limit). A no-op
+  // without a Printful token.
+  try {
+    await sweepFulfillments(db);
+  } catch (err) {
+    console.error('Scheduled fulfillment sweep failed:', err);
   }
 }
 

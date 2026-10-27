@@ -25,6 +25,8 @@ import { shouldSendCustomerOrderEmail } from '../../../features/email/orderPolic
 import RefundPanel from '../../../features/refunds/RefundPanel.astro';
 import { formatWeight } from '../../../features/shipping/weight';
 import { parseOrderOrLegacyPublicId } from '../../../features/ids/publicId';
+import { getFulfillment } from '../../../features/fulfillment/store';
+import { PRINTFUL_DASHBOARD_URL } from '../../../features/fulfillment/printful';
 
 // The route param is the order public ID — ord_ or a preserved legacy shape
 // (hex32/UUID). Numeric row ids are not accepted.
@@ -52,6 +54,17 @@ const items = await listOrderItemsWithImages(env.DB, order.id);
 const inventoryExceptions = await listOrderInventoryExceptions(env.DB, order.id);
 const fulfilled = order.fulfillment_status === 'fulfilled';
 const weightUnit = Astro.locals.settings?.weightUnit ?? 'g';
+
+// ── Print on demand (Printful) ───────────────────────────────────────────────
+// Read-only status of the hand-off that settlement started; only orders with
+// lines linked to Printful have a row. Retry is offered when it stopped.
+const handoff = await getFulfillment(env.DB, order.id);
+const HANDOFF_LABEL: Record<string, string> = {
+  pending: 'Waiting to be sent (retried automatically)',
+  processing: 'Sending…',
+  submitted: 'Sent',
+  failed: 'Not sent — needs attention',
+};
 
 // ── Shipping label (Shippo) ──────────────────────────────────────────────────
 // Gated on the token (stores without Shippo see nothing) and on the order being
@@ -273,6 +286,41 @@ const willEmailCustomer =
   </dl>
 
   <RefundPanel order={order} timeZone={timeZone} />
+
+  {
+    handoff && (
+      <div class="mb-8 rounded-lg border border-line p-5">
+        <h2 class="mb-3 text-xs uppercase tracking-widest text-gray-400">Printful</h2>
+        <p class={`text-sm ${handoff.state === 'failed' ? 'font-medium text-red-700' : ''}`}>
+          {HANDOFF_LABEL[handoff.state] ?? handoff.state}
+          {handoff.provider_order_id && (
+            <>
+              {' '}· Printful order <span class="font-mono text-xs">{handoff.provider_order_id}</span>
+              {handoff.provider_status && <> · {handoff.provider_status}</>}
+              {' '}·{' '}
+              <a href={PRINTFUL_DASHBOARD_URL} target="_blank" rel="noopener" class="text-accent hover:underline">
+                Open Printful
+              </a>
+            </>
+          )}
+        </p>
+        {handoff.provider_status === 'draft' && (
+          <p class="mt-1 text-xs text-gray-500">A draft: nothing is made or charged until it is confirmed in Printful.</p>
+        )}
+        {handoff.last_error && handoff.state !== 'submitted' && (
+          <p class="mt-2 text-xs text-gray-500">Last error: {handoff.last_error}</p>
+        )}
+        {(handoff.state === 'failed' || handoff.state === 'pending') && (
+          <form method="POST" action={Astro.locals.urls.href(`/api/admin/orders/${order.public_id}`)} class="mt-3">
+            <input type="hidden" name="_action" value="fulfillment_retry" />
+            <button type="submit" class="rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 hover:border-brand hover:text-brand">
+              Send to Printful again
+            </button>
+          </form>
+        )}
+      </div>
+    )
+  }
 
   <div class="mb-8 rounded-lg border border-line p-5">
     <h2 class="mb-3 text-xs uppercase tracking-widest text-gray-400">Fulfillment</h2>

@@ -9,6 +9,7 @@ import { getOrderByProviderSessionId, recordPaidOrder } from '../../orders/db';
 import { recordPaidWebhookOrder } from '../../orders/recordWebhook';
 import { resolveRequiredOrderEmail } from '../../email/orderPolicy';
 import { deliverOrderNotifications } from '../../email/outbox';
+import { dispatchFulfillment } from '../../fulfillment';
 import type { StoreSettings } from '../../settings/db';
 import { purgeStockProductCache } from '../../cache/purge';
 import { enI18n, type I18n } from '../../../i18n/translator.ts';
@@ -97,7 +98,10 @@ export async function settleLightningOnLoad(
   // This path exists precisely for installations with NO public webhook, so if
   // it doesn't dispatch the outbox rows nothing else reliably will (the sweep
   // needs a later sale). Backgrounded when the page has an execution context.
-  const deliver = () => deliverOrderNotifications(env.DB, settledOrderId!, origin, settings);
+  const deliver = async () => {
+    await deliverOrderNotifications(env.DB, settledOrderId!, origin, settings);
+    await dispatchFulfillment(env.DB, settledOrderId!);
+  };
   if (waitUntil) waitUntil(deliver().catch((err) => console.error('Notification delivery failed:', err)));
   else await deliver();
   return true;

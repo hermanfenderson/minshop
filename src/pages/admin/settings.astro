@@ -33,6 +33,7 @@ import {
 } from '../../features/payments';
 import {
   getStoreSettings,
+  getSetting,
   setSetting,
   setPaymentMethodDisabled,
   setFeatureEnabled,
@@ -310,6 +311,11 @@ if (Astro.request.method === 'POST') {
     }
   } else if (action === 'save_shippo') {
     await applySecrets(['shippo_api_key']);
+  } else if (action === 'save_printful') {
+    await applySecrets(['printful_api_token']);
+    // Drafts unless the merchant explicitly picks production: a confirmed
+    // Printful order is charged and made, a draft costs nothing.
+    await setSetting(env.DB, 'printful_confirm_orders', form.get('printful_confirm_orders') === '1' ? '1' : '');
   } else if (action === 'save_languages') {
     const current = languageSettings(Astro.locals.settings);
     const next: I18nSettings = {
@@ -523,6 +529,7 @@ const payments = {
 // dormant (the store runs demo-only).
 const vault = capabilities.vault;
 const inD1 = (name: string) => settings.configuredSecrets.includes(name);
+const printfulConfirms = (await getSetting(env.DB, 'printful_confirm_orders')) === '1';
 // Per-method toggle/installed state, keyed by method for the cards below.
 const pmMap = Object.fromEntries(pmRows.map((r) => [r.m, r])) as Record<
   string,
@@ -875,6 +882,32 @@ const sections = [
       <form method="POST" class="mt-3 space-y-3">
         <input type="hidden" name="_action" value="save_shippo" />
         <SecretField name="shippo_api_key" label="API token" hint="shippo_live_… or shippo_test_…" storedInD1={inD1('shippo_api_key')} vault={vault} />
+        {vault && (
+          <button type="submit" class="mt-1 rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">
+            Save
+          </button>
+        )}
+      </form>
+    </div>
+
+    {/* Print on demand: paid orders' linked lines go to Printful by themselves.
+        Drafts by default, so trying it out never orders anything for real. */}
+    <div class="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-4">
+      <p class="font-medium">Print on demand (Printful)</p>
+      <p class="mt-1 text-xs text-gray-500">
+        When an order is paid, its products linked to Printful are sent to your Printful API store,
+        and the order page shows how it went. Use a private token limited to that one store.
+      </p>
+      <form method="POST" class="mt-3 space-y-3">
+        <input type="hidden" name="_action" value="save_printful" />
+        <SecretField name="printful_api_token" label="Private token" hint="From Printful → Developers, scoped to one API store" storedInD1={inD1('printful_api_token')} vault={vault} />
+        <label class="block text-sm">
+          <span class="text-xs uppercase tracking-widest text-gray-400">New orders</span>
+          <select name="printful_confirm_orders" class="mt-1 block w-full rounded-md border border-line bg-paper px-3 py-2 text-sm">
+            <option value="" selected={!printfulConfirms}>Draft — you confirm each one in Printful</option>
+            <option value="1" selected={printfulConfirms}>Confirmed — straight to production (charged by Printful)</option>
+          </select>
+        </label>
         {vault && (
           <button type="submit" class="mt-1 rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">
             Save

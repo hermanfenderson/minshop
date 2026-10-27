@@ -10,6 +10,8 @@ import {
   resolveInventoryException,
 } from '../../../../features/orders/db';
 import { getSecret } from '../../../../features/secrets/store';
+import { getFulfillmentProvider, pushFulfillment } from '../../../../features/fulfillment';
+import { getFulfillment, retryFulfillment } from '../../../../features/fulfillment/store';
 import { setSetting } from '../../../../features/settings/db';
 import {
   carrierCodeFor,
@@ -86,6 +88,20 @@ export const POST: APIRoute = async ({ request, params, redirect: astroRedirect 
   const admin = String(form.get('_admin') ?? '') || null;
   const note = String(form.get('note') ?? '').trim() || null;
   const reason = String(form.get('reason') ?? '').trim() || null;
+
+  if (action === 'fulfillment_retry') {
+    // A person looked at a failed hand-off (or an outage that is now over):
+    // fresh attempts, pushed right away. Printful dedupes on our order id, so
+    // a retry after an unanswered request finds the order instead of doubling it.
+    const provider = await getFulfillmentProvider(env.DB);
+    if (!provider) return fail('Printful is not configured (Settings → Print on demand).');
+    await retryFulfillment(env.DB, id);
+    await pushFulfillment(env.DB, id, provider);
+    const row = await getFulfillment(env.DB, id);
+    return row?.state === 'submitted'
+      ? notice(`Sent to Printful (order ${row.provider_order_id}, ${row.provider_status}).`)
+      : fail(row?.last_error ?? 'Nothing to send.');
+  }
 
   if (action === 'resolve_inventory_exception') {
     const exceptionId = parsePublicId(form.get('exception_id'), 'inventoryException');
