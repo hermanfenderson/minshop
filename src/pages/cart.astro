@@ -10,11 +10,10 @@ import ProductImage from '../features/products/ProductImage.astro';
 import { enabledMethods, isMethodAvailable } from '../features/payments';
 import { catalogPath } from '../features/settings/home';
 import { getConfig } from '../config';
-import { benefitRules, isSingleUnitContribution } from '../features/benefit/mode';
+import { benefitMethods, benefitRules, isSingleUnitContribution } from '../features/benefit/mode';
 import { amountInputStep, amountInputValue } from '../features/benefit/amount';
 import { contributionError } from '../features/benefit/messages';
 import { readDonorDraft } from '../features/benefit/donorDraft';
-import { BENEFIT_PAYMENT_METHODS } from '../features/benefit/mode';
 import DonorFields from '../features/benefit/DonorFields.astro';
 
 // Cart switched off in Settings → browse-only catalog, no cart page.
@@ -28,14 +27,6 @@ const { t } = Astro.locals.i18n;
 // up" buttons facing customers). The first method gets the primary styling.
 const settings = Astro.locals.settings;
 const offered = settings ? enabledMethods(settings) : [];
-// Benefit Mode pays only on the rails that need no in-app address step.
-const methods =
-  settings?.commerceMode === 'benefit'
-    ? offered.filter((m) => (BENEFIT_PAYMENT_METHODS as readonly string[]).includes(m))
-    : offered;
-const ready = (m: string) => m === "demo" || (!!settings && isMethodAvailable(m as never, settings));
-const firstReady = methods.find(ready);
-const methodRows = methods.map((m) => ({ m, ready: ready(m), primary: m === firstReady }));
 const METHOD: Record<string, { label: string; hint: string; setupHint: string }> = {
   stripe: {
     label: t('checkout.method.stripe.label'),
@@ -81,6 +72,13 @@ const error = Astro.url.searchParams.get('error');
 // the zones and the on/off switch. An all-digital cart never needs a destination,
 // so the selector is also gated on some line actually requiring shipping.
 const effectiveShipping = shippingFor(settings).config;
+// Benefit Mode pays only on the rails that need no in-app address step.
+const methods = benefit
+  ? benefitMethods(offered, effectiveShipping.enabled && shipmentWeightFor(lines).shippingRequired)
+  : offered;
+const ready = (m: string) => m === "demo" || (!!settings && isMethodAvailable(m as never, settings));
+const firstReady = methods.find(ready);
+const methodRows = methods.map((m) => ({ m, ready: ready(m), primary: m === firstReady }));
 const destination = stripeDestination(
   settings,
   effectiveShipping,

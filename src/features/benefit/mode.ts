@@ -41,3 +41,14 @@ export function isSingleUnitContribution(product: {
  * only for a basket with nothing to ship; checkout enforces that.)
  */
 export const BENEFIT_PAYMENT_METHODS = ['stripe', 'demo'] as const;
+
+/**
+ * The offered rails a Benefit Mode basket can actually use. Something to ship
+ * leaves only the rails whose hosted page collects the address (Stripe), so the
+ * shopper is never shown a button checkout would refuse.
+ */
+export function benefitMethods<M extends string>(offered: readonly M[], shippingApplies: boolean): M[] {
+  return offered.filter(
+    (m) => (BENEFIT_PAYMENT_METHODS as readonly string[]).includes(m) && !(shippingApplies && m === 'demo'),
+  );
+}

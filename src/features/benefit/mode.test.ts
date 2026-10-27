@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { benefitRules, isSingleUnitContribution } from './mode';
+import { benefitMethods, benefitRules, isSingleUnitContribution } from './mode';
 import { PROVIDER_MAX_MINOR } from './amount';
 
 describe('benefitRules', () => {
@@ -22,5 +22,16 @@ describe('isSingleUnitContribution', () => {
     expect(isSingleUnitContribution({ track_inventory: 1, requires_shipping: 0, file_key: null })).toBe(false);
     expect(isSingleUnitContribution({ track_inventory: 0, requires_shipping: 1, file_key: null })).toBe(false);
     expect(isSingleUnitContribution({ track_inventory: 0, requires_shipping: 0, file_key: 'f/x.pdf' })).toBe(false);
+  });
+});
+
+describe('benefitMethods', () => {
+  it('keeps the rails that need no in-app address step', () => {
+    expect(benefitMethods(['stripe', 'lightning', 'opennode', 'demo'], false)).toEqual(['stripe', 'demo']);
+  });
+
+  it('drops demo when something ships', () => {
+    expect(benefitMethods(['stripe', 'demo'], true)).toEqual(['stripe']);
+    expect(benefitMethods(['demo'], true)).toEqual([]);
   });
 });
