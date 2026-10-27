@@ -2,6 +2,7 @@
 import { getViteConfig } from 'astro/config';
 import { resolveTheme } from './scripts/themes.mjs';
 import { themeCssPath, writeThemeArtifacts } from './scripts/theme-css.mjs';
+import { resolveSiteShell } from './scripts/site-shell.mjs';
 
 // Astro-aware but config-file-free. `getViteConfig` is what compiles `.astro`
 // components, so storefront presentation contracts can be rendered through
@@ -24,6 +25,7 @@ import { themeCssPath, writeThemeArtifacts } from './scripts/theme-css.mjs';
 // design rule in scripts/theme-css.mjs).
 writeThemeArtifacts();
 const theme = resolveTheme();
+const siteShell = await resolveSiteShell();
 
 export default getViteConfig(
   {
@@ -35,6 +37,7 @@ export default getViteConfig(
         // Mirrors astro.config.mjs: if a test ever renders something that
         // pulls global.css, the CSS import resolves to the same per-theme file.
         '#theme-css': themeCssPath(theme.id),
+        '#site-shell': siteShell.path,
         // Lets pure-function modules that merely read deployment vars at import
         // time (config.ts, and the email templates through it) be unit-tested.
         // Real bindings stay out of scope — see the stub's own note.

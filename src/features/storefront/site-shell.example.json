@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Example Press",
+  "home": "/",
+  "fonts": { "heading": "Georgia, serif" },
+  "colors": { "header": "#ffffff", "onHeader": "#111827", "navAccent": "#2563eb", "footer": "#111827", "onFooter": "#ffffff" },
+  "nav": [
+    { "id": "books", "label": { "en": "Books", "it": "Libri" }, "href": "/books/" },
+    { "id": "about", "label": { "en": "About", "it": "Chi siamo" }, "href": "/about/" },
+    { "id": "more", "label": { "en": "More", "it": "Altro" }, "children": [
+      { "label": "Blog", "href": "/blog/" },
+      { "label": { "en": "Contact", "it": "Contatti" }, "href": "/contact/" }
+    ] }
+  ],
+  "shopNav": "books",
+  "footer": {
+    "about": "An example shell. Set SITE_SHELL to [your site's file](/shell.json).",
+    "columns": [{ "title": "Site", "links": [{ "label": "Home", "href": "/" }, { "label": "Example Street 1" }] }],
+    "legal": "© Example Press"
+  }
+}
