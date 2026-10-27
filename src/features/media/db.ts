@@ -136,7 +136,8 @@ export async function deleteMediaRecord(
           )
           AND NOT EXISTS (
             SELECT 1 FROM settings
-             WHERE settings.key = 'logo_image_key' AND settings.value = media.image_key
+             WHERE settings.key IN ('logo_image_key', 'receipt_stamp_key', 'receipt_logo_key')
+               AND settings.value = media.image_key
           )
         RETURNING image_key`,
     )
@@ -293,13 +294,31 @@ export async function replaceProductImageFromMedia(
  * the media row is gone.
  */
 export async function setLogoFromMedia(db: D1Database, imageKey: string): Promise<boolean> {
+  return setSettingFromMedia(db, 'logo_image_key', imageKey);
+}
+
+/** Settings that hold a media image key; the delete guard refuses while any does. */
+export type MediaSettingKey = 'logo_image_key' | 'receipt_stamp_key' | 'receipt_logo_key';
+
+/**
+ * Point a setting at a media image in one guarded statement, sourced from
+ * `media`, so a file deleted meanwhile can never be stored. `jpegOnly` is for
+ * the receipt images: the PDF writer embeds JPEG and nothing else.
+ */
+export async function setSettingFromMedia(
+  db: D1Database,
+  key: MediaSettingKey,
+  imageKey: string,
+  options: { jpegOnly?: boolean } = {},
+): Promise<boolean> {
+  const jpeg = options.jpegOnly ? " AND (m.mime_type = 'image/jpeg' OR lower(m.image_key) LIKE '%.jpg')" : '';
   const result = await db
     .prepare(
       `INSERT INTO settings (key, value)
-       SELECT 'logo_image_key', m.image_key FROM media m WHERE m.image_key = ?1
+       SELECT ?2, m.image_key FROM media m WHERE m.image_key = ?1${jpeg}
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
     )
-    .bind(imageKey)
+    .bind(imageKey, key)
     .run();
   return (result.meta?.changes ?? 0) > 0;
 }

@@ -20,6 +20,7 @@ import {
 import { markPendingSettled } from '../payments/lightning/pending';
 import { purgeStockProductCache } from '../cache/purge';
 import { dispatchFulfillment } from '../fulfillment';
+import { dispatchReceipts } from '../receipts';
 
 /**
  * Persist a verified paid-webhook order (idempotent on the provider session id)
@@ -121,6 +122,7 @@ export async function recordPaidWebhookOrder(
         await markPending();
         await deliverOrderNotifications(env.DB, settled.id, origin, settings);
         await dispatchFulfillment(env.DB, settled.id);
+        await dispatchReceipts(env.DB, settled.id);
         return;
       }
       throw new Error(`Missing or expired inventory reservation ${paidOrder.reservationId}.`);
@@ -153,6 +155,7 @@ export async function recordPaidWebhookOrder(
       // (Previously this path returned with the emails unsent, forever.)
       await deliverOrderNotifications(env.DB, existing.id, origin, settings);
       await dispatchFulfillment(env.DB, existing.id);
+      await dispatchReceipts(env.DB, existing.id);
       return;
     }
     throw new Error(`Could not settle inventory reservation ${paidOrder.reservationId ?? 'legacy'}.`);
@@ -172,6 +175,7 @@ export async function recordPaidWebhookOrder(
   const deliver = async () => {
     await deliverOrderNotifications(env.DB, orderId, origin, settings);
     await dispatchFulfillment(env.DB, orderId);
+    await dispatchReceipts(env.DB, orderId);
     await sweepStaleNotifications(env.DB, origin);
   };
   if (waitUntil) waitUntil(deliver().catch((err) => console.error('Notification delivery failed:', err)));

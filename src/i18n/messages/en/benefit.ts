@@ -47,4 +47,39 @@ export const benefit = {
   'benefit.error.belowMinimum': 'The minimum contribution for {name} is {price}.',
   'benefit.error.method': 'Contributions can be paid by card only.',
   'benefit.error.aboveMaximum': 'The largest contribution we can accept online for {name} is {price}. Please contact us for more.',
+
+  // Receipts (R11/R12/R15). Generic wording only; anything with legal weight is
+  // the issuer's own text, configured in Admin → Receipts.
+  'benefit.receipt.title.donation': 'Contribution receipt',
+  'benefit.receipt.title.shipping': 'Shipping cost receipt',
+  'benefit.receipt.title.refund_note': 'Refund note',
+  'benefit.receipt.date': 'Date',
+  'benefit.receipt.number': 'Receipt no.',
+  'benefit.receipt.noteNumber': 'Note no.',
+  'benefit.receipt.order': 'Order',
+  'benefit.receipt.amount': 'Amount',
+  'benefit.receipt.amountWords': 'In words',
+  'benefit.receipt.from': 'From',
+  'benefit.receipt.to': 'To',
+  'benefit.receipt.taxCode': 'Tax code',
+  'benefit.receipt.vat': 'VAT number',
+  'benefit.receipt.annex': 'Annex: thank-you gifts sent with this contribution, at no charge',
+  'benefit.receipt.annexQuantity': 'Qty',
+  'benefit.receipt.replaces': 'This document cancels and replaces receipt {label}.',
+  'benefit.receipt.cancels': 'This note cancels receipt {label}.',
+  'benefit.receipt.signature': 'Signature of the legal representative and stamp',
+  'benefit.receipt.method.stripe': 'electronic payment (card or wallet, via Stripe)',
+  'benefit.receipt.method.demo': 'test payment (demo — not a real payment)',
+  'benefit.receipt.method.other': 'electronic payment',
+  'benefit.receipt.placeholder.donation.person':
+    '{issuer} confirms that it received from {donor} a contribution of {amount} ({amount_words}) on {date}, paid by {payment_method}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
+  'benefit.receipt.placeholder.donation.company':
+    '{issuer} confirms that it received from {donor} a contribution of {amount} ({amount_words}) on {date}, paid by {payment_method}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
+  'benefit.receipt.placeholder.shipping':
+    '{issuer} confirms that it received from {donor} {amount} ({amount_words}) on {date} as reimbursement of the shipping cost for order {order}, charged at cost.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
+  'benefit.receipt.placeholder.refund_note':
+    '{issuer} returned {amount} ({amount_words}) to {donor} on {date}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
+  'benefit.receipt.heading': 'Receipts',
+  'benefit.receipt.download': '{title} {label} (PDF)',
+  'benefit.receipt.pending': 'Your receipt is being prepared and will appear here shortly.',
 } satisfies Record<`benefit.${string}`, Message>;

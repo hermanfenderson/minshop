@@ -28,6 +28,7 @@ export type SettingKey =
   | 'benefit_message' // Benefit Mode encouragement under the amount field; absent = the dictionary's
   | `benefit_message:${string}` // the same in another language ('benefit_message:it')
   | 'benefit_privacy_href' // Benefit Mode: the privacy notice linked from the donor form; absent = no link
+  | `receipt_${string}` // Benefit Mode receipts: issuer, numbering, wording, images (features/receipts/settings.ts)
   // Runtime overrides of build-time config toggles ('1'/'0'; absent = inherit config).
   | 'discounts_enabled' // overrides config.discounts.enabled
   | 'tax_enabled' // overrides config.tax.enabled

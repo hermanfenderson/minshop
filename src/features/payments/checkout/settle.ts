@@ -10,6 +10,7 @@ import { recordPaidWebhookOrder } from '../../orders/recordWebhook';
 import { resolveRequiredOrderEmail } from '../../email/orderPolicy';
 import { deliverOrderNotifications } from '../../email/outbox';
 import { dispatchFulfillment } from '../../fulfillment';
+import { dispatchReceipts } from '../../receipts';
 import type { StoreSettings } from '../../settings/db';
 import { purgeStockProductCache } from '../../cache/purge';
 import { enI18n, type I18n } from '../../../i18n/translator.ts';
@@ -101,6 +102,7 @@ export async function settleLightningOnLoad(
   const deliver = async () => {
     await deliverOrderNotifications(env.DB, settledOrderId!, origin, settings);
     await dispatchFulfillment(env.DB, settledOrderId!);
+    await dispatchReceipts(env.DB, settledOrderId!);
   };
   if (waitUntil) waitUntil(deliver().catch((err) => console.error('Notification delivery failed:', err)));
   else await deliver();

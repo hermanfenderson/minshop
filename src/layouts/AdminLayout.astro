@@ -20,6 +20,7 @@ type Section =
   | 'pages'
   | 'navigation'
   | 'shipping'
+  | 'receipts'
   | 'settings';
 
 interface Props {
@@ -55,6 +56,10 @@ const nav: { key: Section; label: string; href: string }[] = [
   { key: 'navigation', label: 'Navigation', href: Astro.locals.urls.href('/admin/navigation') },
   { key: 'shipping', label: 'Shipping', href: Astro.locals.urls.href('/admin/shipping') },
   { key: 'media', label: 'Media', href: Astro.locals.urls.href('/admin/media') },
+  // Receipts exist only in Benefit Mode; the page stays reachable by URL otherwise.
+  ...(Astro.locals.settings?.commerceMode === 'benefit'
+    ? [{ key: 'receipts' as const, label: 'Receipts', href: Astro.locals.urls.href('/admin/receipts') }]
+    : []),
   { key: 'settings', label: 'Settings', href: Astro.locals.urls.href('/admin/settings') },
 ];
 // Label of the section we're on — shown in the collapsed mobile disclosure.

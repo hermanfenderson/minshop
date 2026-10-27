@@ -37,10 +37,10 @@ try {
   // separate Wrangler integration gate applies every real migration clean-room.
   for (const sql of [
     'CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, public_id TEXT UNIQUE, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, description TEXT NOT NULL, price_cents INTEGER NOT NULL, currency TEXT NOT NULL, stock INTEGER NOT NULL, active INTEGER NOT NULL, file_key TEXT, file_name TEXT, file_mime TEXT, file_size_bytes INTEGER)',
-    'CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, provider_session_id TEXT NOT NULL UNIQUE, public_id TEXT NOT NULL UNIQUE, email TEXT, amount_total_cents INTEGER NOT NULL, shipping_cents INTEGER NOT NULL DEFAULT 0, shipping_label TEXT, shipping_weight_grams INTEGER, delivery_method TEXT, discount_cents INTEGER NOT NULL DEFAULT 0, tax_cents INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL, ship_address TEXT, status TEXT NOT NULL, payment_method TEXT, settlement_token TEXT, provider_payment_id TEXT, locale TEXT)',
+    'CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, provider_session_id TEXT NOT NULL UNIQUE, public_id TEXT NOT NULL UNIQUE, email TEXT, amount_total_cents INTEGER NOT NULL, shipping_cents INTEGER NOT NULL DEFAULT 0, shipping_label TEXT, shipping_weight_grams INTEGER, delivery_method TEXT, discount_cents INTEGER NOT NULL DEFAULT 0, tax_cents INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL, ship_address TEXT, status TEXT NOT NULL, payment_method TEXT, settlement_token TEXT, provider_payment_id TEXT, locale TEXT, donor TEXT)',
     'CREATE TABLE order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, product_id INTEGER, variant_id INTEGER, name TEXT NOT NULL, price_cents INTEGER NOT NULL, quantity INTEGER NOT NULL, public_id TEXT UNIQUE, file_key TEXT, file_name TEXT, file_mime TEXT, file_size_bytes INTEGER, downloads INTEGER NOT NULL DEFAULT 0, min_price_cents INTEGER)',
     'CREATE TABLE product_variants (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, label TEXT NOT NULL, price_delta_cents INTEGER NOT NULL DEFAULT 0, stock INTEGER NOT NULL, active INTEGER NOT NULL DEFAULT 1)',
-    "CREATE TABLE checkout_reservations (public_id TEXT PRIMARY KEY, items TEXT NOT NULL, payment_method TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', expires_at TEXT NOT NULL, terminal_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), customer_email TEXT, amount_total_cents INTEGER, currency TEXT, locale TEXT)",
+    "CREATE TABLE checkout_reservations (public_id TEXT PRIMARY KEY, items TEXT NOT NULL, payment_method TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', expires_at TEXT NOT NULL, terminal_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), customer_email TEXT, amount_total_cents INTEGER, currency TEXT, locale TEXT, donor TEXT)",
     "CREATE TABLE order_item_ids (public_id TEXT PRIMARY KEY, order_public_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
     "CREATE TABLE order_inventory_exceptions (id INTEGER PRIMARY KEY AUTOINCREMENT, public_id TEXT NOT NULL UNIQUE, order_id INTEGER NOT NULL, product_id INTEGER NOT NULL, variant_id INTEGER, requested_qty INTEGER NOT NULL, consumed_qty INTEGER NOT NULL, shortfall_qty INTEGER NOT NULL, resolved_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
     // Just the columns recordPaidOrder's batched settle statement touches.
@@ -776,6 +776,8 @@ try {
   assert.equal(await reserveInventory(db, gratitudeId, [gratitudeItem], 600, 'stripe'), true);
   const [heldGratitude] = await getActiveReservationItems(db, gratitudeId);
   assert.equal(heldGratitude.untracked, true, 'the snapshot keeps the line untracked');
+  const donorJson = JSON.stringify({ kind: 'person', name: 'Ada Lovelace' });
+  await db.prepare('UPDATE checkout_reservations SET donor = ? WHERE public_id = ?').bind(donorJson, gratitudeId).run();
   assert(await recordPaidOrder(db, {
     providerSessionId: 'gratitude-session', publicId: gratitudeId, reservationId: gratitudeId,
     email: 'buyer@example.com', amountTotalCents: 2500, currency: 'eur', items: [heldGratitude],
@@ -785,6 +787,12 @@ try {
     email: 'buyer@example.com', amountTotalCents: 2500, currency: 'eur', items: [gratitudeItem],
   }));
   assert.equal((await db.prepare('SELECT stock FROM products WHERE id = ?').bind(gratitude.id).first()).stock, 0);
+  // Benefit Mode (0047): the donor travels from the reservation into the order.
+  const donors = await db
+    .prepare("SELECT provider_session_id AS s, donor FROM orders WHERE provider_session_id IN ('gratitude-session', 'gratitude-late')")
+    .all();
+  assert.equal(donors.results.find((r) => r.s === 'gratitude-session').donor, donorJson);
+  assert.equal(donors.results.find((r) => r.s === 'gratitude-late').donor, null, 'no reservation, no donor');
   assert.equal(
     (await db.prepare('SELECT COUNT(*) AS n FROM order_inventory_exceptions WHERE product_id = ?').bind(gratitude.id).first()).n,
     0,
@@ -793,7 +801,7 @@ try {
   await db.prepare('UPDATE products SET active = 0 WHERE id = ?').bind(gratitude.id).run();
   assert.equal(await reserveInventory(db, crypto.randomUUID(), [gratitudeItem], 600, 'stripe'), false);
 
-  console.log('Reservation integration passed: concurrency + pending + terminal settlement + inventory exception + legacy + cross-release rollback + stock purge offset + failed-payment follow-up + untracked stock');
+  console.log('Reservation integration passed: concurrency + pending + terminal settlement + inventory exception + legacy + cross-release rollback + stock purge offset + failed-payment follow-up + untracked stock + donor snapshot');
 } finally {
   await mf.dispose();
 }

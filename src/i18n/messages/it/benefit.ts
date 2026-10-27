@@ -38,4 +38,39 @@ export const benefit = {
   'benefit.error.precision': 'L’importo ha troppi decimali.',
   'benefit.error.belowMinimum': 'Il contributo minimo per {name} è {price}.',
   'benefit.error.aboveMaximum': 'Il contributo più alto che possiamo accettare online per {name} è {price}. Scrivici per contributi maggiori.',
+
+  // Ricevute (R11/R12/R15). Solo diciture generiche; quelle con valore legale
+  // sono i testi dell'ente, configurati in Admin → Ricevute.
+  'benefit.receipt.title.donation': 'Ricevuta per erogazione liberale',
+  'benefit.receipt.title.shipping': 'Ricevuta spese di spedizione',
+  'benefit.receipt.title.refund_note': 'Nota di restituzione',
+  'benefit.receipt.date': 'Data',
+  'benefit.receipt.number': 'Ricevuta N.',
+  'benefit.receipt.noteNumber': 'Nota N.',
+  'benefit.receipt.order': 'Ordine',
+  'benefit.receipt.amount': 'Importo',
+  'benefit.receipt.amountWords': 'In lettere',
+  'benefit.receipt.from': 'Da',
+  'benefit.receipt.to': 'A',
+  'benefit.receipt.taxCode': 'Codice fiscale',
+  'benefit.receipt.vat': 'Partita IVA',
+  'benefit.receipt.annex': 'Allegato: omaggi di ringraziamento inviati con questo contributo, a titolo gratuito',
+  'benefit.receipt.annexQuantity': 'Q.tà',
+  'benefit.receipt.replaces': 'Il presente documento annulla e sostituisce la ricevuta {label}.',
+  'benefit.receipt.cancels': 'La presente nota annulla la ricevuta {label}.',
+  'benefit.receipt.signature': 'Firma del legale rappresentante e timbro',
+  'benefit.receipt.method.stripe': 'pagamento elettronico (carta o wallet, tramite Stripe)',
+  'benefit.receipt.method.demo': 'pagamento di prova (demo — non è un pagamento reale)',
+  'benefit.receipt.method.other': 'pagamento elettronico',
+  'benefit.receipt.placeholder.donation.person':
+    '{issuer} dichiara di aver ricevuto da {donor} un contributo di {amount} ({amount_words}) in data {date}, tramite {payment_method}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
+  'benefit.receipt.placeholder.donation.company':
+    '{issuer} dichiara di aver ricevuto da {donor} un contributo di {amount} ({amount_words}) in data {date}, tramite {payment_method}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
+  'benefit.receipt.placeholder.shipping':
+    '{issuer} dichiara di aver ricevuto da {donor} {amount} ({amount_words}) in data {date} a rimborso delle spese di spedizione dell’ordine {order}, addebitate al costo.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
+  'benefit.receipt.placeholder.refund_note':
+    '{issuer} ha restituito {amount} ({amount_words}) a {donor} in data {date}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
+  'benefit.receipt.heading': 'Ricevute',
+  'benefit.receipt.download': '{title} {label} (PDF)',
+  'benefit.receipt.pending': 'La ricevuta è in preparazione e comparirà qui a breve.',
 } satisfies Catalog;

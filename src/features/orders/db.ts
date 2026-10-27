@@ -48,6 +48,8 @@ export interface Order {
   /** 'pickup' | 'shipping' | NULL (pre-0035 or no shipping). Unknown = shipping. */
   delivery_method: string | null;
   ship_address: string | null; // JSON snapshot (ShippingAddress) or null
+  /** Benefit Mode donor snapshot (JSON, 0047); null = a standard sale. */
+  donor?: string | null;
   created_at: string;
 }
 
@@ -534,6 +536,19 @@ export async function recordPaidOrder(
       )
       .bind(settlementToken, o.providerSessionId),
   ];
+  if (o.reservationId) {
+    // Benefit Mode: the donor collected before payment travels with the order,
+    // in the same batch, so the receipt never depends on the reservation row
+    // surviving cleanup. NULL for every standard checkout.
+    stmts.push(
+      db
+        .prepare(
+          `UPDATE orders SET donor = (SELECT donor FROM checkout_reservations WHERE public_id = ?)
+            WHERE provider_session_id = ? AND settlement_token = ?`,
+        )
+        .bind(o.reservationId, o.providerSessionId, settlementToken),
+    );
+  }
   const stockUpdates: Array<{
     statementIndex: number;
     productId: number;

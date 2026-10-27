@@ -1,0 +1,281 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import MediaPicker from '../../features/media/MediaPicker.astro';
+import { setSettingFromMedia, type MediaSettingKey } from '../../features/media/db';
+import { mediaUrl } from '../../features/media/url';
+import { getConfig, formatDate, formatPrice } from '../../config';
+import { createI18n } from '../../i18n/index.ts';
+import type { MessageKey } from '../../i18n/index.ts';
+import { LOCALE_REGISTRY, languageSettings } from '../../features/i18n/settings';
+import { setSetting } from '../../features/settings/db';
+import { loadReceiptSettings } from '../../features/receipts';
+import {
+  RECEIPT_TEXT_SLOTS,
+  normalizePrefix,
+  parseReceiptSettings,
+  receiptLabel,
+  seriesPrefix,
+  receiptText,
+  receiptTextKey,
+  type ReceiptTextSlot,
+} from '../../features/receipts/settings';
+
+// Benefit Mode receipts (R11/R12/R15): the issuer, numbering, wording and
+// images every receipt is drawn with, and the register of what was issued.
+// Changing anything here affects receipts issued from now on; each issued one
+// keeps the snapshot it was made with.
+
+const IMAGE_SETTINGS: Record<string, MediaSettingKey> = { stamp: 'receipt_stamp_key', logo: 'receipt_logo_key' };
+const SLOT_LABELS: Record<ReceiptTextSlot, string> = {
+  'donation:person': 'Contribution receipt — person',
+  'donation:company': 'Contribution receipt — company',
+  shipping: 'Shipping cost receipt',
+  refund_note: 'Refund note',
+  footer: 'Footer (privacy note and the like)',
+};
+const PLACEHOLDERS = ['{issuer}', '{donor}', '{amount}', '{amount_words}', '{date}', '{payment_method}', '{number}', '{order}'];
+
+const langs = languageSettings(Astro.locals.settings);
+let error = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+  if (action === 'save_issuer') {
+    await setSetting(env.DB, 'receipt_prefix', normalizePrefix(String(form.get('receipt_prefix') ?? '')));
+    // The other series store a prefix only when it differs from the derived default.
+    const base = normalizePrefix(String(form.get('receipt_prefix') ?? ''));
+    for (const series of ['shipping', 'refund_note'] as const) {
+      const value = normalizePrefix(String(form.get(`receipt_prefix_${series}`) ?? ''));
+      const derived = seriesPrefix({ ...parseReceiptSettings([]), prefix: base }, series);
+      await setSetting(env.DB, `receipt_prefix:${series}`, value && value !== derived ? value : '');
+    }
+    const issuer = String(form.get('receipt_issuer') ?? '')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 6)
+      .join('\n');
+    await setSetting(env.DB, 'receipt_issuer', issuer);
+  } else if (action === 'save_image') {
+    const setting = IMAGE_SETTINGS[String(form.get('image') ?? '')];
+    const key = String(form.get('image_key') ?? '').trim();
+    if (setting && !key) await setSetting(env.DB, setting, '');
+    else if (setting && !(await setSettingFromMedia(env.DB, setting, key, { jpegOnly: true }))) {
+      error = 'Choose a JPEG image from the media library: receipts embed JPEG only.';
+    }
+  } else if (action === 'save_texts') {
+    for (const code of langs.enabledLocales) {
+      for (const slot of RECEIPT_TEXT_SLOTS) {
+        await setSetting(env.DB, receiptTextKey(slot, code), String(form.get(`text:${slot}:${code}`) ?? '').trim());
+      }
+    }
+  }
+  if (!error) return Astro.redirect(Astro.locals.urls.href('/admin/receipts?msg=Saved'), 303);
+}
+
+const settings = await loadReceiptSettings(env.DB);
+const cfg = getConfig();
+const timeZone = Astro.locals.settings?.timeZone ?? cfg.timeZone;
+const year = new Date().getFullYear();
+const imageUrl = (key: string | null) => (key ? mediaUrl(key, cfg.images.baseUrl) : null);
+const placeholderText = (slot: ReceiptTextSlot, code: string) =>
+  slot === 'footer' ? '' : createI18n(code).t(`benefit.receipt.placeholder.${slot.replace(':', '.')}` as MessageKey);
+
+const { results: issued } = await env.DB
+  .prepare(
+    `SELECT r.public_id, r.kind, r.label, r.amount_cents, r.currency, r.issued_at, r.pdf_key, o.public_id AS order_public_id
+       FROM receipts r JOIN orders o ON o.id = r.order_id
+      ORDER BY r.id DESC LIMIT 100`,
+  )
+  .all<{
+    public_id: string;
+    kind: string;
+    label: string;
+    amount_cents: number;
+    currency: string;
+    issued_at: string;
+    pdf_key: string | null;
+    order_public_id: string | null;
+  }>();
+const waiting = await env.DB
+  .prepare(
+    `SELECT COUNT(*) AS n FROM orders o
+      WHERE o.donor IS NOT NULL AND o.status = 'paid'
+        AND NOT EXISTS (SELECT 1 FROM receipts r WHERE r.order_id = o.id)`,
+  )
+  .first<{ n: number }>();
+const KIND_LABELS: Record<string, string> = { donation: 'Contribution', shipping: 'Shipping', refund_note: 'Refund note' };
+const msg = error || Astro.url.searchParams.get('msg');
+const input = 'mt-1 block w-full rounded-md border border-line bg-paper px-3 py-2 text-sm';
+const label = 'text-xs uppercase tracking-widest text-gray-400';
+---
+
+<AdminLayout title="Receipts" active="receipts">
+  <h1 class="font-serif text-3xl">Receipts</h1>
+  <p class="mt-2 max-w-2xl text-sm text-gray-500">
+    In Benefit Mode every paid order gets a contribution receipt, and a separate shipping receipt when shipping was
+    charged. Each kind is numbered in its own series, starting again every year. Receipts are issued only once the
+    issuer below is filled in; orders paid before that wait and are issued automatically afterwards.
+  </p>
+
+  {msg && <p class={`mt-4 rounded-md px-4 py-2 text-sm ${error ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-800'}`}>{msg}</p>}
+  {(waiting?.n ?? 0) > 0 && (
+    <p class="mt-4 rounded-md bg-amber-50 px-4 py-2 text-sm text-amber-800">
+      {waiting!.n} paid {waiting!.n === 1 ? 'order is' : 'orders are'} waiting for a receipt
+      {settings.issuer.length === 0 ? ': fill in the issuer to issue them.' : '; they are issued within a few minutes.'}
+    </p>
+  )}
+
+  <section class="mt-8 rounded-lg border border-gray-200 bg-white p-5" id="receipts">
+    <h2 class="font-medium">Issuer and numbering</h2>
+    <form method="POST" class="mt-3 space-y-3">
+      <input type="hidden" name="_action" value="save_issuer" />
+      <label class="block text-sm">
+        <span class={label}>Issuer (one line each: name, address, tax codes)</span>
+        <textarea name="receipt_issuer" rows="4" class={input}>{settings.issuer.join('\n')}</textarea>
+        <span class="mt-1 block text-xs text-gray-500">The first line is the issuer's name, used as {'{issuer}'} in the texts. All lines form the footer.</span>
+      </label>
+      <div class="grid gap-3 sm:grid-cols-3">
+        {([
+          ['donation', 'receipt_prefix', 'Contribution receipts'],
+          ['shipping', 'receipt_prefix_shipping', 'Shipping receipts'],
+          ['refund_note', 'receipt_prefix_refund_note', 'Refund notes'],
+        ] as const).map(([series, name, title]) => (
+          <label class="block text-sm">
+            <span class={label}>{title} prefix</span>
+            <input name={name} value={seriesPrefix(settings, series)} maxlength="12" class={input} />
+            <span class="mt-1 block text-xs text-gray-500">e.g. {receiptLabel(seriesPrefix(settings, series), 1, year)}</span>
+          </label>
+        ))}
+      </div>
+      <p class="text-xs text-gray-500">
+        Each kind has its own series, so each needs its own prefix. Use prefixes the organization does not use for receipts
+        issued outside the shop, so no two documents share a number.
+      </p>
+      <button type="submit" class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">Save</button>
+    </form>
+  </section>
+
+  <section class="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+    <h2 class="font-medium">Images</h2>
+    <p class="mt-1 text-xs text-gray-500">JPEG only. The stamp and signature go under the signature line; the logo at the top.</p>
+    <div class="mt-3 grid gap-6 sm:grid-cols-2">
+      {(['stamp', 'logo'] as const).map((which) => {
+        const key = which === 'stamp' ? settings.stampKey : settings.logoKey;
+        const url = imageUrl(key);
+        return (
+          <form method="POST" class="space-y-2" data-receipt-image={which}>
+            <input type="hidden" name="_action" value="save_image" />
+            <input type="hidden" name="image" value={which} />
+            <input type="hidden" name="image_key" value={key ?? ''} data-image-key />
+            <p class={label}>{which === 'stamp' ? 'Stamp and signature' : 'Logo'}</p>
+            <div class="flex h-24 items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+              {url ? <img src={url} alt="" class="max-h-20 max-w-full object-contain" /> : <span class="text-xs text-gray-400">None</span>}
+            </div>
+            <div class="flex gap-2">
+              <MediaPicker id={`receipt-${which}`} label={key ? 'Replace' : 'Choose'} />
+              {key && (
+                <button type="submit" class="text-xs text-gray-500 underline" data-image-remove>Remove</button>
+              )}
+            </div>
+          </form>
+        );
+      })}
+    </div>
+  </section>
+
+  <section class="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+    <h2 class="font-medium">Wording</h2>
+    <p class="mt-1 text-xs text-gray-500">
+      The organization's own text for each document and language, including any legal references. Blank paragraphs
+      separate paragraphs. Leave a field empty to use the placeholder shown in it, which says it is provisional.
+      Available: {PLACEHOLDERS.join(' ')}.
+    </p>
+    <form method="POST" class="mt-3 space-y-5">
+      <input type="hidden" name="_action" value="save_texts" />
+      {langs.enabledLocales.map((code) => (
+        <fieldset class="space-y-3">
+          <legend class="text-sm font-medium">{LOCALE_REGISTRY[code]?.label ?? code}</legend>
+          {RECEIPT_TEXT_SLOTS.map((slot) => (
+            <label class="block text-sm">
+              <span class={label}>{SLOT_LABELS[slot]}</span>
+              <textarea
+                name={`text:${slot}:${code}`}
+                rows={slot === 'footer' ? 2 : 5}
+                placeholder={placeholderText(slot, code)}
+                class={input}
+              >{receiptText(settings, slot, code) ?? ''}</textarea>
+              {slot !== 'footer' && (
+                <a
+                  href={Astro.locals.urls.href(`/api/admin/receipts/preview?slot=${slot}&locale=${code}`)}
+                  target="_blank"
+                  class="mt-1 inline-block text-xs text-gray-500 underline hover:text-brand"
+                >Preview (saved text)</a>
+              )}
+            </label>
+          ))}
+        </fieldset>
+      ))}
+      <button type="submit" class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">Save</button>
+    </form>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="font-medium">Issued</h2>
+    {issued.length === 0 ? (
+      <p class="mt-2 text-sm text-gray-500">No receipts yet.</p>
+    ) : (
+      <div class="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-50 text-gray-500">
+            <tr>
+              <th class="px-4 py-2 font-medium">Number</th>
+              <th class="px-4 py-2 font-medium">Kind</th>
+              <th class="px-4 py-2 font-medium">Amount</th>
+              <th class="px-4 py-2 font-medium">Issued</th>
+              <th class="px-4 py-2 font-medium">Order</th>
+            </tr>
+          </thead>
+          <tbody>
+            {issued.map((r) => (
+              <tr class="border-t border-gray-100">
+                <td class="px-4 py-2">
+                  <a href={Astro.locals.urls.href(`/api/admin/receipts/${r.public_id}`)} target="_blank" class="underline hover:text-brand">{r.label}</a>
+                  {!r.pdf_key && <span class="ml-2 text-xs text-amber-700">rendering…</span>}
+                </td>
+                <td class="px-4 py-2">{KIND_LABELS[r.kind] ?? r.kind}</td>
+                <td class="px-4 py-2">{formatPrice(r.amount_cents, r.currency.toLowerCase())}</td>
+                <td class="px-4 py-2">{formatDate(r.issued_at, { dateStyle: 'medium' }, timeZone)}</td>
+                <td class="px-4 py-2">
+                  {r.order_public_id && (
+                    <a href={Astro.locals.urls.href(`/admin/orders/${r.order_public_id}`)} class="underline hover:text-brand">Open</a>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+</AdminLayout>
+
+<script>
+  // A picked image saves at once; "Remove" clears the key first (an empty
+  // setting is deleted). Each form hosts its own picker, so the event's form
+  // says which image changed.
+  document.addEventListener('media:selected', (event) => {
+    const form = (event.target as HTMLElement).closest<HTMLFormElement>('[data-receipt-image]');
+    const field = form?.querySelector<HTMLInputElement>('[data-image-key]');
+    if (!form || !field) return;
+    field.value = (event as CustomEvent).detail.imageKey;
+    form.submit();
+  });
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-image-remove]')) {
+    button.addEventListener('click', () => {
+      const field = button.form?.querySelector<HTMLInputElement>('[data-image-key]');
+      if (field) field.value = '';
+    });
+  }
+</script>

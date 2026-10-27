@@ -7,6 +7,8 @@ export interface MediaUsage {
   products: Array<{ id: number; public_id: string | null; name: string }>;
   pages: Array<{ id: number; public_id: string | null; title: string }>;
   logo: boolean;
+  /** Stamp or logo on Benefit Mode receipts. */
+  receipt?: boolean;
 }
 
 export function emptyUsage(): MediaUsage {
@@ -14,7 +16,7 @@ export function emptyUsage(): MediaUsage {
 }
 
 export function isUnused(usage: MediaUsage): boolean {
-  return usage.products.length === 0 && usage.pages.length === 0 && !usage.logo;
+  return usage.products.length === 0 && usage.pages.length === 0 && !usage.logo && !usage.receipt;
 }
 
 /**
@@ -63,7 +65,9 @@ export async function mediaUsageForIds(
   const [products, pages, logo] = await db.batch<Record<string, unknown>>([
     db.prepare(PRODUCT_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
     db.prepare(PAGE_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
-    db.prepare("SELECT value FROM settings WHERE key = 'logo_image_key'"),
+    db.prepare(
+      "SELECT key, value FROM settings WHERE key IN ('logo_image_key', 'receipt_stamp_key', 'receipt_logo_key')",
+    ),
   ]);
 
   for (const row of (products.results ?? []) as Array<{
@@ -87,15 +91,16 @@ export async function mediaUsageForIds(
       ?.pages.push({ id: row.page_id, public_id: row.page_public_id, title: row.page_title });
   }
 
-  const logoKey = ((logo.results ?? []) as Array<{ value: string }>)[0]?.value;
-  if (logoKey) {
-    // One extra lookup for the single logo key, not one per row.
+  // A handful of settings at most, so one lookup each rather than one per row.
+  for (const { key, value } of (logo.results ?? []) as Array<{ key: string; value: string }>) {
     const row = await db
       .prepare('SELECT id FROM media WHERE image_key = ?')
-      .bind(logoKey)
+      .bind(value)
       .first<{ id: number }>();
     const entry = row ? usage.get(row.id) : undefined;
-    if (entry) entry.logo = true;
+    if (!entry) continue;
+    if (key === 'logo_image_key') entry.logo = true;
+    else entry.receipt = true;
   }
 
   return usage;
@@ -110,7 +115,7 @@ export async function mediaUsage(db: D1Database, id: number): Promise<MediaUsage
 export interface UsageLink {
   href: string;
   label: string;
-  kind: 'product' | 'page' | 'logo';
+  kind: 'product' | 'page' | 'logo' | 'receipt';
   /** Tooltip. Per-kind rather than templated: "the logo that uses this image"
    *  reads wrong, because the logo IS the use rather than a thing having one. */
   title: string;
@@ -146,6 +151,16 @@ export function usageLinks(usage: MediaUsage): UsageLink[] {
           },
         ]
       : []),
+    ...(usage.receipt
+      ? [
+          {
+            href: withMount('/admin/settings#receipts'),
+            label: 'Receipt image',
+            kind: 'receipt' as const,
+            title: 'Change the receipt images in Settings',
+          },
+        ]
+      : []),
   ];
 }
 
@@ -167,5 +182,6 @@ export function describeUsage(usage: MediaUsage): string {
     );
   }
   if (usage.logo) parts.push('the store logo');
+  if (usage.receipt) parts.push('the receipts');
   return parts.join(' and ');
 }

@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { sweepStaleNotifications } from './features/email/outbox';
 import { releaseExpiredReservations } from './features/orders/reservations';
 import { sweepFulfillments } from './features/fulfillment';
+import { sweepReceipts } from './features/receipts';
 import { getSetting } from './features/settings/db';
 
 /**
@@ -56,6 +57,14 @@ async function runScheduledSweeps(): Promise<void> {
     await sweepFulfillments(db);
   } catch (err) {
     console.error('Scheduled fulfillment sweep failed:', err);
+  }
+
+  // Benefit Mode receipts the settlement could not finish (issuer not yet
+  // configured, storage down). A no-op for a shop with no donor orders.
+  try {
+    await sweepReceipts(db);
+  } catch (err) {
+    console.error('Scheduled receipt sweep failed:', err);
   }
 }
 
