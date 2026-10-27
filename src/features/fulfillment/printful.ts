@@ -70,7 +70,9 @@ export class PrintfulProvider implements FulfillmentProvider {
 
   constructor(
     private readonly token: string,
-    private readonly fetchImpl: Fetch = fetch,
+    // Wrapped, not stored bare: Workers throws "Illegal invocation" when fetch
+    // is called as a method of another object (this.fetchImpl(...)).
+    private readonly fetchImpl: Fetch = (input, init) => fetch(input, init),
   ) {}
 
   private async call(path: string, init: RequestInit = {}) {
