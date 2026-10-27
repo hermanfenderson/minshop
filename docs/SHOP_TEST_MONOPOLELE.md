@@ -138,7 +138,7 @@ prodotti. Ora la sostituzione del catalogo scollega prima le righe d'ordine.
 |---|---|
 | Tazza 2023 «Dark green / 11 oz», carta di test | ❌→✅ primo invio fallito per un errore del codice su Workers (`fetch` chiamato come metodo), corretto e ripubblicato; il cron l'ha riprovato da solo |
 | Bozza in Printful | ✅ ordine `draft`, external id = ordine dello shop, variante e SKU giusti, file di stampa presenti, indirizzo IT completo, prezzo al pubblico 15,00 € |
-| Costo Printful della bozza | 7,25 € articolo + 4,69 € spedizione = 14,57 € (il cliente ha pagato 20,00 € con la spedizione dello shop): dato utile per le tariffe in cassa |
+| Costo Printful della bozza | 7,25 € articolo + 4,69 € spedizione, 14,57 € in totale con le imposte (il cliente ha pagato 20,00 € con la spedizione dello shop): dato utile per le tariffe in cassa |
 
 ## Checklist per la produzione
 
