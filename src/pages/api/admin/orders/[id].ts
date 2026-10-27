@@ -1,6 +1,7 @@
 import { mountedRedirect } from '../../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { dispatchReceipts } from '../../../../features/receipts';
 import {
   getOrder,
   getOrderByPublicId,
@@ -206,6 +207,7 @@ export const POST: APIRoute = async ({ request, params, redirect: astroRedirect 
     // first sends exactly one notice.
     if (synced.ok && synced.advanced) {
       await sendRefundNotice(id, synced.deltaCents, new URL(request.url).origin);
+      await dispatchReceipts(env.DB, id);
     }
     return back;
   }
@@ -245,6 +247,7 @@ export const POST: APIRoute = async ({ request, params, redirect: astroRedirect 
     }
     // sendRefundNotice applies the demo rule itself, so demo orders stay silent.
     await sendRefundNotice(id, amount, new URL(request.url).origin);
+    await dispatchReceipts(env.DB, id);
     return back;
   }
 
@@ -279,6 +282,7 @@ export const POST: APIRoute = async ({ request, params, redirect: astroRedirect 
     // has always checked, and this path must too.
     const conflict = await openReviewIfOverRefunded(env.DB, id);
     await sendRefundNotice(id, result.deltaCents, new URL(request.url).origin);
+    await dispatchReceipts(env.DB, id);
     if (conflict) {
       return fail(
         'Recorded, but the provider total plus refunds recorded here now exceeds the order total. Review the refunds on this order.',
@@ -307,6 +311,8 @@ export const POST: APIRoute = async ({ request, params, redirect: astroRedirect 
           : 'Only manually recorded refunds can be voided.',
       );
     }
+    // Benefit Mode: the receipts in force follow the corrected amount.
+    await dispatchReceipts(env.DB, id);
     return back;
   }
 

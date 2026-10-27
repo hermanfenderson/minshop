@@ -13,11 +13,11 @@ import {
   readReceiptDocument,
   renderReceiptPdf,
   type ReceiptGift,
-  type ReceiptKind,
 } from './document';
 import { localDay } from './day';
 import { RECEIPT_SETTINGS_SQL, parseReceiptSettings, seriesPrefix, type ReceiptSettings } from './settings';
-import { allocateReceipt, listOrderReceipts, type ReceiptRow } from './store';
+import { allocateReceipt, listOrderReceipts, liveReceipts, type ReceiptRow } from './store';
+import { planReceipts, type ReceiptSeriesKind } from './reconcile';
 
 export { getReceiptByPublicId, listOrderReceipts, type ReceiptRow } from './store';
 
@@ -39,6 +39,7 @@ interface ReceiptOrder {
   locale: string | null;
   amount_total_cents: number;
   shipping_cents: number;
+  refunded_cents: number;
   currency: string;
   payment_method: string | null;
   donor: string | null;
@@ -93,6 +94,7 @@ async function completeReceipt(
   order: ReceiptOrder,
   settings: ReceiptSettings,
   timeZone: string,
+  related: ReceiptRow | undefined,
 ): Promise<void> {
   let doc = row.document ? readReceiptDocument(row.document) : null;
   if (!doc) {
@@ -103,13 +105,15 @@ async function completeReceipt(
       kind: row.kind,
       label: row.label,
       issuedOn: localDay(row.issued_at, timeZone),
-      paidOn: localDay(order.created_at, timeZone),
+      // A refund note speaks of the day the money went back, not the payment day.
+      paidOn: localDay(row.kind === 'refund_note' ? row.issued_at : order.created_at, timeZone),
       amountCents: row.amount_cents,
       currency: row.currency,
       orderRef: orderReference(order.public_id, order.id, getConfig().orderNumber),
       paymentMethod: order.payment_method,
       donor,
       gifts: row.kind === 'donation' ? await orderGifts(db, order.id) : [],
+      relatedLabel: related?.label ?? null,
       settings,
       i18n,
       countryName: (code) => countryName(code, i18n.locale),
@@ -138,7 +142,7 @@ async function completeReceipt(
 export async function issueOrderReceipts(db: D1Database, orderId: number): Promise<void> {
   const order = await db
     .prepare(
-      `SELECT id, public_id, locale, amount_total_cents, shipping_cents, currency, payment_method, donor, created_at
+      `SELECT id, public_id, locale, amount_total_cents, shipping_cents, refunded_cents, currency, payment_method, donor, created_at
          FROM orders WHERE id = ? AND donor IS NOT NULL`,
     )
     .bind(orderId)
@@ -149,26 +153,42 @@ export async function issueOrderReceipts(db: D1Database, orderId: number): Promi
   const timeZone = await storeTimeZone(db);
   const year = Number(localDay(new Date().toISOString(), timeZone).slice(0, 4));
 
-  const shipping = Math.max(0, order.shipping_cents);
-  const owed: Array<{ kind: ReceiptKind; amountCents: number }> = [
-    { kind: 'donation', amountCents: order.amount_total_cents - shipping },
-    { kind: 'shipping', amountCents: shipping },
-  ];
-  for (const { kind, amountCents } of owed) {
-    if (amountCents <= 0) continue;
+  // What the order keeps after refunds decides what must be in force; the plan
+  // is deterministic, so concurrent passes produce the same issue keys.
+  const rows = await listOrderReceipts(db, order.id);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const lastNote: Partial<Record<ReceiptSeriesKind, number>> = {};
+  for (const r of rows) {
+    const cancelled = r.kind === 'refund_note' && r.replaces_receipt_id != null ? byId.get(r.replaces_receipt_id) : undefined;
+    if (cancelled && (cancelled.kind === 'donation' || cancelled.kind === 'shipping')) lastNote[cancelled.kind] = r.id;
+  }
+  const live = liveReceipts(rows).map((r) => ({ id: r.id, kind: r.kind as ReceiptSeriesKind, amountCents: r.amount_cents }));
+  const plan = planReceipts(
+    order.id,
+    { totalCents: order.amount_total_cents, shippingCents: order.shipping_cents, refundedCents: order.refunded_cents },
+    live,
+    lastNote,
+  );
+  // In plan order: a note is always taken before the receipt that replaces
+  // the one it cancels, so an interrupted pass never skips the note.
+  for (const action of plan) {
+    const kind = action.type === 'note' ? 'refund_note' : action.kind;
     await allocateReceipt(db, {
       orderId: order.id,
       kind,
       year,
       prefix: seriesPrefix(settings, kind),
-      amountCents,
+      amountCents: action.amountCents,
       currency: order.currency.toUpperCase(),
-      issueKey: `${kind}:${order.id}`,
+      issueKey: action.issueKey,
+      replaces: action.type === 'note' ? action.cancels : action.replaces,
     });
   }
-  for (const row of await listOrderReceipts(db, order.id)) {
+  const all = await listOrderReceipts(db, order.id);
+  for (const row of all) {
     if (row.document && row.pdf_key) continue;
-    await completeReceipt(db, row, order, settings, timeZone);
+    const related = row.replaces_receipt_id == null ? undefined : all.find((r) => r.id === row.replaces_receipt_id);
+    await completeReceipt(db, row, order, settings, timeZone, related);
   }
 }
 
@@ -181,13 +201,19 @@ export async function dispatchReceipts(db: D1Database, orderId: number): Promise
   }
 }
 
-/** Cron: orders still owed a document, and documents not yet rendered. */
+/**
+ * Cron: orders whose receipts in force do not add up to what they keep (none
+ * issued yet, or a refund not yet answered), and documents not yet rendered.
+ */
 export async function sweepReceipts(db: D1Database, limit = 20): Promise<void> {
   const { results } = await db
     .prepare(
       `SELECT o.id FROM orders o
-        WHERE o.donor IS NOT NULL AND o.status = 'paid'
-          AND (NOT EXISTS (SELECT 1 FROM receipts r WHERE r.order_id = o.id AND r.kind = 'donation')
+        WHERE o.donor IS NOT NULL
+          AND ((SELECT COALESCE(SUM(r.amount_cents), 0) FROM receipts r
+                 WHERE r.order_id = o.id AND r.kind IN ('donation', 'shipping')
+                   AND NOT EXISTS (SELECT 1 FROM receipts x WHERE x.replaces_receipt_id = r.id))
+                 <> o.amount_total_cents - o.refunded_cents
                OR EXISTS (SELECT 1 FROM receipts r WHERE r.order_id = o.id AND (r.pdf_key IS NULL OR r.document = '')))
         ORDER BY o.id LIMIT ?`,
     )

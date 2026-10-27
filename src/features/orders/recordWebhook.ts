@@ -100,6 +100,8 @@ export async function recordPaidWebhookOrder(
     });
     if (outcome.status === 'processed') {
       await sendRefundNotice(outcome.orderId, outcome.deltaCents, origin);
+      // Benefit Mode: a refund note and, for a partial refund, a new receipt.
+      await dispatchReceipts(env.DB, outcome.orderId);
     }
     return;
   }

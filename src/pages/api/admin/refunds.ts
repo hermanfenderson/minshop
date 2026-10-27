@@ -1,6 +1,7 @@
 import { mountedRedirect } from '../../../features/i18n/urls';
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { dispatchReceipts } from '../../../features/receipts';
 import { applyRefundEvent } from '../../../features/refunds/sync';
 import { listUnmatchedRefundEvents, dismissRefundEvent } from '../../../features/refunds/db';
 import { sendRefundNotice } from '../../../features/refunds/notify';
@@ -76,6 +77,7 @@ export const POST: APIRoute = async ({ request, redirect: astroRedirect }) => {
         outcome.deltaCents,
         new URL(request.url).origin,
       );
+      await dispatchReceipts(env.DB, outcome.orderId);
     }
     return redirect(await orderUrl(outcome.orderId), 303);
   }

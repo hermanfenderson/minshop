@@ -41,12 +41,22 @@ export async function getReceiptByPublicId(db: D1Database, publicId: string): Pr
  */
 export async function allocateReceipt(
   db: D1Database,
-  args: { orderId: number; kind: ReceiptKind; year: number; prefix: string; amountCents: number; currency: string; issueKey: string },
+  args: {
+    orderId: number;
+    kind: ReceiptKind;
+    year: number;
+    prefix: string;
+    amountCents: number;
+    currency: string;
+    issueKey: string;
+    /** The receipt this one replaces, or a note cancels. */
+    replaces?: number | null;
+  },
 ): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO receipts (public_id, order_id, kind, series_year, number, label, amount_cents, currency, document, issue_key)
-       SELECT ?, ?, ?, ?, n, ? || n || '/' || ?, ?, ?, '', ?
+      `INSERT INTO receipts (public_id, order_id, kind, series_year, number, label, amount_cents, currency, document, issue_key, replaces_receipt_id)
+       SELECT ?, ?, ?, ?, n, ? || n || '/' || ?, ?, ?, '', ?, ?
          FROM (SELECT COALESCE(MAX(number), 0) + 1 AS n FROM receipts WHERE kind = ? AND series_year = ?)
         -- The WHERE is required: without it SQLite reads ON CONFLICT as a join's ON.
         WHERE true
@@ -63,8 +73,18 @@ export async function allocateReceipt(
       args.amountCents,
       args.currency,
       args.issueKey,
+      args.replaces ?? null,
       args.kind,
       args.year,
     )
     .run();
+}
+
+/**
+ * The receipts still in force for an order: contribution and shipping
+ * receipts that no later document cancels or replaces.
+ */
+export function liveReceipts(rows: ReceiptRow[]): ReceiptRow[] {
+  const superseded = new Set(rows.flatMap((r) => (r.replaces_receipt_id == null ? [] : [r.replaces_receipt_id])));
+  return rows.filter((r) => (r.kind === 'donation' || r.kind === 'shipping') && !superseded.has(r.id));
 }

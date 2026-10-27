@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Miniflare } from 'miniflare';
-import { allocateReceipt, listOrderReceipts, getReceiptByPublicId } from '../../src/features/receipts/store.ts';
+import { allocateReceipt, listOrderReceipts, getReceiptByPublicId, liveReceipts } from '../../src/features/receipts/store.ts';
 
 // Receipt numbering against a real D1 and the real 0047 migration: one gapless
 // series per kind and year, the prefix printed in the label, and an issue key
@@ -58,6 +58,23 @@ try {
   assert.match(forOrder[0].public_id, /^rcpt_/);
   assert.equal(forOrder[0].document, '', 'the snapshot is written after the number is taken');
   assert.equal((await getReceiptByPublicId(db, forOrder[1].public_id)).label, 'W1/2027');
+
+  // A partial refund on order 1: a note cancels its contribution receipt and a
+  // new receipt replaces it; the shipping receipt stays in force.
+  const [contribution, shipping] = forOrder;
+  await allocateReceipt(db, { orderId: 1, kind: 'refund_note', year: 2027, prefix: 'WR', amountCents: 1500, currency: 'EUR', issueKey: `refund_note:${contribution.id}`, replaces: contribution.id });
+  await allocateReceipt(db, { orderId: 1, kind: 'donation', year: 2027, prefix: 'W', amountCents: 2500, currency: 'EUR', issueKey: `donation:1:after:${contribution.id}`, replaces: contribution.id });
+  const afterRefund = await listOrderReceipts(db, 1);
+  assert.deepEqual(
+    afterRefund.map((r) => `${r.label} ${r.replaces_receipt_id ?? '-'}`),
+    // (The helper above printed both series with W.)
+    ['W1/2027 -', 'W1/2027 -', `WR1/2027 ${contribution.id}`, `W4/2027 ${contribution.id}`],
+  );
+  assert.deepEqual(
+    liveReceipts(afterRefund).map((r) => [r.kind, r.amount_cents]),
+    [['shipping', 4000], ['donation', 2500]],
+  );
+  assert.equal(shipping.kind, 'shipping');
 
   console.log('receipts integration: all checks passed');
 } finally {
