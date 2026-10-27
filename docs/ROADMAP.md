@@ -8,7 +8,7 @@ store in the code.
 |---|---|---|
 | 1 | Test shop on Cloudflare, Stripe only (Monopolele, step 1) | Done 2026-10-26 — [report](SHOP_TEST_MONOPOLELE.md) |
 | 2 | Failed and pending payment follow-up (below) | Done 2026-10-27 — tested on the test shop |
-| 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | In progress — catalog import done; paid orders reach Printful as drafts (2026-10-27); next: shipped/tracking webhooks, shipping rates |
+| 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | In progress — catalog import done; paid orders reach Printful as drafts and its items ship at Printful's rate (2026-10-27); next: shipped/tracking webhooks |
 | 4 | `monopolele` theme (below) | Before production, after the connector |
 | 4a | Two-axis variant picker (below) | Done 2026-10-26 (option A) |
 | 5 | Production instance — includes Turnstile (below) | After the connector is tested |

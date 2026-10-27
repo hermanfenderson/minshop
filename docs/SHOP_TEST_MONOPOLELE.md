@@ -140,6 +140,30 @@ prodotti. Ora la sostituzione del catalogo scollega prima le righe d'ordine.
 | Bozza in Printful | ✅ ordine `draft`, external id = ordine dello shop, variante e SKU giusti, file di stampa presenti, indirizzo IT completo, prezzo al pubblico 15,00 € |
 | Costo Printful della bozza | 7,25 € articolo + 4,69 € spedizione, 14,57 € in totale con le imposte (il cliente ha pagato 20,00 € con la spedizione dello shop): dato utile per le tariffe in cassa |
 
+## Tariffe di spedizione Printful e catalogo italiano (2026-10-27)
+
+- **Tariffe in cassa** (decisioni di Mauro): per gli articoli Printful il
+  cliente paga la tariffa STANDARD di Printful per il Paese scelto nel carrello,
+  più il 22% (le tariffe Printful sono senza IVA; percentuale modificabile in
+  Admin), arrotondata per eccesso ai 50 centesimi; nessuna soglia di
+  spedizione gratuita; opzione chiamata solo «Standard», senza tempi di
+  consegna (quelli di Printful non contano la produzione). Gli articoli spediti
+  dallo shop (ukulele) aggiungono la tariffa della zona; se Printful non
+  risponde in 4 s valgono le tariffe delle zone. Solo con il pagamento Stripe.
+  Migrazione `0044` (id di catalogo per le tariffe), varianti ricollegate.
+  Tariffe di riferimento (senza IVA): t-shirt 4,49 € in Italia, tre articoli
+  12,53 €, USA 4,19–16,48 €.
+- **Catalogo in italiano**: nomi, descrizioni, varianti (« / » mantenuto) e
+  categorie tradotti e caricati; doppio selettore controllato su tutti i 20
+  prodotti con varianti.
+- **Testi accorciati** (richiesta di Mauro), in inglese e in italiano:
+  presentazione breve, note di Monopolele (donazione, festival, taglie), poche
+  caratteristiche, «realizzato su ordinazione» e una riga GPSR. Corretti tre
+  errori dei testi WooCommerce (GPSR segnaposto di Printful sulla tazza 2023,
+  segnaposto sul tessuto della t-shirt 2026, «AAdd»).
+- **Decisione di Mauro**: lo shop di produzione si popolerà **dallo shop di
+  test**, non di nuovo da WooCommerce, così testi e correzioni restano.
+
 ## Checklist per la produzione
 
 - Istanza `monopolele-shop` creata pulita, stesso codice e mount, senza `NOINDEX`.
