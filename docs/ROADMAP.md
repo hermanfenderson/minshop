@@ -7,7 +7,7 @@ store in the code.
 | # | Item | Status |
 |---|---|---|
 | 1 | Test shop on Cloudflare, Stripe only (Monopolele, step 1) | Done 2026-10-26 — [report](SHOP_TEST_MONOPOLELE.md) |
-| 2 | Failed and pending payment follow-up (below) | Done 2026-10-27 — live test on the test shop pending |
+| 2 | Failed and pending payment follow-up (below) | Done 2026-10-27 — tested on the test shop |
 | 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | In progress — catalog import done |
 | 4 | `monopolele` theme (below) | Before production, after the connector |
 | 4a | Two-axis variant picker (below) | Done 2026-10-26 (option A) |

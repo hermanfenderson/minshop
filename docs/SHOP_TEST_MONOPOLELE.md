@@ -90,6 +90,15 @@ su D1, log del Worker ed esterno):
 | Rimborso totale di un ordine con carta, dall'Admin | ✅ ordine «refunded», un solo rimborso registrato: il `charge.refunded` che segue è riconosciuto e non lo conta due volte |
 | Rimborso parziale dalla dashboard Stripe | ✅ 7,00 € su 57,00 €: `charge.refunded` elaborato al primo tentativo, ordine ancora «paid» con 7,00 € rimborsati |
 
+Seguito dei pagamenti non riusciti (roadmap, punto 2), provato il 2026-10-27
+dopo il deploy con la migrazione `0042`:
+
+| Prova | Esito |
+|---|---|
+| SEPA che fallisce (`DE62…3001`), 20,00 € | ✅ nessun ordine; prenotazione «failed» circa 75 s dopo, con email, importo, valuta e lingua salvati |
+| Email al cliente («Payment not completed») e avviso all'admin | ✅ inviate entrambe al primo tentativo, ricevute da Mauro |
+| Admin → Orders → «Unpaid checkouts» | ✅ il checkout fallito compare con stato «Failed» e avviso al cliente «Emailed»; l'elenco Orders resta solo dei pagati |
+
 ## Catalogo importato da WooCommerce (passo 2, punto 3 del piano)
 
 Il 2026-10-26, con `scripts/import-woocommerce.mjs` (chiave WooCommerce di sola
