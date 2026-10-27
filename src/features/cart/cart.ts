@@ -9,6 +9,8 @@ import {
   type ProductExtra,
 } from '../products/variants';
 import { parseCartKey, lineUnitPriceCents } from './key';
+import { checkContribution, type AmountProblem } from '../benefit/amount';
+import { isSingleUnitContribution, type BenefitRules } from '../benefit/mode';
 import { cookieName } from '../../deployment';
 import { loadTranslations } from '../translations/db';
 import { translated } from '../translations/content';
@@ -34,9 +36,14 @@ export interface CartLine {
   variant: ProductVariant | null;
   extras: ProductExtra[];
   qty: number;
-  unitPriceCents: number; // variant/base + selected extras
+  unitPriceCents: number; // variant/base + selected extras; Benefit Mode: the chosen contribution
   lineTotalCents: number;
   availableStock: number; // variant stock when a variant, else product stock
+  /** The price from D1. Benefit Mode: the minimum contribution per unit. */
+  minimumCents: number;
+  /** Benefit Mode: why the chosen amount cannot be charged as it stands (the
+   *  minimum rose, or a crafted key). Checkout refuses such a line; null = fine. */
+  amountProblem: AmountProblem | null;
 }
 
 export function readCart(cookies: AstroCookies): Cart {
@@ -105,6 +112,8 @@ export async function resolveCart(
   cart: Cart,
   /** The shopper's content language (names and labels); null = source text. */
   contentLocale: string | null = null,
+  /** Benefit Mode's rules, or null for standard pricing (the cookie's amounts ignored). */
+  benefit: BenefitRules | null = null,
 ): Promise<{ lines: CartLine[]; subtotalCents: number }> {
   const requested = Object.entries(cart).flatMap(([key, qty]) => {
     const parsed = parseCartKey(key);
@@ -155,6 +164,26 @@ export async function resolveCart(
           extra !== undefined && extra.product_id === product.id,
       );
 
+    if (benefit) {
+      // Extras are off in Benefit Mode: the one amount is the whole contribution.
+      const minimumCents = lineUnitPriceCents(product.price_cents, variant, []);
+      const chosen = parsed.amountCents ?? minimumCents;
+      const check = checkContribution(chosen, minimumCents, benefit.capCents);
+      const lineQty = isSingleUnitContribution(product) ? 1 : qty;
+      lines.push({
+        key,
+        product,
+        variant,
+        extras: [],
+        qty: lineQty,
+        unitPriceCents: chosen,
+        lineTotalCents: chosen * lineQty,
+        availableStock: sellableStock(product, variant ? variant.stock : product.stock),
+        minimumCents,
+        amountProblem: check.ok ? null : check.problem,
+      });
+      continue;
+    }
     const unitPriceCents = lineUnitPriceCents(product.price_cents, variant, lineExtras);
     lines.push({
       key,
@@ -165,6 +194,8 @@ export async function resolveCart(
       unitPriceCents,
       lineTotalCents: unitPriceCents * qty,
       availableStock: sellableStock(product, variant ? variant.stock : product.stock),
+      minimumCents: unitPriceCents,
+      amountProblem: null,
     });
   }
   const subtotalCents = lines.reduce((sum, l) => sum + l.lineTotalCents, 0);

@@ -1,6 +1,8 @@
 import { rootHref, type Href } from '../../i18n/urls';
 import type { D1Database } from '@cloudflare/workers-types';
-import type { StoreSettings } from '../settings/db';
+import { benefitMessageFor, type StoreSettings } from '../settings/db';
+import { benefitRules } from '../benefit/mode';
+import { amountInputStep, amountInputValue } from '../benefit/amount';
 import { getProductBySlug, listProductImages, type Product } from '../products/db';
 import { listVariants, listExtras } from '../products/variants';
 import { axisField, translatedAxes, variantAxes } from '../products/variantAxes';
@@ -138,7 +140,10 @@ export async function loadProductDetail(
   const product = translated(tr, 'product', source);
   const related = translatedAll(tr, 'product', sourceRelated);
   const variants = translatedAll(tr, 'variant', sourceVariants);
-  const extras = translatedAll(tr, 'extra', sourceExtras);
+  // Benefit Mode: every price is a minimum, and the one amount is the whole
+  // contribution, so add-ons (a price delta on top) are not offered.
+  const benefit = benefitRules(options.settings, options.currency);
+  const extras = benefit ? [] : translatedAll(tr, 'extra', sourceExtras);
   const gallery = translatedAll(tr, 'image', sourceGallery);
   const categories = translatedAll(tr, 'category', sourceCategories);
 
@@ -150,7 +155,8 @@ export async function loadProductDetail(
 
   const variantPrices = variants.map((v) => v.price_cents);
   const displayPriceCents = hasVariants ? Math.min(...variantPrices) : product.price_cents;
-  const priceVaries = hasVariants && Math.min(...variantPrices) !== Math.max(...variantPrices);
+  // A minimum contribution reads "from …" like a price range does.
+  const priceVaries = Boolean(benefit) || (hasVariants && Math.min(...variantPrices) !== Math.max(...variantPrices));
 
   // A variant's linked image reaches the markup as the gallery anchor — a pimg_
   // public ID, never the row FK and never the storage key. The old image_key
@@ -271,7 +277,7 @@ export async function loadProductDetail(
       productId: requirePublicId(product.public_id, product.id, 'product'),
       cartAction: href('/api/cart'),
       expressAction: href('/express'),
-      hasOptions: hasVariants || extras.length > 0,
+      hasOptions: hasVariants || extras.length > 0 || Boolean(benefit),
       soldOut,
       showAddToCart: cartEnabled,
       // Buy now is express (it skips the cart), so it survives the cart being
@@ -309,6 +315,20 @@ export async function loadProductDetail(
         formattedPriceDelta: formatMoney(extra.price_delta_cents, options.currency, options.intl),
         priceDeltaCents: extra.price_delta_cents,
       })),
+      contribution: benefit
+        ? (() => {
+            const minimum = firstInStockIndex !== -1 ? variants[firstInStockIndex].price_cents : displayPriceCents;
+            return {
+              field: 'amount' as const,
+              value: amountInputValue(minimum, options.currency),
+              min: amountInputValue(minimum, options.currency),
+              max: amountInputValue(benefit.capCents, options.currency),
+              step: amountInputStep(options.currency),
+              formattedMinimum: formatMoney(minimum, options.currency, options.intl),
+              encouragement: benefitMessageFor(options.settings, options.contentLocale ?? null),
+            };
+          })()
+        : null,
     },
   };
 }

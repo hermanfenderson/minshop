@@ -9,6 +9,13 @@ import { stripeDestination } from '../features/shipping/destination';
 import ProductImage from '../features/products/ProductImage.astro';
 import { enabledMethods, isMethodAvailable } from '../features/payments';
 import { catalogPath } from '../features/settings/home';
+import { getConfig } from '../config';
+import { benefitRules, isSingleUnitContribution } from '../features/benefit/mode';
+import { amountInputStep, amountInputValue } from '../features/benefit/amount';
+import { contributionError } from '../features/benefit/messages';
+import { readDonorDraft } from '../features/benefit/donorDraft';
+import { BENEFIT_PAYMENT_METHODS } from '../features/benefit/mode';
+import DonorFields from '../features/benefit/DonorFields.astro';
 
 // Cart switched off in Settings → browse-only catalog, no cart page.
 if (!(Astro.locals.settings?.cartEnabled ?? true)) return Astro.redirect(Astro.locals.urls.home(), 302);
@@ -20,7 +27,12 @@ const { t } = Astro.locals.i18n;
 // rail's keys makes its button appear automatically (no unconfigured "set this
 // up" buttons facing customers). The first method gets the primary styling.
 const settings = Astro.locals.settings;
-const methods = settings ? enabledMethods(settings) : [];
+const offered = settings ? enabledMethods(settings) : [];
+// Benefit Mode pays only on the rails that need no in-app address step.
+const methods =
+  settings?.commerceMode === 'benefit'
+    ? offered.filter((m) => (BENEFIT_PAYMENT_METHODS as readonly string[]).includes(m))
+    : offered;
 const ready = (m: string) => m === "demo" || (!!settings && isMethodAvailable(m as never, settings));
 const firstReady = methods.find(ready);
 const methodRows = methods.map((m) => ({ m, ready: ready(m), primary: m === firstReady }));
@@ -44,7 +56,20 @@ const METHOD: Record<string, { label: string; hint: string; setupHint: string }>
 };
 
 const cart = readCart(Astro.cookies);
-const { lines, subtotalCents } = await resolveCart(env.DB, cart, Astro.locals.contentLocale);
+const currency = getConfig().currency;
+const benefit = benefitRules(settings, currency);
+const { lines, subtotalCents } = await resolveCart(env.DB, cart, Astro.locals.contentLocale, benefit);
+// Benefit Mode: a line whose amount no longer passes (the minimum rose since it
+// was added) says why here; checkout refuses it until it is changed.
+const lineProblem = (l: (typeof lines)[number]) =>
+  benefit && l.amountProblem
+    ? contributionError(Astro.locals.i18n, l.amountProblem, {
+        name: l.product.name,
+        minimumCents: l.minimumCents,
+        capCents: benefit.capCents,
+        currency,
+      })
+    : null;
 const error = Astro.url.searchParams.get('error');
 
 // Destination pre-selector for Stripe's hosted checkout: Stripe shows a static
@@ -114,9 +139,11 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                       {[l.variant?.label, ...l.extras.map((e) => e.label)].filter(Boolean).join(' · ')}
                     </span>
                   )}
-                  <span class="block text-xs tabular-nums text-muted">
-                    {t('cart.line.each', { price: formatPrice(l.unitPriceCents, undefined, Astro.locals.i18n.intl) })}
-                  </span>
+                  {!benefit && (
+                    <span class="block text-xs tabular-nums text-muted">
+                      {t('cart.line.each', { price: formatPrice(l.unitPriceCents, undefined, Astro.locals.i18n.intl) })}
+                    </span>
+                  )}
                   {l.availableStock <= 0 ? (
                     <span class="mt-1 block text-xs uppercase tracking-widest text-red-600">
                       {t('cart.line.outOfStock')}
@@ -129,7 +156,34 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                 </span>
               </a>
 
+              {benefit && (
+                <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex basis-full items-center gap-2 sm:basis-auto">
+                  <input type="hidden" name="_action" value="amount" />
+                  <input type="hidden" name="key" value={l.key} />
+                  <label class="text-xs uppercase tracking-widest text-muted" for={`amount-${l.key}`}>
+                    {t('benefit.cart.contribution')}
+                  </label>
+                  <input
+                    id={`amount-${l.key}`}
+                    type="number"
+                    name="amount"
+                    inputmode="decimal"
+                    required
+                    min={amountInputValue(l.minimumCents, currency)}
+                    max={amountInputValue(benefit.capCents, currency)}
+                    step={amountInputStep(currency)}
+                    value={amountInputValue(l.unitPriceCents, currency)}
+                    class="w-24 border-b border-line bg-transparent py-1 text-right tabular-nums focus:border-brand focus:outline-none"
+                  />
+                  <button type="submit" class="text-xs uppercase tracking-widest text-faint hover:text-brand">
+                    {t('benefit.cart.change')}
+                  </button>
+                  {lineProblem(l) && <span class="basis-full text-xs text-amber-700">{lineProblem(l)}</span>}
+                </form>
+              )}
+
               <div class="ml-auto flex items-center gap-4">
+                {benefit && isSingleUnitContribution(l.product) ? null : (
                 <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center gap-2">
                   <input type="hidden" name="_action" value="update" />
                   <input type="hidden" name="key" value={l.key} />
@@ -149,6 +203,7 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                     {t('cart.line.update')}
                   </button>
                 </form>
+                )}
                 <span class="w-20 text-right tabular-nums">{formatPrice(l.lineTotalCents, undefined, Astro.locals.i18n.intl)}</span>
                 <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center">
                   <input type="hidden" name="_action" value="remove" />
@@ -171,7 +226,9 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
         <div class="mt-10 flex justify-end">
           <div class="w-full sm:max-w-sm">
             <div class="flex items-center justify-between">
-              <span class="text-xs uppercase tracking-widest text-muted">{t('cart.summary.subtotal')}</span>
+              <span class="text-xs uppercase tracking-widest text-muted">
+                {benefit ? t('benefit.cart.total') : t('cart.summary.subtotal')}
+              </span>
               <span class="text-lg tabular-nums">{formatPrice(subtotalCents, undefined, Astro.locals.i18n.intl)}</span>
             </div>
 
@@ -182,6 +239,13 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
             ) : (
             <form method="POST" action={Astro.locals.urls.href('/api/checkout')} class="mt-4 space-y-2">
               <input type="hidden" name="source" value="cart" />
+              {benefit && (
+                <DonorFields
+                  draft={readDonorDraft(Astro.cookies)}
+                  defaultCountry={Astro.request.headers.get('cf-ipcountry')}
+                  privacyHref={settings?.benefitPrivacyHref ?? null}
+                />
+              )}
               {destination.showSelect && (
                 <label class="mb-2 flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
                   {t('cart.summary.shipTo')}

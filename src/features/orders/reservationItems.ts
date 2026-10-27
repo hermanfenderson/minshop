@@ -12,8 +12,10 @@ export interface ReservationLine {
   product: Product;
   qty: number;
   name: string; // composed: product + variant + extras
-  unitPriceCents: number; // variant/base + extras
+  unitPriceCents: number; // variant/base + extras; Benefit Mode: the chosen contribution
   variantId: number | null;
+  /** Benefit Mode: the minimum per unit the contribution was checked against. */
+  minimumCents?: number;
 }
 
 export interface LineDraft extends ReservationLine {
@@ -40,6 +42,7 @@ export const reservationItems = (lines: ReservationLine[]): ReservationItem[] =>
     priceCents: line.unitPriceCents,
     quantity: line.qty,
     ...(line.product.track_inventory === 0 ? { untracked: true } : {}),
+    ...(line.minimumCents != null ? { minPriceCents: line.minimumCents } : {}),
     ...(entitlementWriterActive() && line.product.file_key
       ? {
           fileKey: line.product.file_key,

@@ -1,6 +1,7 @@
 ---
 import { env } from 'cloudflare:workers';
-import { formatPrice } from '../../config';
+import { formatPrice, getConfig } from '../../config';
+import { benefitRules } from '../../features/benefit/mode';
 import { readCart, resolveCart, cartCount } from '../../features/cart/cart';
 import ProductImage from '../../features/products/ProductImage.astro';
 import { getSetting } from '../../features/settings/db';
@@ -13,7 +14,7 @@ export const prerender = false;
 
 const cart = readCart(Astro.cookies);
 const [{ lines, subtotalCents }, imageDeliverySetting] = await Promise.all([
-  resolveCart(env.DB, cart, Astro.locals.contentLocale),
+  resolveCart(env.DB, cart, Astro.locals.contentLocale, benefitRules(Astro.locals.settings, getConfig().currency)),
   getSetting(env.DB, 'image_delivery'),
 ]);
 const imageDelivery = imageDeliverySetting === 'cloudflare' ? 'cloudflare' : 'original';

@@ -10,19 +10,20 @@
  * The fallback is deliberately NOT src/i18n/core. The storefront boundary
  * checker walks every module a template can reach, once per template, and core
  * pulls in every locale's full catalog — which made the walk an order of
- * magnitude slower. This module reaches only the two English catalogs the
+ * magnitude slower. This module reaches only the English catalogs the
  * storefront speaks (both import-free for the same reason) and the pure money
  * helper, through the catalog-free formatter core itself uses (i18n/format).
  */
 import { storefront } from '../../../i18n/messages/en/storefront.ts';
 import { common } from '../../../i18n/messages/en/common.ts';
+import { benefit } from '../../../i18n/messages/en/benefit.ts';
 import { createTranslator, type Message } from '../../../i18n/format.ts';
 
 /** The request translator's type, named through the global Locals so that no
  *  import reaches the translator core. */
 export type I18n = App.Locals['i18n'];
 
-const ENGLISH: Record<string, Message> = { ...common, ...storefront };
+const ENGLISH: Record<string, Message> = { ...common, ...storefront, ...benefit };
 const english = createTranslator('en', 'en-US', (key: string) => ENGLISH[key]) as unknown as I18n;
 
 /** The translator a component was handed, or English when it was given none. */

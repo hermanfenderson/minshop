@@ -89,6 +89,7 @@ export function parseItems(value: string): ReservationItem[] | null {
           (item.fileMime != null && typeof item.fileMime !== 'string') ||
           (item.fileSizeBytes != null && (!Number.isInteger(item.fileSizeBytes) || item.fileSizeBytes < 0)) ||
           (item.untracked != null && typeof item.untracked !== 'boolean') ||
+          (item.minPriceCents != null && (!Number.isInteger(item.minPriceCents) || item.minPriceCents < 0)) ||
           typeof item.name !== 'string',
       )
     ) {

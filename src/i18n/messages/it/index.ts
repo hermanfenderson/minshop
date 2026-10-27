@@ -9,6 +9,7 @@ import { account } from './account.ts';
 import { adminOrders } from './adminOrders.ts';
 import { email } from './email.ts';
 import { llms } from './llms.ts';
+import { benefit } from './benefit.ts';
 
 /**
  * Italian. Any subset of the English keys; missing ones fall back.
@@ -26,4 +27,5 @@ export const it: Catalog = {
   ...adminOrders,
   ...email,
   ...llms,
+  ...benefit,
 };

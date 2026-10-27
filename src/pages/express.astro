@@ -18,6 +18,12 @@ import { readCart, resolveCart } from '../features/cart/cart';
 import { enabledMethods } from '../features/payments';
 import ProductImage from '../features/products/ProductImage.astro';
 import { chosenVariantPublicId } from '../features/products/variantAxes';
+import { getConfig } from '../config';
+import { benefitRules, BENEFIT_PAYMENT_METHODS } from '../features/benefit/mode';
+import { readContribution } from '../features/benefit/amount';
+import { contributionError } from '../features/benefit/messages';
+import { readDonorDraft } from '../features/benefit/donorDraft';
+import DonorFields from '../features/benefit/DonorFields.astro';
 
 // Express checkout — a single payment-method-picker step (first listed = the
 // store's default). Two sources: "Buy now" (a single product_id [+ variant/extras])
@@ -27,6 +33,9 @@ const { t } = Astro.locals.i18n;
 const isPost = Astro.request.method === 'POST';
 const form = isPost ? await readForm(Astro.request) : null;
 const fld = (n: string) => (form?.get(n) ?? Astro.url.searchParams.get(n) ?? '').toString().trim();
+const currency = getConfig().currency;
+// Benefit Mode: the amount chosen on the product page is the line's price.
+const benefit = benefitRules(Astro.locals.settings, currency);
 
 interface DisplayLine {
   name: string;
@@ -79,7 +88,7 @@ if (isBuyNow && productPublicId) {
       303,
     );
   }
-  const extras = extraPublicIds.length
+  const extras = extraPublicIds.length && !benefit
     ? await getExtrasByPublicIds(env.DB, product.id, extraPublicIds)
     : [];
   if (sellableStock(product, variant ? variant.stock : product.stock) <= 0) {
@@ -89,22 +98,34 @@ if (isBuyNow && productPublicId) {
     );
   }
   const shown = await translatedPurchase(env.DB, Astro.locals.contentLocale, product, variant, extras);
+  const name = purchaseLineName(shown.product, shown.variant, shown.extras);
+  let unitPriceCents = lineUnitPriceCents(product.price_cents, variant, extras);
+  if (benefit) {
+    const minimumCents = unitPriceCents;
+    const amount = fld('amount') ? readContribution(fld('amount'), currency, minimumCents, benefit.capCents) : { ok: true as const, cents: minimumCents };
+    if (!amount.ok) {
+      const message = contributionError(Astro.locals.i18n, amount.problem, { name, minimumCents, capCents: benefit.capCents, currency });
+      return Astro.redirect(Astro.locals.urls.href(`/products/${product.slug}?error=${encodeURIComponent(message)}`), 303);
+    }
+    unitPriceCents = amount.cents;
+  }
   lines = [
     {
-      name: purchaseLineName(shown.product, shown.variant, shown.extras),
+      name,
       imageKey: product.image_key,
-      unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
+      unitPriceCents,
       qty: 1,
     },
   ];
   weightLines = [{ product, variant, qty: 1 }];
   carry = [{ name: 'product_id', value: productPublicId }];
+  if (benefit) carry.push({ name: 'amount', value: fld('amount') || '' });
   if (variant?.public_id) carry.push({ name: 'variant_id', value: variant.public_id });
   for (const e of extras) {
     if (e.public_id) carry.push({ name: 'extra', value: e.public_id });
   }
 } else {
-  const { lines: cartLines } = await resolveCart(env.DB, readCart(Astro.cookies), Astro.locals.contentLocale);
+  const { lines: cartLines } = await resolveCart(env.DB, readCart(Astro.cookies), Astro.locals.contentLocale, benefit);
   if (cartLines.length === 0) return Astro.redirect(Astro.locals.urls.cart(), 303);
   // Stock can drop between adding to the cart and checking out. Bounce to the cart
   // rather than rendering a total the shopper can't actually buy: this page has no
@@ -136,8 +157,12 @@ if (isBuyNow && productPublicId) {
 const totalCents = lines.reduce((s, l) => s + l.unitPriceCents * l.qty, 0);
 
 // Only the actually-usable rails, default first. None → no checkout (cart-style).
-const methods = Astro.locals.settings ? enabledMethods(Astro.locals.settings) : [];
+const offered = Astro.locals.settings ? enabledMethods(Astro.locals.settings) : [];
+// Benefit Mode pays only on the rails that need no in-app address step.
+const methods = benefit ? offered.filter((m) => (BENEFIT_PAYMENT_METHODS as readonly string[]).includes(m)) : offered;
 if (methods.length === 0) return Astro.redirect(backHref, 303);
+const donorDraft = benefit ? readDonorDraft(Astro.cookies) : {};
+const error = Astro.url.searchParams.get('error');
 
 const effectiveShipping = shippingFor(Astro.locals.settings).config;
 const destination = stripeDestination(
@@ -184,15 +209,59 @@ const METHOD: Record<string, { label: string; hint: string }> = {
     </ul>
 
     <div class="mt-4 flex items-center justify-between">
-      <span class="text-xs uppercase tracking-widest text-muted">{t('checkout.express.total')}</span>
+      <span class="text-xs uppercase tracking-widest text-muted">{benefit ? t('benefit.cart.total') : t('checkout.express.total')}</span>
       <span class="text-lg tabular-nums">{formatPrice(totalCents)}</span>
     </div>
 
+    {error && (
+      <p class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{error}</p>
+    )}
+
+    {/* Benefit Mode: ONE form, so the donor details travel with whichever rail
+        is chosen (the rails are the submit buttons, as on the cart). */}
+    {benefit && (
+      <form method="POST" action={Astro.locals.urls.href('/api/checkout')} class="mt-6 space-y-2">
+        {carry.map((c) => <input type="hidden" name={c.name} value={c.value} />)}
+        <DonorFields
+          draft={donorDraft}
+          defaultCountry={Astro.request.headers.get('cf-ipcountry')}
+          privacyHref={Astro.locals.settings?.benefitPrivacyHref ?? null}
+        />
+        {destination.showSelect && (
+          <label class="mb-2 flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
+            {t('checkout.express.shipTo')}
+            <select name="country" class="rounded-md border border-line px-2 py-1.5 text-sm normal-case tracking-normal text-ink">
+              {destination.countries.map((c) => (
+                <option value={c} selected={c === destination.defaultCountry}>{destination.label(c)}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {destination.hiddenOnly && <input type="hidden" name="country" value={destination.countries[0]} />}
+        {methods.map((m, i) => (
+          <button
+            type="submit"
+            name="method"
+            value={m}
+            class={`flex w-full items-center justify-between gap-3 rounded-lg px-5 py-3 text-left transition ${
+              i === 0 ? 'bg-brand text-on-brand hover:bg-brand-hover' : 'border border-line text-muted hover:border-brand'
+            }`}
+          >
+            <span>
+              <span class="block text-sm font-medium">{METHOD[m]?.label ?? m}</span>
+              <span class={`block text-xs ${i === 0 ? 'text-on-brand/70' : 'text-muted'}`}>{METHOD[m]?.hint ?? ''}</span>
+            </span>
+            <span aria-hidden="true" class={i === 0 ? 'text-on-brand/80' : 'text-faint'}>&rarr;</span>
+          </button>
+        ))}
+      </form>
+    )}
+
     {/* One button per enabled method (first = the store's default → primary). Each
         re-sends the same source to /api/checkout with its method. */}
-    <div class="mt-6 space-y-2">
+    <div class="mt-6 space-y-2" hidden={Boolean(benefit)}>
       {
-        methods.map((m, i) => (
+        !benefit && methods.map((m, i) => (
           <form method="POST" action={Astro.locals.urls.href('/api/checkout')}>
             {carry.map((c) => (
               <input type="hidden" name={c.name} value={c.value} />

@@ -42,6 +42,7 @@ const purchase = (overrides: Partial<ProductPurchaseModel> = {}): ProductPurchas
   variants: [],
   axes: null,
   extras: [],
+  contribution: null,
   ...overrides,
 });
 

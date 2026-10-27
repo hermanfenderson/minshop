@@ -138,6 +138,18 @@ if (loaded.backfillRelated) {
           cents += Number(e.getAttribute('data-price')) || 0;
         }
         out.textContent = fmt.format(cents / divisor);
+        // Benefit Mode: the chosen variant's price is the floor of the amount.
+        // Raise a lower amount to it; never lower one the supporter chose.
+        const amount = form.querySelector('[data-contribution-amount]');
+        if (amount instanceof HTMLInputElement) {
+          const decimals = Math.round(Math.log10(divisor));
+          amount.min = (cents / divisor).toFixed(decimals);
+          if (!(Number(amount.value) >= cents / divisor)) amount.value = amount.min;
+          const note = form.querySelector('[data-contribution-minimum]');
+          if (note instanceof HTMLElement && note.dataset.template) {
+            note.textContent = note.dataset.template.replace('{price}', fmt.format(cents / divisor));
+          }
+        }
         if (scroll && v) showImage(v.getAttribute('data-image-id') || '');
       };
       // Sync price + carousel to the default-selected variant on load, and on every

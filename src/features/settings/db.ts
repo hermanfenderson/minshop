@@ -23,6 +23,11 @@ export type SettingKey =
   | 'cart_enabled' // '0' = cart/checkout off (browse-only catalog); absent = on
   | 'buy_now_enabled' // '0' = hide "Buy now" (cart-only purchase); absent = on
   | 'search_provider' // 'fts' | 'vector' — overrides config/SEARCH_PROVIDER; absent = default
+  | 'commerce_mode' // 'benefit' = shoppers choose a contribution from each price as a minimum; absent = standard
+  | 'contribution_cap_cents' // Benefit Mode: largest contribution per unit, minor units; absent = 10,000 in major units
+  | 'benefit_message' // Benefit Mode encouragement under the amount field; absent = the dictionary's
+  | `benefit_message:${string}` // the same in another language ('benefit_message:it')
+  | 'benefit_privacy_href' // Benefit Mode: the privacy notice linked from the donor form; absent = no link
   // Runtime overrides of build-time config toggles ('1'/'0'; absent = inherit config).
   | 'discounts_enabled' // overrides config.discounts.enabled
   | 'tax_enabled' // overrides config.tax.enabled
@@ -87,6 +92,16 @@ export interface StoreSettings {
   cartEnabled: boolean;
   /** "Buy now" instant-checkout button shown (default true). Requires cartEnabled. */
   buyNowEnabled: boolean;
+  /** 'benefit': every price is a minimum contribution the shopper may raise
+   *  (docs/ROADMAP_BENEFIT_MODE.md). Default 'standard', exactly today's shop. */
+  commerceMode: 'standard' | 'benefit';
+  /** Benefit Mode's per-unit ceiling in minor units, or null for the default. */
+  contributionCapCents: number | null;
+  /** Benefit Mode's encouragement, by locale ('' = the source text); missing =
+   *  the dictionary default. Read through benefitMessageFor(). */
+  benefitMessages: Record<string, string>;
+  /** Benefit Mode: where the donor form's privacy link points, or null. */
+  benefitPrivacyHref: string | null;
   /** Search backend chosen at runtime, or null to use the build-time default
    *  (config.search.provider / SEARCH_PROVIDER). */
   searchProvider: 'fts' | 'vector' | null;
@@ -239,6 +254,10 @@ export function parseStoreSettings(
       .filter(Boolean),
     cartEnabled: map.get('cart_enabled') !== '0',
     buyNowEnabled: map.get('buy_now_enabled') !== '0',
+    commerceMode: map.get('commerce_mode') === 'benefit' ? 'benefit' : 'standard',
+    contributionCapCents: positiveInt(map.get('contribution_cap_cents')),
+    benefitMessages: benefitMessages(map),
+    benefitPrivacyHref: map.get('benefit_privacy_href') ?? null,
     searchProvider: map.get('search_provider') === 'vector' ? 'vector'
       : map.get('search_provider') === 'fts' ? 'fts'
       : null,
@@ -279,6 +298,26 @@ export function parseStoreSettings(
     phoenixdUrl: map.get('phoenixd_url') ?? null,
     opennodeApiUrl: map.get('opennode_api_url') ?? null,
   };
+}
+
+function benefitMessages(map: Map<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of map) {
+    const m = /^benefit_message(?::([a-z]{2,3}(?:-[a-z0-9]+)*))?$/i.exec(key);
+    if (m && value) out[m[1]?.toLowerCase() ?? ''] = value;
+  }
+  return out;
+}
+
+/** The encouragement in `locale`, else the source one, else null (= dictionary). */
+export function benefitMessageFor(settings: StoreSettings | undefined, locale: string | null): string | null {
+  const messages = settings?.benefitMessages ?? {};
+  return (locale ? messages[locale] : undefined) ?? messages[''] ?? null;
+}
+
+function positiveInt(value: string | undefined): number | null {
+  const n = Number(value);
+  return value && Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
 /** Stored language rows → partial settings; only what is present (absent = default). */

@@ -36,6 +36,9 @@ import { purgeStockProductCache } from '../features/cache/purge';
 const cfg = getConfig();
 const i18n = Astro.locals.i18n;
 const { t, th } = i18n;
+// Benefit Mode never routes here (its rails need no in-app address step): this
+// page prices from D1 and collects no donor, so a crafted visit goes to the cart.
+if (Astro.locals.settings?.commerceMode === 'benefit') return Astro.redirect(Astro.locals.urls.cart(), 303);
 const isPost = Astro.request.method === 'POST';
 const form = isPost ? await readForm(Astro.request) : null;
 const fld = (name: string) => (form?.get(name) ?? '').toString().trim();

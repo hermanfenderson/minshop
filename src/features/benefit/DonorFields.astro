@@ -1,0 +1,133 @@
+---
+import { DONOR_FIELDS as F } from './donor';
+import type { DonorDraft } from './donorDraft';
+import { countryOptions } from '../shipping/countries';
+
+/**
+ * Benefit Mode's donor fields (R14), placed INSIDE the checkout form so they
+ * travel with it to /api/checkout. Without JavaScript both the person and the
+ * company fields show and the server decides which apply; the script hides the
+ * set that does not apply and disables it, so the browser neither requires nor
+ * submits it.
+ */
+interface Props {
+  draft: DonorDraft;
+  /** Pre-selected country when the supporter has typed none yet. */
+  defaultCountry: string | null;
+  privacyHref: string | null;
+}
+
+const { draft, defaultCountry, privacyHref } = Astro.props;
+const { t, locale } = Astro.locals.i18n;
+const countries = countryOptions(locale);
+const country = (draft[F.country] ?? defaultCountry ?? '').toUpperCase();
+const company = draft[F.company] === 'on';
+const input =
+  'mt-1 w-full rounded-md border border-line bg-transparent px-3 py-2 text-sm normal-case tracking-normal text-ink focus:border-brand focus:outline-none';
+const label = 'block text-xs uppercase tracking-widest text-muted';
+---
+
+<fieldset class="mb-4 space-y-3 text-left" data-donor>
+  <legend class="mb-1 text-sm font-medium">{t('benefit.donor.heading')}</legend>
+  <p class="text-xs text-muted">
+    {t('benefit.donor.intro')}
+    {privacyHref && (
+      <a href={privacyHref} class="border-b border-line hover:text-brand">{t('benefit.donor.privacy')}</a>
+    )}
+  </p>
+
+  <label class="flex items-center gap-2 text-sm">
+    <input type="checkbox" name={F.company} checked={company} class="h-4 w-4 accent-brand" data-donor-company />
+    {t('benefit.donor.company')}
+  </label>
+
+  <fieldset class="grid grid-cols-2 gap-3" data-donor-person>
+    <label class={label}>
+      {t('benefit.donor.firstName')}
+      <input name={F.firstName} value={draft[F.firstName] ?? ''} autocomplete="given-name" class={input} data-required />
+    </label>
+    <label class={label}>
+      {t('benefit.donor.lastName')}
+      <input name={F.lastName} value={draft[F.lastName] ?? ''} autocomplete="family-name" class={input} data-required />
+    </label>
+    <label class={`${label} col-span-2`}>
+      {t('benefit.donor.taxCode')}
+      <input name={F.taxCode} value={draft[F.taxCode] ?? ''} autocapitalize="characters" maxlength="32" class={input} data-tax-code />
+      <span class="mt-1 block text-xs normal-case tracking-normal text-faint">{t('benefit.donor.taxCodeHint')}</span>
+    </label>
+  </fieldset>
+
+  <fieldset class="grid grid-cols-2 gap-3" data-donor-org>
+    <label class={`${label} col-span-2`}>
+      {t('benefit.donor.companyName')}
+      <input name={F.companyName} value={draft[F.companyName] ?? ''} autocomplete="organization" class={input} data-required />
+    </label>
+    <label class={label}>
+      {t('benefit.donor.vat')}
+      <input name={F.vat} value={draft[F.vat] ?? ''} autocapitalize="characters" maxlength="32" class={input} data-required />
+    </label>
+    <label class={label}>
+      {t('benefit.donor.companyTaxCode')}
+      <input name={F.taxCode} value={draft[F.taxCode] ?? ''} autocapitalize="characters" maxlength="32" class={input} />
+    </label>
+  </fieldset>
+
+  <div class="grid grid-cols-2 gap-3">
+    <label class={`${label} col-span-2`}>
+      {t('benefit.donor.address')}
+      <input name={F.address} value={draft[F.address] ?? ''} autocomplete="street-address" required class={input} />
+    </label>
+    <label class={label}>
+      {t('benefit.donor.postal')}
+      <input name={F.postal} value={draft[F.postal] ?? ''} autocomplete="postal-code" required class={input} />
+    </label>
+    <label class={label}>
+      {t('benefit.donor.city')}
+      <input name={F.city} value={draft[F.city] ?? ''} autocomplete="address-level2" required class={input} />
+    </label>
+    <label class={label}>
+      {t('benefit.donor.region')}
+      <input name={F.region} value={draft[F.region] ?? ''} autocomplete="address-level1" class={input} />
+    </label>
+    <label class={label}>
+      {t('benefit.donor.country')}
+      <select name={F.country} required autocomplete="country" class={input} data-donor-country>
+        <option value="" selected={!country}></option>
+        {countries.map((c) => <option value={c.code} selected={c.code === country}>{c.name}</option>)}
+      </select>
+    </label>
+  </div>
+
+  <label class="flex items-center gap-2 text-sm">
+    <input type="checkbox" name={F.listed} checked={draft[F.listed] === 'on'} class="h-4 w-4 accent-brand" />
+    {t('benefit.donor.listed')}
+  </label>
+  <label class={label} data-donor-display>
+    {t('benefit.donor.displayName')}
+    <input name={F.displayName} value={draft[F.displayName] ?? ''} class={input} />
+  </label>
+</fieldset>
+
+<script>
+  // @ts-nocheck -- plain-JS client script (annotations would ship to the browser)
+  // Show the fields for a person OR a company; the hidden set is disabled, so it
+  // is neither required nor submitted. The tax code is required for Italy only.
+  for (const box of document.querySelectorAll('[data-donor]')) {
+    const company = box.querySelector('[data-donor-company]');
+    const person = box.querySelector('[data-donor-person]');
+    const org = box.querySelector('[data-donor-org]');
+    const country = box.querySelector('[data-donor-country]');
+    const display = box.querySelector('[data-donor-display]');
+    const sync = () => {
+      const isCompany = company.checked;
+      person.hidden = person.disabled = isCompany;
+      org.hidden = org.disabled = !isCompany;
+      for (const el of box.querySelectorAll('[data-required]')) el.required = !el.closest('fieldset[disabled]');
+      const tax = person.querySelector('[data-tax-code]');
+      if (tax) tax.required = !isCompany && country.value === 'IT';
+      if (display) display.hidden = isCompany;
+    };
+    box.addEventListener('change', sync);
+    sync();
+  }
+</script>

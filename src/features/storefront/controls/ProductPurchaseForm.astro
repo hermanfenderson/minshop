@@ -25,6 +25,10 @@ import { storefrontI18n, type I18n } from './i18n';
  * add-ons; Buy now overrides method and action so /express is a safe history
  * entry (Back never asks to resubmit). Without options there is nothing to
  * share, so each button is its own minimal form.
+ *
+ * Benefit Mode adds the one amount field (`amount`), which both buttons share,
+ * so a contribution always takes the single-form shape. The browser checks
+ * min/max/step before submitting; the server checks again whatever arrives.
  */
 interface Props {
   model: ProductPurchaseModel;
@@ -34,6 +38,9 @@ interface Props {
 const { model, i18n } = Astro.props;
 const { t } = storefrontI18n(i18n);
 const showAny = model.showAddToCart || model.showBuyNow;
+const contribution = model.contribution;
+const addLabel = contribution ? t('benefit.product.addToCart') : t('storefront.product.addToCart');
+const buyLabel = contribution ? t('benefit.product.buyNow') : t('storefront.product.buyNow');
 ---
 
 {
@@ -152,6 +159,37 @@ const showAny = model.showAddToCart || model.showBuyNow;
           </fieldset>
         )}
 
+        {contribution && !model.soldOut && (
+          <div class="mb-6" data-contribution>
+            <label class="mb-2 block text-xs uppercase tracking-widest text-muted" for="contribution-amount">
+              {t('benefit.product.amountLabel')}
+            </label>
+            <input
+              id="contribution-amount"
+              name={contribution.field}
+              type="number"
+              inputmode="decimal"
+              required
+              min={contribution.min}
+              max={contribution.max}
+              step={contribution.step}
+              value={contribution.value}
+              aria-describedby="contribution-help"
+              data-contribution-amount
+              class="w-40 rounded-md border border-line bg-transparent px-4 py-2.5 text-lg tabular-nums focus:border-brand focus:outline-none"
+            />
+            <p id="contribution-help" class="mt-2 text-sm text-muted">
+              <span
+                data-contribution-minimum
+                data-template={t('benefit.product.minimum', { price: '{price}' })}
+              >
+                {t('benefit.product.minimum', { price: contribution.formattedMinimum })}
+              </span>
+            </p>
+            <p class="mt-2 text-sm text-muted">{contribution.encouragement ?? t('benefit.product.encourage')}</p>
+          </div>
+        )}
+
         {model.soldOut ? (
           <span class="inline-block cursor-not-allowed rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-faint">
             {t('storefront.product.soldOut')}
@@ -163,7 +201,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
                 type="submit"
                 class="rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-muted transition hover:border-brand hover:text-brand"
               >
-                {t('storefront.product.addToCart')}
+                {addLabel}
               </button>
             )}
             {model.showBuyNow && (
@@ -174,7 +212,7 @@ const showAny = model.showAddToCart || model.showBuyNow;
                 data-fullpage
                 class="rounded-md bg-brand px-8 py-3 text-sm font-medium uppercase tracking-wider text-on-brand transition hover:bg-brand-hover"
               >
-                {t('storefront.product.buyNow')}
+                {buyLabel}
               </button>
             )}
           </div>

@@ -223,6 +223,26 @@ export interface ProductPurchaseModel {
    */
   axes: StorefrontVariantAxis[] | null;
   extras: StorefrontExtra[];
+  /** Benefit Mode's amount field; null in standard mode. Its presence also puts
+   *  both buttons in one form, so they share the amount. */
+  contribution: StorefrontContribution | null;
+}
+
+/**
+ * Benefit Mode's one amount field (R2–R4). The values are what the input
+ * needs as attributes; the server re-validates whatever arrives.
+ */
+export interface StorefrontContribution {
+  /** Form field name. */
+  field: 'amount';
+  /** The pre-selected variant's minimum (or the product's), as the input reads it. */
+  value: string;
+  min: string;
+  max: string;
+  step: string;
+  formattedMinimum: string;
+  /** Merchant's encouragement in the page language, or null for the dictionary's. */
+  encouragement: string | null;
 }
 
 /** Metadata the ROUTE emits. Never handed to a template: escaping and canonical

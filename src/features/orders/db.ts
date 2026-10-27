@@ -65,6 +65,9 @@ export interface OrderItemInput {
   /** The product was not counted in stock when checkout began (0045): no
    *  reservation, no decrement. Snapshotted so a later toggle cannot unbalance it. */
   untracked?: boolean;
+  /** Benefit Mode: the minimum per unit when the line was bought (0046);
+   *  priceCents is then the chosen contribution. Absent = a standard line. */
+  minPriceCents?: number;
 }
 
 /** A persisted order_items row. */
@@ -590,8 +593,8 @@ export async function recordPaidOrder(
         .prepare(
           `INSERT INTO order_items
              (order_id, product_id, variant_id, name, price_cents, quantity,
-              public_id, file_key, file_name, file_mime, file_size_bytes)
-           SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM orders
+              public_id, file_key, file_name, file_mime, file_size_bytes, min_price_cents)
+           SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM orders
             WHERE provider_session_id = ? AND settlement_token = ?`,
         )
         .bind(
@@ -605,6 +608,7 @@ export async function recordPaidOrder(
           it.fileName ?? null,
           it.fileMime ?? null,
           it.fileSizeBytes ?? null,
+          it.minPriceCents ?? null,
           o.providerSessionId,
           settlementToken,
         ),

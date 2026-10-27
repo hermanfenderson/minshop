@@ -54,6 +54,11 @@ import type { I18n } from '../../i18n/index.ts';
 import { purchaseLineName } from '../../features/cart/lineName';
 import { loadTranslations, translatedPurchase, translatedVariantLabel } from '../../features/translations/db';
 import { translated, translatedAll, translationLocale } from '../../features/translations/content';
+import { benefitRules, BENEFIT_PAYMENT_METHODS, isSingleUnitContribution } from '../../features/benefit/mode';
+import { checkContribution, readContribution } from '../../features/benefit/amount';
+import { contributionError } from '../../features/benefit/messages';
+import { parseDonor, type Donor, type DonorProblem } from '../../features/benefit/donor';
+import { writeDonorDraft } from '../../features/benefit/donorDraft';
 
 export const prerender = false;
 
@@ -143,6 +148,9 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
 
   const form = await readForm(request);
   const origin = url.origin;
+  const settings = await getStoreSettings(env.DB);
+  // Benefit Mode: each line's price is a minimum the supporter may raise.
+  const benefit = benefitRules(settings, getConfig().currency);
 
   let lines: LineDraft[] = [];
   let cancelUrl = urls.absolute('/');
@@ -180,25 +188,59 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       .getAll('extra')
       .map((v) => parsePublicId(v, 'extra'))
       .filter((v): v is string => v !== null);
-    const extras = extraPublicIds.length
+    // Extras are off in Benefit Mode: the one amount is the whole contribution.
+    const extras = extraPublicIds.length && !benefit
       ? await getExtrasByPublicIds(env.DB, product.id, extraPublicIds)
       : [];
     // The order keeps the name in the shopper's language.
     const shown = await translatedPurchase(env.DB, locals.contentLocale, product, variant, extras);
+    const name = purchaseLineName(shown.product, shown.variant, shown.extras);
+    const priceCents = lineUnitPriceCents(product.price_cents, variant, extras);
+    let unitPriceCents = priceCents;
+    if (benefit) {
+      // No field (a crafted post) means the minimum, never a guess.
+      const raw = form.get('amount');
+      const amount = raw == null
+        ? { ok: true as const, cents: priceCents }
+        : readContribution(String(raw), getConfig().currency, priceCents, benefit.capCents);
+      if (!amount.ok) {
+        const message = contributionError(i18n, amount.problem, {
+          name,
+          minimumCents: priceCents,
+          capCents: benefit.capCents,
+          currency: getConfig().currency,
+        });
+        return redirect(`/products/${product.slug}?error=${encodeURIComponent(message)}`, 303);
+      }
+      unitPriceCents = amount.cents;
+    }
     lines = [
       {
         product,
         qty: 1,
-        name: purchaseLineName(shown.product, shown.variant, shown.extras),
-        unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
+        name,
+        unitPriceCents,
         availableStock: sellableStock(product, variant ? variant.stock : product.stock),
         variantId: variant?.id ?? null,
+        ...(benefit ? { minimumCents: priceCents } : {}),
       },
     ];
     cancelUrl = urls.absolute(`/products/${product.slug}?canceled=1`);
     errorPath = `/products/${product.slug}`;
   } else {
-    const { lines: cartLines } = await resolveCart(env.DB, readCart(cookies), locals.contentLocale);
+    const { lines: cartLines } = await resolveCart(env.DB, readCart(cookies), locals.contentLocale, benefit);
+    // Benefit Mode: an amount that no longer passes (the minimum rose since it
+    // was added) is refused here; the cart shows the line and its new floor.
+    const refused = cartLines.find((l) => l.amountProblem);
+    if (benefit && refused?.amountProblem) {
+      const message = contributionError(i18n, refused.amountProblem, {
+        name: purchaseLineName(refused.product, refused.variant, []),
+        minimumCents: refused.minimumCents,
+        capCents: benefit.capCents,
+        currency: getConfig().currency,
+      });
+      return redirect(`/cart?error=${encodeURIComponent(message)}`, 303);
+    }
     lines = cartLines.map((l) => ({
       product: l.product,
       qty: l.qty,
@@ -207,6 +249,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       unitPriceCents: l.unitPriceCents,
       availableStock: l.availableStock,
       variantId: l.variant?.id ?? null,
+      ...(benefit ? { minimumCents: l.minimumCents } : {}),
     }));
     cancelUrl = urls.absolute('/cart?canceled=1');
   }
@@ -228,7 +271,6 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   // this guards a crafted POST). Otherwise resolve to a usable method (demo always).
   const requestedRaw = String(form.get('method') ?? '').trim();
   const requested = requestedRaw as PaymentMethod;
-  const settings = await getStoreSettings(env.DB);
   if (
     requestedRaw &&
     requestedRaw !== 'demo' &&
@@ -247,6 +289,33 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
 
   const cfg = getConfig();
 
+  // Benefit Mode collects the donor before payment (R14) and supports the rails
+  // that need no in-app address step; the receipt needs both.
+  let donor: Donor | null = null;
+  if (benefit) {
+    if (!(BENEFIT_PAYMENT_METHODS as readonly string[]).includes(selected)) {
+      return redirect(`${errorPath}?error=${encodeURIComponent(t('benefit.error.method'))}`, 303);
+    }
+    const get = (name: string) => form.get(name);
+    writeDonorDraft(cookies, get, url.protocol === 'https:');
+    const parsed = parseDonor(get);
+    if (!parsed.ok) {
+      // Back to the form the details were typed in (buy now's is /express), with
+      // the same line; the draft cookie refills the fields.
+      const back = new URLSearchParams();
+      if (productPublicId) {
+        back.set('product_id', productPublicId);
+        const vid = parsePublicId(form.get('variant_id'), 'variant');
+        if (vid) back.set('variant_id', vid);
+        const amount = String(form.get('amount') ?? '').trim();
+        if (amount) back.set('amount', amount);
+      }
+      back.set('error', donorProblemsMessage(i18n, parsed.problems));
+      return redirect(productPublicId ? `/express?${back}` : `/cart?${back}`, 303);
+    }
+    donor = parsed.donor;
+  }
+
   // Lightning + shipping enabled: we must collect the address before we can total
   // the order (zone-accurate shipping), so route to the own-checkout page. Carry the
   // buy-now product + variant/extras so it prices the same line. Stripe & OpenNode
@@ -263,6 +332,10 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   // billed whichever rate sorted first — both silently wrong once a merchant can
   // edit rates. Stripe collects the address itself and continues below.
   const IN_APP_SHIPPING_RAILS = ['lightning', 'opennode', 'demo'];
+  if (benefit && IN_APP_SHIPPING_RAILS.includes(selected) && shippingApplies) {
+    // The in-app address page knows nothing of contributions or donors.
+    return redirect(`${errorPath}?error=${encodeURIComponent(t('benefit.error.method'))}`, 303);
+  }
   if (IN_APP_SHIPPING_RAILS.includes(selected) && shippingApplies) {
     const params = new URLSearchParams({ method: selected });
     if (productPublicId) {
@@ -420,6 +493,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       303,
     );
   }
+  if (donor) await storeReservationDonor(publicId, donor);
 
   let checkoutUrl: string;
   try {
@@ -438,8 +512,10 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       // so inventory remains held until its verified expiry/failure webhook.
       cancelUrl,
       shipping,
-      allowPromotionCodes: settings.discountsEnabled ?? cfg.discounts.enabled,
-      automaticTax: settings.taxEnabled ?? cfg.tax.enabled,
+      // Benefit Mode: a contribution is what the supporter chose — no code
+      // lowers it, and donations carry no tax (R16).
+      allowPromotionCodes: benefit ? false : (settings.discountsEnabled ?? cfg.discounts.enabled),
+      automaticTax: benefit ? false : (settings.taxEnabled ?? cfg.tax.enabled),
       orderItemsJson: JSON.stringify(
         lines.map((l) => ({ id: l.product.id, q: l.qty, n: l.name, p: l.unitPriceCents, v: l.variantId })),
       ),
@@ -463,6 +539,30 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
 
   return Response.redirect(checkoutUrl, 303);
 };
+
+/** Keep the donor with the checkout until it settles and its receipt is issued. */
+async function storeReservationDonor(publicId: string, donor: Donor): Promise<void> {
+  await env.DB.prepare('UPDATE checkout_reservations SET donor = ? WHERE public_id = ?')
+    .bind(JSON.stringify(donor), publicId)
+    .run();
+}
+
+/** "Please check the receipt details: tax code, city." in the supporter's language. */
+function donorProblemsMessage(i18n: I18n, problems: DonorProblem[]): string {
+  const LABEL = {
+    first_name: 'benefit.donor.firstName',
+    last_name: 'benefit.donor.lastName',
+    company_name: 'benefit.donor.companyName',
+    tax_code: 'benefit.donor.taxCode',
+    vat: 'benefit.donor.vat',
+    address: 'benefit.donor.address',
+    postal: 'benefit.donor.postal',
+    city: 'benefit.donor.city',
+    country: 'benefit.donor.country',
+  } as const;
+  const fields = [...new Set(problems.map((p) => i18n.t(LABEL[p.field])))].join(', ');
+  return i18n.t('benefit.donor.error', { fields });
+}
 
 /**
  * Programmatic checkout for agents/tools. Body:
@@ -553,6 +653,32 @@ async function handleJsonCheckout(
   const cfg = getConfig();
   const effectiveShipping = shippingFor(jsonSettings).config;
 
+  // Benefit Mode: per-item `amount_cents` (default: the minimum) and a `donor`
+  // object for the receipt, with the donor form's field names minus "donor_".
+  const jsonBenefit = benefitRules(jsonSettings, cfg.currency);
+  let jsonDonor: Donor | null = null;
+  if (jsonBenefit) {
+    if (!(BENEFIT_PAYMENT_METHODS as readonly string[]).includes(method)) {
+      return cjson({ error: `Contributions are paid with ${BENEFIT_PAYMENT_METHODS.join(' or ')}.`, available_methods: BENEFIT_PAYMENT_METHODS }, 400);
+    }
+    const rawDonor = (body as { donor?: unknown }).donor;
+    const donorFields = rawDonor && typeof rawDonor === 'object' ? (rawDonor as Record<string, unknown>) : {};
+    const parsedDonor = parseDonor((name) => {
+      const value = donorFields[name.replace(/^donor_/, '')];
+      return typeof value === 'boolean' ? (value ? 'on' : '') : value;
+    });
+    if (!parsedDonor.ok) {
+      return cjson(
+        {
+          error: 'This store issues contribution receipts: "donor" needs { first_name, last_name, tax_code (Italy), address, postal, city, country } or, with "company": true, { company_name, vat, address, postal, city, country }.',
+          problems: parsedDonor.problems,
+        },
+        400,
+      );
+    }
+    jsonDonor = parsedDonor.donor;
+  }
+
   // Resolve each { product_id | slug, quantity, variant_id?, extra_ids? } → a
   // priced line, validating active + variant choice + stock. All identifiers
   // are prefixed public IDs from the catalog (GET /api/products/:slug); numeric
@@ -570,6 +696,7 @@ async function handleJsonCheckout(
       variant_id?: unknown;
       extra_ids?: unknown;
       extras?: unknown;
+      amount_cents?: unknown;
     };
     // The legacy numeric `extras` array is rejected outright, not silently read.
     if (r.extras !== undefined) {
@@ -660,6 +787,37 @@ async function handleJsonCheckout(
         },
         409,
       );
+    }
+
+    if (jsonBenefit) {
+      // Extras are off in Benefit Mode; the amount is the whole contribution.
+      if (extras.length > 0) return cjson({ error: 'Add-ons are not offered with contributions.' }, 400);
+      const minimumCents = lineUnitPriceCents(product.price_cents, variant, []);
+      const chosen = r.amount_cents === undefined ? minimumCents : Number(r.amount_cents);
+      const check = checkContribution(chosen, minimumCents, jsonBenefit.capCents);
+      if (!check.ok) {
+        return cjson(
+          {
+            error: `"amount_cents" for "${slug}" must be a whole number of minor units from ${minimumCents} to ${jsonBenefit.capCents}.`,
+            reason: check.problem,
+            minimum_cents: minimumCents,
+            maximum_cents: jsonBenefit.capCents,
+          },
+          400,
+        );
+      }
+      lines.push({
+        product,
+        qty: isSingleUnitContribution(product) ? 1 : qty,
+        name: purchaseLineName(product, variant, []),
+        unitPriceCents: check.cents,
+        availableStock,
+        variantId: variant?.id ?? null,
+        variant,
+        extras: [],
+        minimumCents,
+      });
+      continue;
     }
 
     lines.push({
@@ -813,6 +971,9 @@ async function handleJsonCheckout(
   // and charged nothing for shipping.
   const IN_APP_JSON_RAILS = ['lightning', 'opennode', 'demo'];
   const needsShipTo = shippingOn && IN_APP_JSON_RAILS.includes(method);
+  if (jsonBenefit && needsShipTo) {
+    return cjson({ error: 'Contributions with something to ship are paid with stripe.', available_methods: ['stripe'] }, 400);
+  }
   let shipTo: ReturnType<typeof parseShipTo> = null;
   let chosen: { label: string; amountCents: number; pickup?: boolean } | undefined;
   let inAppQuote: ReturnType<typeof quoteFor> | null = null;
@@ -955,6 +1116,7 @@ async function handleJsonCheckout(
     await deleteGuestAccessIfUnsettled(env.DB, publicId);
     return cjson({ error: 'Some inventory just sold out. Refresh the catalog and retry.' }, 409);
   }
+  if (jsonDonor) await storeReservationDonor(publicId, jsonDonor);
 
   let result;
   try {
@@ -988,8 +1150,8 @@ async function handleJsonCheckout(
             email: shipTo.email,
           },
         }),
-      allowPromotionCodes: jsonSettings.discountsEnabled ?? cfg.discounts.enabled,
-      automaticTax: jsonSettings.taxEnabled ?? cfg.tax.enabled,
+      allowPromotionCodes: jsonBenefit ? false : (jsonSettings.discountsEnabled ?? cfg.discounts.enabled),
+      automaticTax: jsonBenefit ? false : (jsonSettings.taxEnabled ?? cfg.tax.enabled),
       orderItemsJson: JSON.stringify(
         lines.map((l) => ({ id: l.product.id, q: l.qty, n: l.name, p: l.unitPriceCents, v: l.variantId })),
       ),

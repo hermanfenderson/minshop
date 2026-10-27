@@ -1,0 +1,41 @@
+import type { Catalog } from '../../catalog.ts';
+
+export const benefit = {
+  'benefit.product.minimum': 'Contributo minimo: {price}',
+  'benefit.product.amountLabel': 'Il tuo contributo',
+  'benefit.product.amountHelp': 'Qualsiasi importo da {price}.',
+  'benefit.product.encourage': 'Il tuo contributo tiene questo progetto libero e aperto a tutti. Se puoi, valuta di dare qualcosa in più!',
+  'benefit.product.addToCart': 'Aggiungi il contributo',
+  'benefit.product.buyNow': 'Contribuisci ora',
+
+  'benefit.cart.contribution': 'Contributo',
+  'benefit.cart.each': '{price} cad.',
+  'benefit.cart.change': 'Cambia',
+  'benefit.cart.total': 'Totale contributo',
+
+  'benefit.donor.heading': 'I tuoi dati per la ricevuta',
+  'benefit.donor.intro': 'Emettiamo una ricevuta del contributo a tuo nome. Questi dati servono per la ricevuta e restano presso di noi.',
+  'benefit.donor.privacy': 'Come li trattiamo',
+  'benefit.donor.company': 'Sei un’azienda?',
+  'benefit.donor.firstName': 'Nome',
+  'benefit.donor.lastName': 'Cognome',
+  'benefit.donor.companyName': 'Ragione sociale',
+  'benefit.donor.taxCode': 'Codice fiscale',
+  'benefit.donor.taxCodeHint': 'Obbligatorio per chi risiede in Italia.',
+  'benefit.donor.companyTaxCode': 'Codice fiscale dell’azienda, se diverso dalla partita IVA',
+  'benefit.donor.vat': 'Partita IVA',
+  'benefit.donor.address': 'Indirizzo',
+  'benefit.donor.postal': 'CAP',
+  'benefit.donor.city': 'Città',
+  'benefit.donor.region': 'Provincia',
+  'benefit.donor.country': 'Paese di residenza',
+  'benefit.donor.listed': 'Mostra il nome nella lista pubblica dei sostenitori',
+  'benefit.donor.displayName': 'Nome da mostrare (lascia vuoto per comparire come «anonimo»)',
+  'benefit.donor.error': 'Controlla i dati per la ricevuta: {fields}.',
+
+  'benefit.error.method': 'I contributi si pagano solo con carta.',
+  'benefit.error.invalid': 'Inserisci un importo, per esempio 25 o 25,50.',
+  'benefit.error.precision': 'L’importo ha troppi decimali.',
+  'benefit.error.belowMinimum': 'Il contributo minimo per {name} è {price}.',
+  'benefit.error.aboveMaximum': 'Il contributo più alto che possiamo accettare online per {name} è {price}. Scrivici per contributi maggiori.',
+} satisfies Catalog;
