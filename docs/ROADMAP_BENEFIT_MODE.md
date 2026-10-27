@@ -1,18 +1,25 @@
 # Roadmap: Benefit Mode
 
-**Status: DEFERRED. Do not implement.** The current priority is the complete
-i18n implementation. This document is the authoritative specification for
-Benefit Mode when development is explicitly authorized.
+**Status: AUTHORIZED on 2026-10-27; the next piece of work, before the
+`monopolele` theme, the production checklist and the Printful webhooks.** This
+document is the authoritative specification for Benefit Mode.
 
-When work resumes, the first step is to review the completed i18n architecture
-and confirm that the two features integrate cleanly (see
+Why now: Benefit Mode takes donations away from WordPress (`/give/`,
+`/donations/`). The 2027 home page's «Donate now» and «Support & Perks» links
+can then point at the shop, and the WordPress bridge theme, with the old receipt
+code, can be switched off. Benefit Mode does not depend on Printful and can go
+live before the Printful connector is complete.
+
+Before the development branch is created, the open points in
+[Open questions](#open-questions) are answered and recorded here (see
 [Resumption protocol](#resumption-protocol)).
 
 - Fork: `hermanfenderson/minshop`
 - First user: Monopolele — Mediterranean Ukulele Fest, organized by
   Associazione Voltare Pagina ETS
 - Recorded: 2026-10-17; PDF contribution receipts added 2026-10-18;
-  crowdfunding mode (R13) added 2026-10-25
+  crowdfunding mode (R13) added 2026-10-25; authorized, with the fiscal and
+  document decisions (R11, R14, R15), 2026-10-27
 
 ## Context
 
@@ -147,48 +154,72 @@ no goods and no digital deliverables.
 
 ### R10. Development priority
 
-The feature is deferred. Until development is explicitly authorized:
+Authorized on 2026-10-27 as the next piece of work. Limits:
 
-- no application code changes;
-- no database migrations;
-- no changes to the i18n implementation;
-- no dedicated development branch;
-- no commits, pushes, or deploys for this feature.
+- no production deploy; the test shop only with the owner's authorization;
+- standard commerce mode stays identical, and no store-specific logic enters
+  the core (R9);
+- small, verifiable commits, pushed to GitHub;
+- the development branch (`feat/benefit-mode`, from `feat/printful`) is
+  created only after the open questions are answered and recorded here.
 
 ### R11. PDF contribution receipts
 
-Benefit Mode generates a PDF contribution receipt automatically, after the
-payment has settled (never for an unpaid or pending order).
+Benefit Mode generates a PDF donation receipt automatically, after the payment
+has settled (never for an unpaid or pending order). Gratitude contributions,
+with no physical perk, get a receipt too.
+
+Fiscal frame (checked by the owner with the accountant, 2026-10-27):
+
+- donations carry **no VAT**;
+- the receipt is a **contribution receipt, not a fiscal document** (the
+  "contribution acknowledgment" classification below is the one in use);
+- shipping is charged at its **exact cost, with no margin**, so it raises no
+  fiscal issue; this holds for shipments handled by the association itself
+  (ukuleles) too. Shipping is documented apart (R15), never on this receipt.
 
 The receipt carries:
 
-- a progressive receipt number, unique per issuing organization;
+- a progressive number in an **annual series** (`N/YYYY`), gapless, unique per
+  issuing organization and **separate from receipts issued outside the shop**
+  (paper or WordPress receipts keep their own series);
 - the issue date and the transaction (settlement) date;
-- the issuing organization's details;
-- the supporter's identification;
-- order and payment references;
-- the total contribution received, as ONE amount;
-- optionally, a description of the associated perk;
-- shipping charges as a separate line, when the order has them.
+- the issuing organization's details, as in the owner's sample receipt: name,
+  legal representative, registry entry, tax code / VAT number, address;
+- the donor's identification (R14);
+- order and payment references, and the means of payment;
+- the total donation received, as ONE amount, in figures and in words;
+- the configured wording for the donor's type and language (see below);
+- an image of the organization's **stamp and signature**, uploaded in the
+  admin (the sample receipt carries both). This is a graphic reproduction, not
+  a qualified electronic signature, which is enough for a contribution
+  receipt;
+- an **annex listing the gifts shipped, each at zero value**. Gratitude is not
+  a physical object and never appears in the annex; a Gratitude-only donation
+  has no annex;
+- **no shipping charges**.
 
-Gratitude contributions, with no physical perk, get a receipt too.
-
-Language and delivery:
+Language, wording and delivery:
 
 - Italian and English versions, in the language stored on the order.
-- The PDF is reachable from the order confirmation page.
+- The wording changes by **donor type** (individual or company) and by
+  **language**. It is configured in the admin; no legal reference is written in
+  the code. Until the owner writes the final texts from the current receipt,
+  the store ships placeholder texts.
+- The PDF is reachable from the order confirmation page, through the same
+  guest-access credential as the order page, never by a guessable id.
 - Optional delivery by transactional email, through the existing outbox.
-- Secure storage and retrieval. Proposal, to confirm: the PDF is reached
-  through the same guest-access credential as the order page, never by a
-  guessable id.
+- Issued PDFs are kept on the site for **5 years**.
 
 Integrity:
 
-- The originally issued document is preserved unchanged. Later edits to the
-  store, the organization, or the wording do not alter an issued receipt.
-- Refunds and corrections never rewrite an issued receipt. They are handled
-  by a separate, linked document (for example a cancellation or correction
-  notice), whose form is decided with the legal review.
+- An issued receipt keeps the wording, organization data and images it was
+  issued with. Later edits to the store, the organization, or the wording do
+  not alter it.
+- Refunds never rewrite an issued receipt. A refund produces a **refund note
+  with its own numbering**, then a **new receipt** for the amount that remains;
+  the original receipt is not touched (the full-refund case is an open
+  question).
 
 Contribution amount:
 
@@ -197,18 +228,12 @@ Contribution amount:
 - The minimum is a validation parameter only and does not appear as a
   separate component of the contribution.
 
-Legal and regulatory wording:
+Legal classification, kept configurable for other stores:
 
-- Legal and regulatory references are configurable. No legislative reference
-  is hardcoded unless it has been verified.
-- Additional legal wording is configurable, per language.
-- Any declaration that a physical perk has zero commercial value, and any
-  legal or tax wording, must be reviewed and approved before production use.
-- The document's legal classification is configurable. The implementation
-  distinguishes a **contribution acknowledgment** from a **legally valid
-  fiscal document**. The default is the acknowledgment: a store issues a
-  fiscal document only when that classification has been validated and
-  configured.
+- The implementation distinguishes a **contribution acknowledgment** from a
+  **legally valid fiscal document**. The default is the acknowledgment: a store
+  issues a fiscal document only when that classification has been validated
+  and configured.
 
 ### R12. Receipt architecture
 
@@ -264,23 +289,60 @@ Design proposals (to confirm):
 - No store-specific logic in the core (R9). Possibly usable in standard mode
   too; see open questions.
 
+### R14. Donor data
+
+Minshop collects the donor's data **before payment**, not Stripe, and keeps it
+in the shop's database for the receipts, whatever the payment method. Today the
+checkout collects only the email and, for orders to ship, the shipping address.
+
+- A checkbox «Are you donating as a company?» («Sei un'azienda?»).
+- Individual: first and last name, tax code (codice fiscale), address.
+- Company: company name, VAT number (and the company's tax code when it
+  differs), registered office. **Company donations are an explicit
+  requirement.**
+- Tax code or VAT number is **mandatory for Italian donors** (decided
+  2026-10-27); the rule for donors abroad is an open question.
+- Consent to appear in the public supporter list (R13), with the name to show
+  or «anonymous»; companies appear under their company name. Collected from the
+  first version, even though the public campaign page comes later. Default: not
+  listed.
+
+### R15. Shipping receipt
+
+When an order has a shipping charge, it gets a separate **shipping receipt**,
+with **no fiscal value**, for the shipping cost only. Shipping is charged at
+exact cost (R11), so the donation receipt never includes it.
+
+### R16. Scope for the first store (Monopolele)
+
+- **Sponsorships do not go through the shop**: the shop handles donations
+  only.
+- **Stripe only** as the payment method on the Monopolele shop.
+- Ukuleles and Gratitude are **not fulfilled by Printful**. Benefit Mode does
+  not depend on Printful, and the minimum is a property of the Minshop product.
+- The minimum contribution is **per unit** (decided 2026-10-27): a quantity of
+  3 needs at least 3 × the minimum.
+- **Promotion codes are off** in benefit mode (decided 2026-10-27).
+
 ## Current architecture: facts that matter
 
-Observed on `main` at `f04f9d3` (2026-10-17). Re-check them when work resumes.
+Observed on `feat/printful` at `d5e62e3` (2026-10-27); first observed on
+`main` at `f04f9d3` (2026-10-17).
 
 | Area | Today | Why it matters |
 | --- | --- | --- |
-| Cart cookie | `cart` = `{v: 2, items: {cartKey: qty}}`, httpOnly, unsigned, 30 days. `cartKey` = `prod_…[:var_…][#xtra_…,…]` (`src/features/cart/cart.ts`, `key.ts`) | There is no place for a per-line amount, and the key cannot tell apart two lines of the same product with different amounts |
-| Price authority | The server always recomputes `unitPriceCents = lineUnitPriceCents(product.price_cents, variant, extras)` from D1, for both form and JSON checkout (`src/pages/api/checkout.ts`) | Benefit Mode introduces the first client-supplied amount: a new trust boundary |
-| Prices | `products.price_cents` and `product_variants.price_cents` (a variant's full price); `product_extras.price_delta_cents` added on top | Natural carriers for product and variant minimums; extras need a decision |
-| Stock | `stock INTEGER NOT NULL DEFAULT 0` on products and variants; no "unlimited" concept; checkout holds stock through `features/orders/reservations.ts` | Gratitude needs a non-inventory item that never reserves stock |
-| Shipping | `products.requires_shipping`, `weight_grams`; shipping zones in config | Gratitude: `requires_shipping = 0` already exists |
-| Digital goods | `products.file_key` / `file_name` and downloads at `/order/[token]/download/…` | Gratitude must never have a file |
-| Order snapshot | `order_items.price_cents`, `name`, `variant_id`; Stripe metadata carries a compact items list `{id, q, n, p, v}`; Lightning keeps a JSON snapshot in `pending_payments.items` | The minimum must be added to every snapshot; Stripe metadata values are size-limited |
-| Stripe | `price_data.unit_amount` per line; optional promotion codes (`discounts`) and `automatic_tax` | Discounts and tax on contributions need explicit rules |
-| Refunds | Amount-based per order (`refunded_cents`, provider/external split) | Compatible with one amount per contribution |
-| Other entry points | Express "buy now" (`/express`), JSON `POST /api/checkout` with `{items}`, MCP `create_checkout` tool, `/api/products` exposing `price` | Each must accept or explain an amount |
-| SEO | Product JSON-LD `Offer` with `price` | In Benefit Mode the price is a minimum |
+| Cart cookie | `cookieName('cart')` = `{v: 2, items: {cartKey: qty}}`, httpOnly, unsigned, 30 days, qty capped at 99; a script-readable `cart_n` holds only the count. `cartKey` = `prod_…[:var_…][#xtra_…,…]` (`src/features/cart/cart.ts`, `key.ts`) | There is no place for a per-line amount, and the key cannot tell apart two lines of the same product with different amounts |
+| Price authority | The server recomputes `lineUnitPriceCents()` (`key.ts`) from D1 in `src/pages/api/checkout.ts` for the form, express and JSON paths. `/express` and `/checkout` pages compute it for display only; MCP `create_checkout` forwards to JSON `/api/checkout`; `/api/cart` accepts no price | Benefit Mode introduces the first client-supplied amount: a new trust boundary |
+| Prices | `products.price_cents`, `product_variants.price_cents` (a variant's full price); `product_extras.price_delta_cents` added on top. Translation tables (0041) hold no commercial data. MCP admin tools set `price_cents` directly | Natural carriers for product and variant minimums; extras need a decision |
+| Stock | `stock` on products and variants; still no "unlimited" concept. `reserveInventory` inserts a hold only when every target has enough stock, so stock 0 cannot sell. Reservation statuses and `order_inventory_exceptions` (0039) | Gratitude needs a non-inventory item that never reserves stock |
+| Shipping | `requires_shipping`, `weight_grams` (0030); zone rates in config, combined with the fulfiller's live rate (`features/fulfillment/shippingQuote.ts`); `fulfillment_ref` / `fulfillment_rate_ref` and `order_fulfillments` (0043–0044) | Gratitude: `requires_shipping = 0` already exists. Ukuleles and Gratitude carry no fulfillment ref |
+| Digital goods | `products.file_*` and `order_items.file_*` (0039); downloads at `/order/[token]/download/[itemPublicId]` | Gratitude must never have a file |
+| Order snapshot | `order_items`: `id, order_id, product_id, name, price_cents, quantity, variant_id, public_id, file_*, downloads`; extras only inside `name`. Stripe metadata carries only `public_id`, `reservation_id`, `locale`, `shipping_weight_grams`; the line snapshot lives in `checkout_reservations.items`. Lightning keeps `pending_payments.items`. Orders store `locale` (0040) | The minimum and the donor data go into the D1 snapshot, not into Stripe metadata |
+| Stripe | `price_data.unit_amount` per line; `allow_promotion_codes` when discounts are enabled; `automatic_tax` with `tax_behavior: 'exclusive'`; no `custom_fields`, no tax-id collection | Promotion codes off and no tax on contributions in benefit mode; donor data is collected by Minshop (R14) |
+| Refunds | Amount-based per order (`refunded_cents` generated, provider/external split, review fields) | Compatible with one amount per contribution; drives refund notes (R11) |
+| Other entry points | Express (`/express`), JSON `POST /api/checkout`, MCP `create_checkout`, `/api/products` (`price {amount, cents, currency}`), JSON-LD `Offer` (`features/storefront/productDetail.ts`), `llms.txt` | Each must accept or explain an amount |
+| i18n | Dictionaries in `src/i18n/messages/{en,it}/`; presentation models in `src/features/storefront/models.ts`; URLs only through `LocaleUrls` (`src/i18n/urls.ts`) and `storeUrls`; per-locale settings text exists (`announcement:<locale>`, `api/admin/translations.ts`). The i18n design document cited below is not in the repository | The three openings Benefit Mode needed are in place |
+| Documents | No PDF library and no receipt or invoice code; the only PDF is the Shippo label. No per-year counter table. The customer "receipt" is the confirmation email via the outbox (0032) | Receipts, numbering and PDF generation are new work (R11, R12) |
 
 ## Proposed design (to confirm at resumption)
 
@@ -431,20 +493,37 @@ Each PR is optional and backward-compatible; standard stores see no change.
 
 ## Open questions
 
-- Amount per unit or per line when quantity > 1?
-- Extras in benefit mode: raise the minimum, or disabled?
-- Promotion codes in benefit mode: always off, or allowed on shipping only?
-- What fiscal document must Associazione Voltare Pagina ETS issue, and does it
-  require item and contribution data that Stripe receipts do not carry?
-- Receipt numbering: one series per year or continuous? Reset rules?
-- Which supporter data is required on the receipt (name, address, tax code),
-  and how is it collected without burdening supporters who don't need it?
-- How is a refund documented: cancellation of the receipt, a correction
-  notice, or a reissue under a new number?
-- How long must issued receipts be retained?
-- Default safety cap for a single contribution?
-- Should Benefit Mode be allowed per product (mixed catalog) rather than
-  store-wide? The current decision is store-wide (`commerceMode`).
+Decided on 2026-10-27 and recorded above: amount per unit (R16), promotion
+codes off (R16), the receipt's classification (R11), annual receipt numbering
+in a series separate from receipts issued outside the shop (R11), the donor
+data and how it is collected (R14), the refund document (R11), retention of 5
+years (R11).
+
+Still open, with the recommendation to confirm:
+
+1. **Gratitude quantity.** Always 1 (the amount is the knob). Recommended: yes.
+2. **Extras in benefit mode.** Disabled. Recommended: yes.
+3. **Scope of the mode.** Store-wide (`commerceMode`), not per product.
+   Recommended: yes.
+4. **Safety cap per contribution.** €10,000, configurable. Recommended: yes.
+5. **Full refund.** Only the refund note, no new receipt (nothing remains to
+   acknowledge). Recommended: yes.
+6. **Numbering of refund notes and shipping receipts.** Each in its own annual
+   series. Recommended: yes.
+7. **Donors abroad.** Tax code mandatory only for residents of Italy; others
+   give their country and, for companies, their own tax identifier.
+   Recommended: yes.
+8. **Wording for perk vs Gratitude.** Same text, the annex makes the
+   difference; or a separate text. Recommended: same text.
+9. **Privacy notice** for the donor data and the public list: a short notice
+   at checkout linking to the shop's privacy page, written by the owner.
+   Recommended: yes.
+10. **Telling the series apart** from receipts issued outside the shop: a
+    configurable prefix on the number (for example `S-12/2027`). Recommended:
+    yes, empty by default.
+11. **To confirm with the accountant** (not blocking development): whether a
+    gift perk changes the deductibility wording; whether an emailed PDF with a
+    stamp-and-signature image is acceptable without a handwritten signature.
 - Crowdfunding (R13): campaign selection by category, explicit list, or
   both? Can one contribution count in several campaigns?
 - Crowdfunding (R13): does the total include the full contribution or only
@@ -454,10 +533,11 @@ Each PR is optional and backward-compatible; standard stores see no change.
 
 ## Resumption protocol
 
-1. Confirm explicit authorization to start Benefit Mode.
+1. Confirm explicit authorization to start Benefit Mode (given 2026-10-27).
 2. Review the completed i18n architecture (routing, mountPath, URL builders,
    dictionaries, per-locale settings) and update the facts table above.
-3. Re-check every "Current architecture" fact against `main`.
+3. Re-check every "Current architecture" fact against the latest branch
+   (done on `feat/printful` at `d5e62e3`, 2026-10-27).
 4. Resolve the open questions and record the decisions here.
 5. Only then create a development branch.
 
