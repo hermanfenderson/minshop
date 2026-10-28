@@ -39,8 +39,9 @@ export const benefit = {
   'benefit.donor.city': 'City',
   'benefit.donor.region': 'Province or state',
   'benefit.donor.country': 'Country of residence',
-  'benefit.donor.listed': 'Show the name in the public list of supporters',
-  'benefit.donor.displayName': 'Name to show (leave empty to appear as “anonymous”)',
+  'benefit.donor.listed': 'Add me to the public list of supporters',
+  'benefit.donor.displayName': 'Name to appear as',
+  'benefit.donor.displayNameHint': 'Leave it empty to appear with your first and last name.',
   'benefit.donor.error': 'Please check the receipt details: {fields}.',
 
   // Refusals — on the product page, the cart, or checkout (R4)

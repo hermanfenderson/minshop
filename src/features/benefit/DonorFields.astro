@@ -99,12 +99,13 @@ const label = 'block text-xs uppercase tracking-widest text-muted';
   </div>
 
   <label class="flex items-center gap-2 text-sm">
-    <input type="checkbox" name={F.listed} checked={draft[F.listed] === 'on'} class="h-4 w-4 accent-brand" />
+    <input type="checkbox" name={F.listed} checked={draft[F.listed] === 'on'} class="h-4 w-4 accent-brand" data-donor-listed />
     {t('benefit.donor.listed')}
   </label>
   <label class={label} data-donor-display>
     {t('benefit.donor.displayName')}
-    <input name={F.displayName} value={draft[F.displayName] ?? ''} class={input} />
+    <input name={F.displayName} value={draft[F.displayName] ?? ''} class={input} data-donor-display-name />
+    <span class="mt-1 block text-xs normal-case tracking-normal text-faint">{t('benefit.donor.displayNameHint')}</span>
   </label>
 </fieldset>
 
@@ -118,6 +119,7 @@ const label = 'block text-xs uppercase tracking-widest text-muted';
     const org = box.querySelector('[data-donor-org]');
     const country = box.querySelector('[data-donor-country]');
     const display = box.querySelector('[data-donor-display]');
+    const listed = box.querySelector('[data-donor-listed]');
     const sync = () => {
       const isCompany = company.checked;
       person.hidden = person.disabled = isCompany;
@@ -125,9 +127,14 @@ const label = 'block text-xs uppercase tracking-widest text-muted';
       for (const el of box.querySelectorAll('[data-required]')) el.required = !el.closest('fieldset[disabled]');
       const tax = person.querySelector('[data-tax-code]');
       if (tax) tax.required = !isCompany && country.value === 'IT';
-      if (display) display.hidden = isCompany;
+      // The name matters only to someone who asked to be listed; a company is listed by its name.
+      if (display) display.hidden = isCompany || !listed?.checked;
+      // The name the server falls back to, shown as the field's hint.
+      const shown = box.querySelector('[data-donor-display-name]');
+      if (shown) shown.placeholder = [...person.querySelectorAll('[autocomplete="given-name"], [autocomplete="family-name"]')].map((el) => el.value.trim()).filter(Boolean).join(' ');
     };
     box.addEventListener('change', sync);
+    box.addEventListener('input', sync);
     sync();
   }
 </script>

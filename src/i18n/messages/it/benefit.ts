@@ -31,8 +31,9 @@ export const benefit = {
   'benefit.donor.city': 'Città',
   'benefit.donor.region': 'Provincia',
   'benefit.donor.country': 'Paese di residenza',
-  'benefit.donor.listed': 'Mostra il nome nella lista pubblica dei sostenitori',
-  'benefit.donor.displayName': 'Nome da mostrare (lascia vuoto per comparire come «anonimo»)',
+  'benefit.donor.listed': 'Inseriscimi nella lista pubblica dei sostenitori',
+  'benefit.donor.displayName': 'Nome con cui comparire',
+  'benefit.donor.displayNameHint': 'Se lo lasci vuoto comparirai con nome e cognome.',
   'benefit.donor.error': 'Controlla i dati per la ricevuta: {fields}.',
 
   'benefit.error.method': 'Le donazioni si pagano solo con carta.',

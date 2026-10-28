@@ -65,6 +65,8 @@ describe('parseDonor', () => {
     if (!r.ok) expect(r.problems.map((p) => p.field)).toEqual(['country', 'address', 'postal', 'city', 'first_name', 'last_name']);
     const quiet = parseDonor(form({ ...italianAddress, [F.country]: 'DE', [F.firstName]: 'A', [F.lastName]: 'B', [F.displayName]: 'AB' }));
     expect(quiet.ok && quiet.donor).toMatchObject({ listed: false, displayName: null });
+    const named = parseDonor(form({ ...italianAddress, [F.country]: 'DE', [F.firstName]: 'Ada', [F.lastName]: 'Lovelace', [F.listed]: 'on', [F.displayName]: ' ' }));
+    expect(named.ok && named.donor).toMatchObject({ listed: true, displayName: 'Ada Lovelace' });
   });
 
   it('round-trips through its stored JSON', () => {

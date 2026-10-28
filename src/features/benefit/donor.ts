@@ -32,7 +32,8 @@ export interface Donor {
   address: DonorAddress;
   /** Consent to appear in the public supporter list (R13). */
   listed: boolean;
-  /** The name shown in that list; null = "anonymous". Companies show `name`. */
+  /** The name shown in that list (a person's first and last name unless they typed
+   *  another); null when not listed. Companies show `name`. */
   displayName: string | null;
 }
 
@@ -177,7 +178,9 @@ export function parseDonor(get: (name: string) => unknown): DonorResult {
       vatNumber: null,
       address,
       listed,
-      displayName: listed ? clean(get(DONOR_FIELDS.displayName)) || null : null,
+      // Asking to be listed means being listed by name (Mauro, 2026-10-28): an empty
+      // field takes the donor's own name rather than turning them anonymous.
+      displayName: listed ? clean(get(DONOR_FIELDS.displayName)) || `${firstName} ${lastName}`.trim() : null,
     };
   }
   return problems.length > 0 ? { ok: false, problems } : { ok: true, donor };
