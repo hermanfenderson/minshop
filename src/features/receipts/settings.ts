@@ -15,7 +15,8 @@
  *   receipt_text:<slot>:<locale>       wording per document and language
  */
 
-export const RECEIPT_TEXT_SLOTS = ['donation:person', 'donation:company', 'shipping', 'refund_note', 'footer'] as const;
+// 'annex' is the one-line heading above the gift list; 'footer' sits under the signature.
+export const RECEIPT_TEXT_SLOTS = ['donation:person', 'donation:company', 'shipping', 'refund_note', 'annex', 'footer'] as const;
 export type ReceiptTextSlot = (typeof RECEIPT_TEXT_SLOTS)[number];
 
 /** Each series is numbered on its own. */

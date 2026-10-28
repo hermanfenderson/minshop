@@ -65,7 +65,7 @@ export const benefit = {
   'benefit.receipt.to': 'To',
   'benefit.receipt.taxCode': 'Tax code',
   'benefit.receipt.vat': 'VAT number',
-  'benefit.receipt.annex': 'Annex: thank-you gifts sent with this contribution, at no charge',
+  'benefit.receipt.annex': 'Annex – Gifts of gratitude, free of charge',
   'benefit.receipt.annexQuantity': 'Qty',
   'benefit.receipt.replaces': 'This document cancels and replaces receipt {label}.',
   'benefit.receipt.cancels': 'This note cancels receipt {label}.',

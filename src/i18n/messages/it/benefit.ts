@@ -56,7 +56,7 @@ export const benefit = {
   'benefit.receipt.to': 'A',
   'benefit.receipt.taxCode': 'Codice fiscale',
   'benefit.receipt.vat': 'Partita IVA',
-  'benefit.receipt.annex': 'Allegato: omaggi di ringraziamento inviati con questo contributo, a titolo gratuito',
+  'benefit.receipt.annex': 'Allegato – Omaggi per riconoscenza, a titolo gratuito',
   'benefit.receipt.annexQuantity': 'Q.tà',
   'benefit.receipt.replaces': 'Il presente documento annulla e sostituisce la ricevuta {label}.',
   'benefit.receipt.cancels': 'La presente nota annulla la ricevuta {label}.',

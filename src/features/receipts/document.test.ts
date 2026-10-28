@@ -26,14 +26,15 @@ const company: Donor = {
   vatNumber: '15861571006',
 };
 
-const settings = parseReceiptSettings([
+const rows = [
   { key: 'receipt_prefix', value: 'W' },
   { key: 'receipt_issuer', value: 'Associazione Esempio ETS\nVia Esempio 1, 00100 Roma\nC.F. 00000000000' },
   { key: 'receipt_text:donation:company:it', value: 'Da {donor}: {amount} ({amount_words}), {date}.\n\nSecondo paragrafo {nope}.' },
   { key: 'receipt_text:footer:it', value: 'Nota privacy.' },
   { key: 'receipt_stamp_key', value: 'media/stamp.jpg' },
   { key: 'unrelated', value: 'x' },
-]);
+];
+const settings = parseReceiptSettings(rows);
 
 const input = (overrides: Partial<ReceiptInput> = {}): ReceiptInput => ({
   kind: 'donation',
@@ -99,6 +100,12 @@ describe('buildReceiptDocument', () => {
     const gifts = [{ name: 'T-shirt — M', quantity: 2 }];
     expect(buildReceiptDocument(input({ gifts })).annex?.rows).toEqual([['T-shirt — M', 2]]);
     expect(buildReceiptDocument(input({ gifts, kind: 'shipping' })).annex).toBeNull();
+  });
+
+  it('takes the annex heading from the settings, on one line', () => {
+    const gifts = [{ name: 'Adesivo', quantity: 1 }];
+    const settings = parseReceiptSettings([...rows, { key: 'receipt_text:annex:it', value: 'Omaggi\nper riconoscenza' }]);
+    expect(buildReceiptDocument(input({ gifts, settings })).annex?.heading).toBe('Omaggi per riconoscenza');
   });
 
   it('names the receipt a document replaces or cancels', () => {

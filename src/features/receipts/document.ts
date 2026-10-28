@@ -145,7 +145,7 @@ export function buildReceiptDocument(input: ReceiptInput): ReceiptDocument {
     annex:
       kind === 'donation' && input.gifts.length > 0
         ? {
-            heading: i18n.t('benefit.receipt.annex'),
+            heading: (receiptText(settings, 'annex', i18n.locale) ?? i18n.t('benefit.receipt.annex')).replace(/\s+/g, ' '),
             quantityLabel: i18n.t('benefit.receipt.annexQuantity'),
             rows: input.gifts.map((g) => [g.name, g.quantity]),
           }

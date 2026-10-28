@@ -32,6 +32,7 @@ const SLOT_LABELS: Record<ReceiptTextSlot, string> = {
   'donation:company': 'Contribution receipt — company',
   shipping: 'Shipping cost receipt',
   refund_note: 'Refund note',
+  annex: 'Gift annex heading (one line, above the list of gifts)',
   footer: 'Footer (privacy note and the like)',
 };
 const PLACEHOLDERS = ['{issuer}', '{donor}', '{amount}', '{amount_words}', '{date}', '{payment_method}', '{number}', '{order}'];
@@ -80,7 +81,11 @@ const timeZone = Astro.locals.settings?.timeZone ?? cfg.timeZone;
 const year = new Date().getFullYear();
 const imageUrl = (key: string | null) => (key ? mediaUrl(key, cfg.images.baseUrl) : null);
 const placeholderText = (slot: ReceiptTextSlot, code: string) =>
-  slot === 'footer' ? '' : createI18n(code).t(`benefit.receipt.placeholder.${slot.replace(':', '.')}` as MessageKey);
+  slot === 'footer'
+    ? ''
+    : slot === 'annex'
+      ? createI18n(code).t('benefit.receipt.annex')
+      : createI18n(code).t(`benefit.receipt.placeholder.${slot.replace(':', '.')}` as MessageKey);
 
 const { results: issued } = await env.DB
   .prepare(
@@ -202,13 +207,13 @@ const label = 'text-xs uppercase tracking-widest text-gray-400';
               <span class={label}>{SLOT_LABELS[slot]}</span>
               <textarea
                 name={`text:${slot}:${code}`}
-                rows={slot === 'footer' ? 2 : 5}
+                rows={slot === 'annex' ? 1 : slot === 'footer' ? 2 : 5}
                 placeholder={placeholderText(slot, code)}
                 class={input}
               >{receiptText(settings, slot, code) ?? ''}</textarea>
               {slot !== 'footer' && (
                 <a
-                  href={Astro.locals.urls.href(`/api/admin/receipts/preview?slot=${slot}&locale=${code}`)}
+                  href={Astro.locals.urls.href(`/api/admin/receipts/preview?slot=${slot === 'annex' ? 'donation:person' : slot}&locale=${code}`)}
                   target="_blank"
                   class="mt-1 inline-block text-xs text-gray-500 underline hover:text-brand"
                 >Preview (saved text)</a>

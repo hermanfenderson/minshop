@@ -145,11 +145,15 @@ no goods and no digital deliverables.
 
 ### R9. Upstream compatibility
 
-- An optional, reusable Minshop extension.
+- **Not for upstream (owner's decision, 2026-10-28).** Benefit Mode and
+  crowdfunding mode (R13) are too specific to Monopolele to offer to the
+  original Minshop: they stay in this fork. Only small, generic pieces that
+  stand on their own (such as `track_inventory`) may still go upstream.
+- An optional extension: existing standard-commerce installations remain
+  backward-compatible.
 - No Monopolele-specific business logic in the core commerce engine. Names such
-  as "Monopolele" or "Gratitude" belong to configuration and content, not code.
-- Eventually suitable for upstream as separate, focused PRs.
-- Existing standard-commerce installations remain backward-compatible.
+  as "Monopolele" or "Gratitude" belong to configuration and content, not code,
+  so the fork stays reusable for other shops (such as L'Altracittà).
 
 ### R10. Development priority
 
@@ -486,10 +490,10 @@ Authorized 2026-10-27.
       public JSON endpoint, admin adjustments.
 - [ ] Monopolele acceptance under `/shop/` and `/it/shop/`.
 
-### Implementation choices to confirm (2026-10-28)
+### Implementation choices (confirmed 2026-10-28)
 
-Made while building the receipts, each easy to change; the owner should
-confirm or correct them before the test shop goes live.
+Made while building the receipts and confirmed by the owner on 2026-10-28,
+point 6 with a change: the gift list carries a heading.
 
 1. **Prefix per series.** Each document kind is numbered on its own, so each
    needs its own prefix or two documents print the same label. Defaults: the
@@ -507,13 +511,17 @@ confirm or correct them before the test shop goes live.
 5. **Demo and other in-app rails** are offered in benefit mode only when
    nothing ships: their address step knows nothing of contributions, so a
    basket that ships is paid through Stripe.
-6. **The annex** lists each gift by name and quantity, with no value.
+6. **The annex** lists each gift by name and quantity, with no value, under a
+   heading ("Annex – Gifts of gratitude, free of charge"; in Italian
+   "Allegato – Omaggi per riconoscenza, a titolo gratuito"), editable per
+   language in Admin → Receipts like the other texts.
 7. **A voided manual refund** issues a corrected receipt that replaces the
    previous one, with no refund note, since nothing was returned.
 
-## Upstream PR outline
+## Upstream PR outline (withdrawn)
 
-Each PR is optional and backward-compatible; standard stores see no change.
+Withdrawn on 2026-10-28: Benefit Mode and crowdfunding stay in the fork (R9).
+Kept as a record of how the work splits; only item 1 may still go upstream.
 
 1. `track_inventory` flag (non-inventory products).
 2. `commerceMode` setting and the pure amount validator.
