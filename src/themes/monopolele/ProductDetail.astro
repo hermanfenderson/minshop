@@ -1,0 +1,205 @@
+---
+import type { ProductDetailModel, ProductPurchaseModel } from '../../features/storefront/models';
+import ProductCard from './ProductCard.astro';
+import ProductGallery from '../../features/storefront/controls/ProductGallery.astro';
+import ProductPurchaseForm from '../../features/storefront/controls/ProductPurchaseForm.astro';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
+
+/**
+ * STORE-OWNED. Edit freely — this file belongs to your store.
+ *
+ * Composition only. Every price, URL, availability flag, and image on `model`
+ * is already resolved; the route owns the 404, the metadata, and the JSON-LD.
+ *
+ * Keep <ProductGallery> and <ProductPurchaseForm>. The gallery owns the anchors
+ * the variant selector scrolls to and the LCP treatment on the first frame; the
+ * purchase form owns the field names, the sold-out states, and `data-fullpage`,
+ * without which Buy now is captured by the cart drawer instead of navigating.
+ *
+ * See CUSTOMIZING.md for the full contract.
+ */
+interface Props {
+  model: ProductDetailModel;
+  purchase: ProductPurchaseModel;
+  /** The request's translator; English when omitted. */
+  i18n?: I18n;
+}
+
+const { model, purchase } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
+---
+
+<a href={model.backHref} class="text-xs uppercase tracking-widest text-faint hover:text-brand">
+  &larr; {t('storefront.nav.backToShop')}
+</a>
+
+{
+  model.error && (
+    <p class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      {model.error}
+    </p>
+  )
+}
+
+
+{/* The variant selector and the buttons sit right under the photos, so every
+    change of color shows its photo. Phone: name and price, photos, selector,
+    description. Desktop: photos and selector on the left, name, price and
+    description on the right. The two column wrappers are `contents` on a
+    phone, so their children are ordered as one column. */}
+<div class="mt-6 grid gap-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:items-start md:gap-16">
+  <div class="contents md:flex md:flex-col md:gap-8">
+    <ProductGallery
+      images={model.images}
+      hero={model.heroImage}
+      soldOut={model.soldOut}
+      class="reveal order-2 shell-gallery"
+      i18n={i18n}
+    />
+
+    <div class="order-3 [&>*:first-child]:mt-0">
+      <ProductPurchaseForm model={purchase} i18n={i18n} />
+    </div>
+  </div>
+
+  <div class="contents md:flex md:flex-col md:gap-6">
+    <div class="reveal order-1 flex flex-col" style="animation-delay:90ms">
+      {
+        model.categories.length > 0 && (
+          <div class="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs uppercase tracking-widest text-faint">
+            {model.categories.map((category) => (
+              <a href={category.href} class="hover:text-brand">
+                {category.text}
+              </a>
+            ))}
+          </div>
+        )
+      }
+
+      <h1 class="font-serif text-4xl font-medium tracking-tight">{model.name}</h1>
+      {
+        model.digitalDelivery && (
+          <p class="mt-2 text-xs uppercase tracking-widest text-brand">
+            {t('storefront.product.digitalDownload')}
+          </p>
+        )
+      }
+      <p
+        class="mt-4 text-2xl tabular-nums text-muted"
+        data-price-display
+        data-base={model.priceCents}
+        data-currency={model.currency}
+      >
+        {
+          model.priceVaries && (
+            <span class="text-base text-faint">{t('storefront.product.priceFrom')} </span>
+          )
+        }
+        {model.formattedPrice}
+      </p>
+      {
+        /* data-low-stock is the contract, not the wording. Reword or restyle it
+           freely; keep the marker so scarcity stays distinguishable from normal
+           availability without pinning copy. */
+        model.lowStock && (
+          <p data-low-stock class="mt-2 text-sm text-amber-700">
+            {t('storefront.product.lowStock')}
+          </p>
+        )
+      }
+    </div>
+
+    <div class="reveal order-4 flex flex-col" style="animation-delay:90ms">
+      {
+        /* A long description shows its first lines and a "Show more" toggle; the
+           script below adds both, so without JavaScript the text is all there. */
+        model.descriptionHtml && (
+          <div data-collapsible>
+            <div
+              data-collapsible-body
+              class="markdown-content max-w-prose text-muted data-[collapsed]:max-h-72 data-[collapsed]:overflow-hidden data-[collapsed]:[mask-image:linear-gradient(to_bottom,black_70%,transparent)]"
+              set:html={model.descriptionHtml}
+            />
+            <button
+              type="button"
+              data-collapsible-toggle
+              data-more={t('storefront.product.showMore')}
+              data-less={t('storefront.product.showLess')}
+              aria-expanded="false"
+              hidden
+              class="mt-3 text-xs uppercase tracking-widest text-faint transition hover:text-brand"
+            >
+              {t('storefront.product.showMore')}
+            </button>
+          </div>
+        )
+      }
+
+      {/* Share — hidden until JS confirms the browser can share or copy. Uses the
+          Web Share API (mobile/native sheet) with a clipboard-copy fallback. */}
+      <button
+        type="button"
+        data-share
+        data-share-title={model.name}
+        data-share-copied={t('storefront.product.linkCopied')}
+        class="mt-6 hidden w-fit items-center gap-2 text-xs uppercase tracking-widest text-faint transition hover:text-brand"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+          <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+        </svg>
+        <span data-share-label>{t('storefront.product.share')}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // @ts-nocheck -- plain-JS client script (annotations would ship to the browser)
+  // Collapse a description taller than the clamp (max-h-72 = 18rem) and offer
+  // the toggle; a short one is left alone.
+  for (const box of document.querySelectorAll('[data-collapsible]')) {
+    const body = box.querySelector('[data-collapsible-body]');
+    const toggle = box.querySelector('[data-collapsible-toggle]');
+    if (!(body instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) continue;
+    const clamp = parseFloat(getComputedStyle(document.documentElement).fontSize) * 18;
+    if (body.scrollHeight <= clamp * 1.25) continue;
+    body.setAttribute('data-collapsed', '');
+    toggle.hidden = false;
+    toggle.addEventListener('click', () => {
+      const open = body.hasAttribute('data-collapsed');
+      body.toggleAttribute('data-collapsed', !open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.textContent = open ? toggle.dataset.less : toggle.dataset.more;
+    });
+  }
+</script>
+
+{
+  model.related.length > 0 && (
+    <section class="mt-20 border-t border-line pt-12">
+      <h2 class="mb-8 text-xs uppercase tracking-[0.25em] text-faint">
+        {t('storefront.product.youMayAlsoLike')}
+      </h2>
+      <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-4">
+        {model.related.map((card, i) => (
+          <ProductCard card={card} index={i} headingLevel="h3" i18n={i18n} />
+        ))}
+      </ul>
+    </section>
+  )
+}

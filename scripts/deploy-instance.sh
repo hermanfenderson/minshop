@@ -34,8 +34,8 @@ FILE_THEME="$(sed -n 's/^THEME=//p' "$META" | head -1)"
 FILE_SHELL="$(sed -n 's/^SITE_SHELL=//p' "$META" | head -1)"
 [[ -n "${THEME:-$FILE_THEME}" ]] && export THEME="${THEME:-$FILE_THEME}"
 [[ -n "${SITE_SHELL:-$FILE_SHELL}" ]] && export SITE_SHELL="${SITE_SHELL:-$FILE_SHELL}"
-if [[ "${THEME:-}" == "site-shell" && -z "${SITE_SHELL:-}" ]]; then
-  echo "✗ THEME=site-shell needs SITE_SHELL (path or URL of the website's shell.json)" >&2; exit 1
+if [[ ( "${THEME:-}" == "site-shell" || "${THEME:-}" == "monopolele" ) && -z "${SITE_SHELL:-}" ]]; then
+  echo "✗ THEME=${THEME} needs SITE_SHELL (path or URL of the website's shell.json)" >&2; exit 1
 fi
 echo "▸ Deploying '$SLUG' (mount=$MINSHOP_MOUNT_PATH cookiePrefix=$MINSHOP_COOKIE_PREFIX theme=${THEME:-config})…"
 npm run deploy

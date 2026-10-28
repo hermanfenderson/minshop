@@ -1,0 +1,82 @@
+---
+import type { StorefrontShellModel } from '../../features/storefront/models';
+import { siteShell } from '../../features/storefront/controls/site-shell';
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
+
+/**
+ * Monopolele's footer: the 2027 site's single line (copyright · edition on the
+ * left, links on the right), from the site's shell. The store's own footer
+ * links (Admin → Navigation: terms, privacy, …) join the site's.
+ */
+interface Props {
+  model: StorefrontShellModel;
+  i18n?: I18n;
+}
+
+const { model } = Astro.props;
+const i18n = storefrontI18n(Astro.props.i18n);
+const { t } = i18n;
+const shell = siteShell(i18n.locale);
+const footer = shell.footer;
+const links = [
+  ...(footer?.links ?? []).filter((l) => l.href).map((l) => ({ text: l.label, href: l.href! })),
+  ...model.footerLinks,
+];
+---
+
+<footer class="mono-footer">
+  <div class="mono-foot">
+    <span>{footer?.legal ?? `© ${shell.name}`}</span>
+    {
+      links.length > 0 && (
+        <nav aria-label={t('storefront.footer.nav')} class="mono-legal">
+          {links.map((link, i) => <>{i > 0 && ' · '}<a href={link.href}>{link.text}</a></>)}
+        </nav>
+      )
+    }
+  </div>
+</footer>
+
+<style>
+  /* Values from monopolele-web src/styles/editions/2027/splash.css (.site-footer, .foot). */
+  .mono-footer {
+    margin-top: 4rem;
+    border-top: 1px solid var(--color-header-line);
+    background: var(--color-footer);
+    padding: 25px 0;
+    font-family: var(--font-sans);
+  }
+  .mono-foot {
+    width: min(1320px, calc(100% - 104px));
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    color: var(--color-footer-muted);
+    font-size: 12px;
+  }
+  .mono-foot a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .mono-foot a:hover {
+    color: var(--color-on-footer);
+  }
+  @media (max-width: 1050px) {
+    .mono-foot {
+      width: min(1320px, calc(100% - 60px));
+    }
+  }
+  @media (max-width: 740px) {
+    .mono-foot {
+      width: calc(100% - 38px);
+      display: block;
+      text-align: center;
+      line-height: 2.2;
+    }
+    .mono-legal {
+      display: block;
+    }
+  }
+</style>

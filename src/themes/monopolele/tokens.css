@@ -1,0 +1,84 @@
+/*
+ * site-shell theme: every token reads the website's shell (SITE_SHELL, see
+ * docs/SITE_SHELL.md). The Header emits the --shell-* properties on :root; the
+ * second value of each var() is used when the shell does not set that colour.
+ */
+@theme {
+  --color-brand: var(--shell-brand, #111827);
+  --color-brand-hover: var(--shell-brand-hover, #374151);
+  --color-ink: var(--shell-ink, #111827);
+  --color-accent: var(--shell-accent, #2563eb);
+  --color-paper: var(--shell-paper, #ffffff);
+  --color-line: var(--shell-line, #e7e2d9);
+  --color-surface: var(--shell-surface, #f6f4ef);
+  --color-muted: var(--shell-muted, #4b5563);
+  --color-faint: var(--shell-faint, #6b7280);
+  --color-on-brand: var(--shell-on-brand, #ffffff);
+
+  /* The website's frame: header, menu underline, footer, cart badge. */
+  --color-header: var(--shell-header, #ffffff);
+  --color-on-header: var(--shell-on-header, #111827);
+  --color-header-line: var(--shell-header-line, #e7e2d9);
+  --color-nav-accent: var(--shell-nav-accent, #111827);
+  --color-footer: var(--shell-footer, #111827);
+  --color-on-footer: var(--shell-on-footer, #ffffff);
+  --color-footer-muted: var(--shell-footer-muted, #bdb9ae);
+  --color-badge: var(--shell-badge, var(--shell-nav-accent, #111827));
+  --color-on-badge: var(--shell-on-badge, #ffffff);
+  --color-banner-link: var(--shell-banner-link, currentColor);
+
+  /* Minshop's convention: --font-sans is running text, --font-serif headings. */
+  --font-sans: var(--shell-body, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  --font-serif: var(--shell-heading, Georgia, 'Times New Roman', serif);
+
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+}
+
+/*
+ * Content-page prose scale.
+ *
+ * Ordinary custom properties, intentionally OUTSIDE @theme: the core
+ * `.markdown-content` rules consume them directly, and they define no Tailwind
+ * utility namespace. Moving them into @theme would imply a utility-token role
+ * they do not have.
+ *
+ * Every rule that reads one also carries today's value as its final fallback,
+ * so deleting a line here — or replacing this whole file with a design system's
+ * tokens — degrades to the current design rather than to browser defaults.
+ */
+/* Page container. The default is a centred editorial column. */
+:root {
+  --page-max: 1240px;
+  --page-pad-x: 1rem;
+  --page-pad-y: 3rem;
+  /* Product photo frame, from the shell's "products". */
+  --card-aspect: var(--shell-card-aspect, 1 / 1);
+  --card-fit: var(--shell-card-fit, cover);
+}
+@media (min-width: 640px) {
+  :root {
+    --page-pad-x: 1.5rem;
+  }
+}
+
+/* The gallery control draws square, cropped photos; follow the shell instead. */
+.shell-gallery img.aspect-square {
+  aspect-ratio: var(--card-aspect);
+  object-fit: var(--card-fit);
+}
+
+:root {
+  --prose-measure: 48rem;
+  --prose-leading: 1.75;
+  --prose-h1-size: 2.25rem;
+  --prose-h1-tracking: -0.02em;
+  --prose-h2-size: 1.5rem;
+  --prose-h2-tracking: -0.01em;
+  --prose-h3-size: 1.125rem;
+}
+
+/* Descriptions and content pages in the website's reading font, when it has one. */
+.markdown-content {
+  font-family: var(--shell-prose, inherit);
+}
