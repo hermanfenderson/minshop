@@ -454,30 +454,62 @@ Authorized 2026-10-27.
       with the accountant, 2026-10-27); the final wording is the owner's.
 - [x] Decide the receipt's legal classification per store (acknowledgment or
       fiscal document) and the refund/correction document.
-- [ ] `track_inventory` flag (standalone, useful upstream).
-- [ ] `commerceMode` setting and admin UI.
-- [ ] Pure amount validator with tests (precision, minimum, maximum, JPY/BHD).
-- [ ] Cart cookie v3 with backward-compatible v2 reading.
-- [ ] Server validation on cart add, checkout form, JSON checkout, express path.
-- [ ] Order snapshot: `order_items.min_price_cents` and the provider snapshots.
-- [ ] Checkout price source switch, limited to benefit mode.
-- [ ] Gratitude behavior: no reservation, no shipping, no fulfillment, no file.
-- [ ] Mode-aware labels and the encouragement message, in every locale.
+- [x] `track_inventory` flag (standalone, useful upstream) — `b44afcb`.
+- [x] `commerceMode` setting and admin UI — `1c719f6`, `cb72011`.
+- [x] Pure amount validator with tests (precision, minimum, maximum, JPY/BHD).
+- [x] Per-line amounts in the cart: the line key gains `@<cents>`; keys without
+      it read as before, so no cookie version bump was needed.
+- [x] Server validation on cart add, checkout form, JSON checkout, express path.
+- [x] Order snapshot: `order_items.min_price_cents` (0046) and the donor,
+      copied from the reservation into `orders.donor` at settlement (0047).
+- [x] Checkout price source switch, limited to benefit mode.
+- [x] Gratitude behavior: no reservation, no shipping, no fulfillment, no file.
+- [x] Mode-aware labels and the encouragement message, in every locale.
 - [ ] Emails, order page, and admin order view showing one amount per line.
-- [ ] Refund flows checked with contribution orders.
-- [ ] Decide whether PDF generation is a reusable optional module (R12) and
-      choose a Workers-compatible generation approach.
-- [ ] Receipt numbering, storage and immutability (R11), with tests for
-      concurrent settlements.
-- [ ] Receipt templates in Italian and English; configurable legal wording.
-- [ ] Receipt link on the order page and optional email delivery via the
-      outbox.
-- [ ] Public API, MCP, JSON-LD, and `llms.txt` semantics.
+- [x] Refund flows checked with contribution orders: manual refund, void and
+      full refund verified locally with receipts; Stripe-issued refunds share
+      the same hook but are untested until the test shop has Stripe keys.
+- [x] PDF generation: a small dependency-free writer in
+      `features/receipts/pdf.ts` (Helvetica, WinAnsi, JPEG), reusable by any
+      feature; no library, no rendering service.
+- [x] Receipt numbering, storage and immutability (R11), with tests for
+      concurrent settlements (`test/integration/receipts.mjs`).
+- [x] Receipt templates in Italian and English; configurable legal wording
+      (Admin → Receipts; the code ships placeholders only).
+- [x] Receipt link on the order page and in the admin order view.
+- [ ] Receipt as an email attachment (the email port has no attachments yet;
+      the confirmation email links the order page, which lists the PDFs).
+- [x] Public API, MCP, JSON-LD, and `llms.txt` semantics — `8f4ceaa`.
 - [ ] Tests: crafted requests, tampered cookies, minimum raised mid-cart,
       mixed perk + Gratitude carts, standard-mode equivalence unchanged.
 - [ ] Crowdfunding mode (R13): campaigns, totals, opt-in supporter list,
       public JSON endpoint, admin adjustments.
 - [ ] Monopolele acceptance under `/shop/` and `/it/shop/`.
+
+### Implementation choices to confirm (2026-10-28)
+
+Made while building the receipts, each easy to change; the owner should
+confirm or correct them before the test shop goes live.
+
+1. **Prefix per series.** Each document kind is numbered on its own, so each
+   needs its own prefix or two documents print the same label. Defaults: the
+   contribution prefix (`W`), plus `S` for shipping receipts (`WS1/2027`) and
+   `R` for refund notes (`WR1/2027`); all three are editable.
+2. **Refunds come off the contribution first.** A partial refund lowers the
+   contribution receipt; the shipping receipt changes only when the refund
+   exceeds the contribution (the parcel's cost was already incurred).
+3. **Dates.** The receipt's date and its annual series follow the day it is
+   issued, in the store's time zone; `{date}` in the wording is the payment
+   day (for a refund note, the day of the note).
+4. **No issuer, no receipt.** Nothing is issued until Admin → Receipts has the
+   issuer details; paid orders wait and are issued by the cron afterwards, so
+   no number is used on an incomplete document.
+5. **Demo and other in-app rails** are offered in benefit mode only when
+   nothing ships: their address step knows nothing of contributions, so a
+   basket that ships is paid through Stripe.
+6. **The annex** lists each gift by name and quantity, with no value.
+7. **A voided manual refund** issues a corrected receipt that replaces the
+   previous one, with no refund note, since nothing was returned.
 
 ## Upstream PR outline
 
@@ -505,7 +537,8 @@ All Benefit Mode questions except crowdfunding were answered by the owner on
 - **Numbering**: refund notes and shipping receipts each have their own annual
   series. Donation receipt numbers carry a configurable prefix, so they cannot
   be mistaken for receipts issued outside the shop; empty by default, `W`
-  ("web") on the Monopolele shop (`W12/2027`).
+  ("web") on the Monopolele shop (`W12/2027`). The other series derive theirs
+  from it (`WS`, `WR`; see "Implementation choices" below).
 - **Donors abroad**: tax code mandatory only for residents of Italy; others
   give their country and, for companies, their own tax identifier.
 - **Wording**: the same text for a contribution with a perk and for Gratitude;
