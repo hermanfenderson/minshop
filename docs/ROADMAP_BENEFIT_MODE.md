@@ -283,9 +283,10 @@ Design proposals (to confirm):
   received outside Minshop (bank transfers, card terminals, earlier
   campaigns).
 - The supporter list is opt-in at checkout. The supporter chooses whether to
-  appear, under which display name (or as anonymous), and whether the amount
-  is shown. Default: not listed. Privacy wording is reviewed before
-  production.
+  appear, under which display name (their first and last name when they type
+  none: asking to be listed means being listed by name, Mauro 2026-10-28), and
+  whether the amount is shown. Default: not listed; a supporter who does not
+  ask does not appear at all. Privacy wording is reviewed before production.
 - Shown in the shop through the presentation models (translatable labels),
   and exposed as a small public, cacheable JSON endpoint under the mount (for
   example `/support/api/campaigns/<slug>`), so a host site that Minshop does not
