@@ -29,10 +29,11 @@ const { model } = Astro.props;
 const i18n = storefrontI18n(Astro.props.i18n);
 const { t } = i18n;
 
-// The plain donation (the Gratitude category, Mauro 2026-10-28): no perk to put
-// in a cart, so only «Donate now», which goes straight to the donor's details
-// and payment; no «minimum» in large type, and an invitation to give generously
-// rather than "a little more" than one euro.
+// The plain donation (the Gratitude category, Mauro 2026-10-28): «Donate now»
+// leads, straight to the donor's details and payment; the cart button stays,
+// second and named for whoever gives it together with perks. No «minimum» in
+// large type, and an invitation to give generously rather than "a little more"
+// than one euro.
 const plainDonation = model.categories.some((c) => /\/categories\/gratitude$/.test(c.href));
 const generous = i18n.locale === 'it'
   ? 'Scegli tu quanto donare. Sono le donazioni generose come la tua a tenere i concerti di Monopolele gratuiti e aperti a tutti.'
@@ -41,10 +42,14 @@ const purchase: ProductPurchaseModel =
   plainDonation && Astro.props.purchase.contribution
     ? {
         ...Astro.props.purchase,
-        showAddToCart: false,
         contribution: { ...Astro.props.purchase.contribution, encouragement: generous },
       }
     : Astro.props.purchase;
+const addWithPerks = i18n.locale === 'it' ? 'Aggiungi al carrello con gli omaggi' : 'Add to cart with your perks';
+const formI18n: I18n = plainDonation
+  ? ({ ...i18n, t: ((key: string, vars?: Record<string, unknown>) =>
+      key === 'benefit.product.addToCart' ? addWithPerks : i18n.t(key as never, vars as never)) as I18n['t'] } as I18n)
+  : i18n;
 ---
 
 <a href={model.backHref} class="text-xs uppercase tracking-widest text-faint hover:text-brand">
@@ -75,8 +80,9 @@ const purchase: ProductPurchaseModel =
       i18n={i18n}
     />
 
-    <div class="order-3 [&>*:first-child]:mt-0">
-      <ProductPurchaseForm model={purchase} i18n={i18n} />
+    {/* For the plain donation «Donate now» leads in place as well as in colour. */}
+    <div class:list={['order-3 [&>*:first-child]:mt-0', plainDonation && '[&_[data-fullpage]]:order-first']}>
+      <ProductPurchaseForm model={purchase} i18n={formI18n} />
     </div>
   </div>
 
