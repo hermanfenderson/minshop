@@ -50,6 +50,6 @@ const Heading = headingLevel;
       }
     </div>
     <Heading class="mt-4 font-serif text-lg font-medium leading-tight tracking-tight">{card.name}</Heading>
-    <p class="mt-1 text-sm font-semibold tabular-nums text-muted">{card.formattedPrice}</p>
+    <p class="mt-1 text-sm font-semibold tabular-nums text-muted">{card.priceIsMinimum && <span class="font-normal text-faint">{t('storefront.product.priceFrom')} </span>}{card.formattedPrice}</p>
   </a>
 </li>
