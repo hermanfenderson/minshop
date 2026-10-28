@@ -80,6 +80,7 @@ const cards = products.map((product, i) =>
     currency: getConfig().currency,
     intl: Astro.locals.i18n.intl,
     delivery: Astro.locals.settings?.imageDelivery,
+    minimumContribution: Astro.locals.settings?.commerceMode === 'benefit',
     sizes: '(min-width: 1024px) 352px, calc(50vw - 36px)',
     priority: i === 0,
   }),

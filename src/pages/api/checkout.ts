@@ -515,6 +515,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
       // Benefit Mode: a contribution is what the supporter chose — no code
       // lowers it, and donations carry no tax (R16).
       allowPromotionCodes: benefit ? false : (settings.discountsEnabled ?? cfg.discounts.enabled),
+      donation: Boolean(benefit),
       automaticTax: benefit ? false : (settings.taxEnabled ?? cfg.tax.enabled),
       orderItemsJson: JSON.stringify(
         lines.map((l) => ({ id: l.product.id, q: l.qty, n: l.name, p: l.unitPriceCents, v: l.variantId })),
@@ -632,10 +633,15 @@ async function handleJsonCheckout(
   const jsonLocale =
     acceptedLocale((body as { locale?: unknown }).locale, jsonLanguages.enabledLocales) ?? i18n.locale;
   if (jsonLocale !== i18n.locale) {
-    ({ urls, i18n } = requestLanguage(jsonLanguages, LOCALE_REGISTRY, MOUNT, jsonLocale, url.origin, {
-      path: '/',
-      search: '',
-    }));
+    ({ urls, i18n } = requestLanguage(
+      jsonLanguages,
+      LOCALE_REGISTRY,
+      MOUNT,
+      jsonLocale,
+      url.origin,
+      { path: '/', search: '' },
+      jsonSettings.commerceMode === 'benefit' ? 'benefit' : undefined,
+    ));
   }
   const available = enabledMethods(jsonSettings);
   if (available.length === 0) {
@@ -1151,6 +1157,7 @@ async function handleJsonCheckout(
           },
         }),
       allowPromotionCodes: jsonBenefit ? false : (jsonSettings.discountsEnabled ?? cfg.discounts.enabled),
+      donation: Boolean(jsonBenefit),
       automaticTax: jsonBenefit ? false : (jsonSettings.taxEnabled ?? cfg.tax.enabled),
       orderItemsJson: JSON.stringify(
         lines.map((l) => ({ id: l.product.id, q: l.qty, n: l.name, p: l.unitPriceCents, v: l.variantId })),

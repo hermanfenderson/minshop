@@ -48,6 +48,9 @@ export interface ProductCardModel {
   /** Server-formatted price in the store's currency. Display only — money is
    *  never posted back from a template as authority. */
   formattedPrice: string;
+  /** Benefit Mode: the price is the least a supporter may give, so a card
+   *  labels it ("Contribution from") instead of showing a bare price. */
+  priceIsMinimum: boolean;
   /** Availability as a boolean, deliberately not a quantity: exact stock counts
    *  stay private, and bucket-level changes avoid cache invalidation. */
   inStock: boolean;

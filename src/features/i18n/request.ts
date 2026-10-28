@@ -10,6 +10,7 @@ import {
   stripMount,
   type I18n,
   type I18nSettings,
+  type Vocabulary,
   type LocaleRegistry,
   type LocaleUrls,
 } from '../../i18n';
@@ -48,11 +49,12 @@ export function requestLanguage(
   locale: string,
   origin: string,
   current: { path: string; search: string },
+  vocabulary?: Vocabulary,
 ): RequestLanguage {
   return {
     locale,
     // Untranslated UI strings fall back to the store default, then English.
-    i18n: createI18n(locale, { registry, tail: [settings.defaultLocale] }),
+    i18n: createI18n(locale, { registry, tail: [settings.defaultLocale], vocabulary }),
     urls: createLocaleUrls({
       routing: createRouting(settings, mount, registry),
       settings,

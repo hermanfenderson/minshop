@@ -57,7 +57,7 @@ const Heading = headingLevel;
     </Heading>
 
     <div class="mt-auto flex items-center justify-between gap-2">
-      <span class="font-serif text-[15px] font-bold tabular-nums">{card.formattedPrice}</span>
+      <span class="font-serif text-[15px] font-bold tabular-nums">{card.priceIsMinimum && <span class="text-xs font-normal">{t('storefront.product.priceFrom')} </span>}{card.formattedPrice}</span>
       <span
         class="text-[10px] font-bold uppercase tracking-wide"
         style={`color:${card.inStock ? 'var(--market-stock-in)' : 'var(--market-muted)'}`}

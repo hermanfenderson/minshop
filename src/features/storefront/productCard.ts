@@ -69,6 +69,8 @@ export interface ProductCardOptions extends StorefrontImageOptions {
   /** Intl locale tag the price is formatted in (the store's: `i18n.intl`).
    *  Defaults to en-US, the pre-i18n output. */
   intl?: string;
+  /** Benefit Mode: the price is a minimum contribution. */
+  minimumContribution?: boolean;
 }
 
 /**
@@ -88,6 +90,7 @@ export function buildProductCard(
     // The store's currency, not the row's: a product row can carry a legacy
     // currency, and the catalog has always displayed one consistent currency.
     formattedPrice: formatMoney(product.price_cents, options.currency, options.intl),
+    priceIsMinimum: options.minimumContribution === true,
     // Availability only — never the count. `stockState` is the authoritative
     // classification; re-deriving `stock > 0` here would fork that rule.
     inStock: stockState(sellableStock(product, product.stock)) !== 'out',

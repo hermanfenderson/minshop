@@ -3,7 +3,7 @@
  * Pure — no Cloudflare or Astro imports — so unit-tested modules and
  * presentation builders can take an `I18n` without touching the runtime.
  */
-import { BUNDLED_CATALOGS, type Catalog, type MessageKey } from './catalog.ts';
+import { BUNDLED_CATALOGS, BUNDLED_VOCABULARIES, type Catalog, type MessageKey, type Vocabulary } from './catalog.ts';
 import { createTranslator, type Message, type Translator } from './format.ts';
 import {
   BUILTIN_LOCALES,
@@ -26,6 +26,12 @@ export interface I18nOptions {
   catalogs?: Readonly<Record<string, Catalog>>;
   /** Fallbacks after the language's own chain, before English (e.g. the store default). */
   tail?: readonly string[];
+  /**
+   * A store-wide way of speaking that replaces some of the shop's words, such
+   * as 'benefit', where nothing has a price and nobody buys. In each language
+   * of the chain its message wins over the catalog's.
+   */
+  vocabulary?: Vocabulary;
 }
 
 const cache = new Map<string, I18n>();
@@ -39,16 +45,21 @@ export function createI18n(locale: string = UI_SOURCE_LOCALE, options: I18nOptio
   const registry = options.registry ?? BUILTIN_LOCALES;
   const catalogs = options.catalogs ?? BUNDLED_CATALOGS;
   const tail = options.tail ?? [];
+  const vocabulary = options.vocabulary ? BUNDLED_VOCABULARIES[options.vocabulary] : null;
   const code = isSupportedLocale(registry, locale) ? locale : UI_SOURCE_LOCALE;
   const cacheable = registry === BUILTIN_LOCALES && catalogs === BUNDLED_CATALOGS;
-  const cacheKey = `${code}|${tail.join(',')}`;
+  const cacheKey = `${code}|${tail.join(',')}|${options.vocabulary ?? ''}`;
   if (cacheable) {
     const hit = cache.get(cacheKey);
     if (hit) return hit;
   }
 
   const chain = fallbackChain(registry, code, tail);
-  const sources = chain.map((c) => catalogs[c] ?? {}) as Array<Record<string, Message | undefined>>;
+  // Per language, the vocabulary first: an Italian benefit word beats the
+  // Italian shop word, which beats the English benefit word.
+  const sources = chain.flatMap((c) => (vocabulary ? [vocabulary[c] ?? {}, catalogs[c] ?? {}] : [catalogs[c] ?? {}])) as Array<
+    Record<string, Message | undefined>
+  >;
   const lookup = (key: MessageKey): Message | undefined => {
     for (const source of sources) {
       const message = source[key];

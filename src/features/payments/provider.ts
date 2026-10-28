@@ -56,6 +56,11 @@ export interface CreateCheckoutParams {
   orderItemsJson?: string;
   /** Show the "add promotion code" field on hosted checkout (codes live in Stripe). */
   allowPromotionCodes?: boolean;
+  /**
+   * Benefit Mode: the payment is a contribution, not a purchase. Hosted pages
+   * that can say so (Stripe's "Donate" button) do; others ignore it.
+   */
+  donation?: boolean;
   /** Compute sales tax / VAT via Stripe Tax (requires Stripe Tax activated). */
   automaticTax?: boolean;
   /** When set, collect a shipping address (allowed countries) + offer these rates. */

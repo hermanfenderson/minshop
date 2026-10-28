@@ -17,7 +17,8 @@ export function emailLanguage(
 ): RequestLanguage {
   const settings = languageSettings(store);
   const current = { path: '/', search: '' };
-  const text = requestLanguage(settings, LOCALE_REGISTRY, mount, locale, origin, current);
+  const vocabulary = store?.commerceMode === 'benefit' ? 'benefit' : undefined;
+  const text = requestLanguage(settings, LOCALE_REGISTRY, mount, locale, origin, current, vocabulary);
   // The words stay in the language the shopper used, but a link must still
   // resolve: a language the store has since switched off links to the default.
   if (settings.enabledLocales.includes(locale)) return text;

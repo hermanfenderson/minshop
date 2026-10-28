@@ -395,6 +395,7 @@ describe('an independently authored product page', () => {
             href: '/products/other-thing',
             image: image('/images/other.jpg'),
             formattedPrice: '$12.00',
+            priceIsMinimum: false,
             inStock: true,
           },
         ],

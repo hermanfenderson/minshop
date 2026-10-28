@@ -332,18 +332,26 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
     }
   }
 
-  const language = requestLanguage(languages, LOCALE_REGISTRY, MOUNT, locale, url.origin, {
-    path,
-    search: url.search,
-  });
+  // Benefit Mode speaks of contributions, not prices, to supporters; the
+  // admin keeps the shop's words, since it manages orders as orders.
+  const adminPath = path === '/admin' || path.startsWith('/admin/') || path.startsWith('/api/admin/');
+  const vocabulary = context.locals.settings?.commerceMode === 'benefit' && !adminPath ? 'benefit' : undefined;
+  const language = requestLanguage(
+    languages,
+    LOCALE_REGISTRY,
+    MOUNT,
+    locale,
+    url.origin,
+    { path, search: url.search },
+    vocabulary,
+  );
   context.locals.path = path;
   context.locals.locale = language.locale;
   context.locals.i18n = language.i18n;
   context.locals.urls = language.urls;
   if (!reentry) {
     // Admin edits the main tables, so it always sees the source content.
-    const admin = path === '/admin' || path.startsWith('/admin/') || path.startsWith('/api/admin/');
-    context.locals.contentLocale = admin ? null : translationLocale(languages, language.locale);
+    context.locals.contentLocale = adminPath ? null : translationLocale(languages, language.locale);
     const menus = context.locals.menus;
     if (context.locals.contentLocale && menus && menus.header.length + menus.footer.length > 0) {
       // Only a translated language pays this read; it is one query per entity.

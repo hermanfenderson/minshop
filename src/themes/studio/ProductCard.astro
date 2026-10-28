@@ -49,7 +49,7 @@ const Heading = headingLevel;
         {card.name}
       </Heading>
       <span class="ml-auto shrink-0 text-xs tracking-[0.12em] text-[color:var(--studio-muted)]">
-        {card.formattedPrice}
+        {card.priceIsMinimum && <>{t('storefront.product.priceFrom')} </>}{card.formattedPrice}
       </span>
     </div>
   </a>

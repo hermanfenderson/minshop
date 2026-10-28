@@ -277,6 +277,7 @@ export async function loadProductDetail(
           delivery: options.delivery,
           currency: options.currency,
           intl: options.intl,
+          minimumContribution: Boolean(benefit),
           sizes: RELATED_CARD_SIZES,
         }),
       ),

@@ -68,6 +68,8 @@ export function createStripeProvider(
     async createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult> {
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
+        // A contribution is not a purchase: Stripe then labels its button "Donate".
+        ...(params.donation && { submit_type: 'donate' as const }),
         // Keep the hosted session within the inventory reservation window.
         expires_at: Math.floor(Date.now() / 1000) + STRIPE_CHECKOUT_TTL_SECONDS,
         line_items: params.lineItems.map((li) => ({

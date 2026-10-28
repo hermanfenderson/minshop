@@ -10,6 +10,8 @@
 import type { Message } from './format.ts';
 import { en } from './messages/en/index.ts';
 import { it } from './messages/it/index.ts';
+import { benefitVocabulary as enBenefit } from './messages/en/vocabulary.benefit.ts';
+import { benefitVocabulary as itBenefit } from './messages/it/vocabulary.benefit.ts';
 
 export type { Message, Params, PluralMessage } from './format.ts';
 
@@ -28,4 +30,12 @@ export const SOURCE_CATALOG: Readonly<Record<string, Message>> = en;
 export const BUNDLED_CATALOGS: Readonly<Record<string, Catalog>> = Object.freeze({
   en,
   it,
+});
+
+/** The store-wide vocabularies (I18nOptions.vocabulary). */
+export type Vocabulary = 'benefit';
+
+/** Per vocabulary, its words by language; a missing word keeps the catalog's. */
+export const BUNDLED_VOCABULARIES: Readonly<Record<Vocabulary, Readonly<Record<string, Catalog>>>> = Object.freeze({
+  benefit: Object.freeze({ en: enBenefit, it: itBenefit }),
 });

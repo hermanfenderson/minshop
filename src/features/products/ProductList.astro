@@ -36,6 +36,7 @@ const model = await loadCatalogPage(env.DB, {
   heading,
   i18n,
   contentLocale: Astro.locals.contentLocale,
+  minimumContribution: Astro.locals.settings?.commerceMode === 'benefit',
 });
 ---
 

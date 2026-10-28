@@ -5,8 +5,8 @@
  */
 export { escapeHtml, formatMessage, createTranslator } from './format.ts';
 export type { Message, Params, PluralMessage, Translator } from './format.ts';
-export { BUNDLED_CATALOGS, SOURCE_CATALOG } from './catalog.ts';
-export type { Catalog, MessageKey } from './catalog.ts';
+export { BUNDLED_CATALOGS, BUNDLED_VOCABULARIES, SOURCE_CATALOG } from './catalog.ts';
+export type { Catalog, MessageKey, Vocabulary } from './catalog.ts';
 export {
   BUILTIN_LOCALES,
   UI_SOURCE_LOCALE,

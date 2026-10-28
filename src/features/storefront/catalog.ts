@@ -130,6 +130,8 @@ export interface CatalogPageOptions {
   i18n?: I18n;
   /** The language of the content translations to read; null/omitted = source text. */
   contentLocale?: string | null;
+  /** Benefit Mode: card prices are minimum contributions. */
+  minimumContribution?: boolean;
 }
 
 export async function loadCatalogPage(
@@ -176,6 +178,7 @@ export async function loadCatalogPage(
         delivery: options.delivery,
         currency: options.currency,
         intl: options.i18n?.intl,
+        minimumContribution: options.minimumContribution,
         sizes: CARD_SIZES,
         // Only the first card is the page's likely LCP image.
         priority: index === 0,
