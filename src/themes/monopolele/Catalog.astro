@@ -1,6 +1,7 @@
 ---
 import type { CatalogPageModel } from '../../features/storefront/models';
 import ProductCard from './ProductCard.astro';
+import SupportIntro from './SupportIntro.astro';
 import CatalogSort from '../../features/storefront/controls/CatalogSort.astro';
 import CatalogPagination from '../../features/storefront/controls/CatalogPagination.astro';
 import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
@@ -27,12 +28,18 @@ interface Props {
 const { model } = Astro.props;
 const i18n = storefrontI18n(Astro.props.i18n);
 const { t } = i18n;
+// The three ways to give open the first page only; later pages are just more perks.
+const firstPage = (Astro.url.searchParams.get('page') ?? '1') === '1';
 ---
 
 <div class="mb-10">
   <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">{model.eyebrow}</p>
   <h1 class="mt-2 font-serif text-4xl font-medium tracking-tight sm:text-5xl">{model.heading}</h1>
 </div>
+
+{firstPage && <SupportIntro i18n={i18n} perksAnchor="omaggi" />}
+
+<div id="omaggi" class="scroll-mt-6"></div>
 
 {
   model.categories.length > 0 && (

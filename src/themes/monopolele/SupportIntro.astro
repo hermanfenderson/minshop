@@ -1,0 +1,133 @@
+---
+/**
+ * STORE-OWNED. Monopolele's three ways to give, above the catalog: what the old
+ * WordPress /donations/ page said before its product grid (Mauro, 2026-10-28),
+ * rewritten as content rather than a list of emoji. The words live here, not in
+ * an admin page, because a page body is Markdown with HTML off and could not
+ * carry the video.
+ *
+ * The video is youtube-nocookie and lazy: no request leaves for YouTube until
+ * the visitor scrolls to it, and no cookie until they press play.
+ */
+import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
+
+interface Props {
+  i18n?: I18n;
+  /** Where the perks start on the page. */
+  perksAnchor: string;
+}
+
+const { perksAnchor } = Astro.props;
+const { locale } = storefrontI18n(Astro.props.i18n);
+const gratitudeHref = Astro.locals.urls.href('/products/gratitude');
+// Associazione Voltare Pagina ETS, which runs the festival: the code to write
+// in the 5×1000 box of an Italian tax return.
+const TAX_CODE = '15861571006';
+const VIDEO = 'krjp1chRMtg';
+
+const copy = {
+  en: {
+    lead: 'Monopolele is an independent festival. It lives thanks to people like you, who believe in music as a way to meet and share. There are three ways to help: pick one, or all three.',
+    videoTitle: 'Donate to Monopolele!',
+    ways: [
+      {
+        kicker: '1 · Free for you',
+        title: 'Your 5×1000',
+        body: 'In your Italian tax return, sign the 5×1000 box and write the tax code of Associazione Voltare Pagina ETS, which has run Monopolele since its first edition.',
+      },
+      {
+        kicker: '2 · Any amount',
+        title: 'A donation, with our Gratitude',
+        body: 'Add Gratitude to your cart and choose how much to give. It is the simplest way to support the festival right now.',
+        cta: 'Donate now',
+      },
+      {
+        kicker: '3 · With a perk',
+        title: 'A gift to say thank you',
+        body: 'Choose a perk below. Its minimum donation covers the production cost and leaves a small contribution to the festival: if you can, give more.',
+        cta: 'See the perks',
+      },
+    ],
+    taxCode: 'Tax code',
+    deductible: 'Donations are tax-deductible in Italy: a 30% tax credit (up to €30,000 a year) or a deduction of up to 10% of total income.',
+  },
+  it: {
+    lead: 'Monopolele è un festival indipendente. Vive grazie a chi, come te, crede nella musica come occasione di incontro e di scambio. Ci sono tre modi per sostenerlo: scegline uno, o tutti e tre.',
+    videoTitle: 'Dona per Monopolele!',
+    ways: [
+      {
+        kicker: '1 · Gratis per te',
+        title: 'Il tuo 5×1000',
+        body: 'Nella dichiarazione dei redditi firma nel riquadro del 5×1000 e scrivi il codice fiscale di Associazione Voltare Pagina ETS, che organizza Monopolele dalla prima edizione.',
+      },
+      {
+        kicker: '2 · L’importo che vuoi',
+        title: 'Una donazione, con la nostra Gratitude',
+        body: 'Aggiungi la Gratitude al carrello e scegli quanto donare. È il modo più semplice per sostenere subito il festival.',
+        cta: 'Dona ora',
+      },
+      {
+        kicker: '3 · Con un omaggio',
+        title: 'Un regalo per dirti grazie',
+        body: 'Scegli un omaggio qui sotto. La sua donazione minima copre il costo di produzione e lascia un piccolo contributo al festival: se puoi, dona di più.',
+        cta: 'Vedi gli omaggi',
+      },
+    ],
+    taxCode: 'Codice fiscale',
+    deductible: 'Per chi paga le tasse in Italia le donazioni sono detraibili al 30% (fino a 30.000 € l’anno) o deducibili fino al 10% del reddito complessivo.',
+  },
+}[locale === 'it' ? 'it' : 'en'];
+const [five, gift, perk] = copy.ways;
+---
+
+<section class="mono-support mb-14">
+  <div class="grid items-center gap-8 lg:grid-cols-[1fr_1.1fr]">
+    <p class="text-lg leading-relaxed text-ink sm:text-xl">{copy.lead}</p>
+    <div class="aspect-video overflow-hidden rounded-xl border border-line bg-surface">
+      <iframe
+        class="h-full w-full"
+        src={`https://www.youtube-nocookie.com/embed/${VIDEO}`}
+        title={copy.videoTitle}
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allow="encrypted-media; picture-in-picture; fullscreen"
+        allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <ol class="mt-10 grid gap-5 md:grid-cols-3">
+    <li class="flex flex-col rounded-xl border border-line bg-surface p-6">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{five.kicker}</p>
+      <h2 class="mt-2 font-serif text-2xl">{five.title}</h2>
+      <p class="mt-3 text-sm leading-relaxed text-muted">{five.body}</p>
+      <p class="mt-auto pt-5">
+        <span class="block text-xs uppercase tracking-widest text-faint">{copy.taxCode}</span>
+        <span class="mt-1 block font-mono text-2xl tracking-wider text-brand select-all">{TAX_CODE}</span>
+      </p>
+    </li>
+    <li class="flex flex-col rounded-xl border border-brand bg-surface p-6">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{gift.kicker}</p>
+      <h2 class="mt-2 font-serif text-2xl">{gift.title}</h2>
+      <p class="mt-3 text-sm leading-relaxed text-muted">{gift.body}</p>
+      <p class="mt-auto pt-5">
+        <a
+          href={gratitudeHref}
+          class="inline-flex items-center rounded-full bg-brand px-6 py-3 text-xs font-bold uppercase tracking-widest text-on-brand hover:bg-brand-hover"
+        >{gift.cta}</a>
+      </p>
+    </li>
+    <li class="flex flex-col rounded-xl border border-line bg-surface p-6">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{perk.kicker}</p>
+      <h2 class="mt-2 font-serif text-2xl">{perk.title}</h2>
+      <p class="mt-3 text-sm leading-relaxed text-muted">{perk.body}</p>
+      <p class="mt-auto pt-5">
+        <a
+          href={`#${perksAnchor}`}
+          class="inline-flex items-center rounded-full border border-line px-6 py-3 text-xs font-bold uppercase tracking-widest hover:border-brand hover:text-brand"
+        >{perk.cta} ↓</a>
+      </p>
+    </li>
+  </ol>
+
+  <p class="mt-6 text-xs leading-relaxed text-faint">{copy.deductible}</p>
+</section>
