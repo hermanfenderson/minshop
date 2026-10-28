@@ -2,29 +2,29 @@ import type { Message } from '../../format.ts';
 
 /**
  * Benefit Mode (docs/ROADMAP_BENEFIT_MODE.md): every price is a minimum
- * contribution the supporter may raise. Import-free, like the storefront
+ * donation the supporter may raise. Import-free, like the storefront
  * catalog, because the purchase controls fall back to it.
  */
 export const benefit = {
   // Product page — the one amount field (R2, R3)
-  'benefit.product.minimum': 'Minimum contribution: {price}',
-  'benefit.product.amountLabel': 'Your contribution',
+  'benefit.product.minimum': 'Minimum donation: {price}',
+  'benefit.product.amountLabel': 'Your donation',
   'benefit.product.amountHelp': 'Any amount from {price}.',
-  'benefit.product.encourage': 'Your contribution keeps this project free and open to everyone. If you can, consider giving a little more!',
-  'benefit.product.addToCart': 'Add contribution',
-  'benefit.product.buyNow': 'Contribute now',
+  'benefit.product.encourage': 'Your donation keeps this project free and open to everyone. If you can, consider giving a little more!',
+  'benefit.product.addToCart': 'Add donation',
+  'benefit.product.buyNow': 'Donate now',
 
   // Cart
-  'benefit.llms.minimum': 'from {price} (minimum contribution; any higher amount is welcome)',
+  'benefit.llms.minimum': 'from {price} (minimum donation; any higher amount is welcome)',
 
-  'benefit.cart.contribution': 'Contribution',
+  'benefit.cart.contribution': 'Donation',
   'benefit.cart.each': '{price} each',
   'benefit.cart.change': 'Change',
-  'benefit.cart.total': 'Total contribution',
+  'benefit.cart.total': 'Total donation',
 
   // Donor details, collected before payment for the receipt (R14)
   'benefit.donor.heading': 'Your details for the receipt',
-  'benefit.donor.intro': 'We issue a contribution receipt in your name. These details are used for the receipt and kept by us.',
+  'benefit.donor.intro': 'We issue a donation receipt in your name. These details are used for the receipt and kept by us.',
   'benefit.donor.privacy': 'How we handle them',
   'benefit.donor.company': 'Donating as a company',
   'benefit.donor.firstName': 'First name',
@@ -46,19 +46,19 @@ export const benefit = {
   // Refusals — on the product page, the cart, or checkout (R4)
   'benefit.error.invalid': 'Please enter an amount, for example 25 or 25.50.',
   'benefit.error.precision': 'That amount has too many decimal places.',
-  'benefit.error.belowMinimum': 'The minimum contribution for {name} is {price}.',
-  'benefit.error.method': 'Contributions can be paid by card only.',
-  'benefit.error.aboveMaximum': 'The largest contribution we can accept online for {name} is {price}. Please contact us for more.',
+  'benefit.error.belowMinimum': 'The minimum donation for {name} is {price}.',
+  'benefit.error.method': 'Donations can be paid by card only.',
+  'benefit.error.aboveMaximum': 'The largest donation we can accept online for {name} is {price}. Please contact us for more.',
 
   // Receipts (R11/R12/R15). Generic wording only; anything with legal weight is
   // the issuer's own text, configured in Admin → Receipts.
-  'benefit.receipt.title.donation': 'Contribution receipt',
+  'benefit.receipt.title.donation': 'Donation receipt',
   'benefit.receipt.title.shipping': 'Shipping cost receipt',
   'benefit.receipt.title.refund_note': 'Refund note',
   'benefit.receipt.date': 'Date',
   'benefit.receipt.number': 'Receipt no.',
   'benefit.receipt.noteNumber': 'Note no.',
-  'benefit.receipt.order': 'Order',
+  'benefit.receipt.order': 'Reference',
   'benefit.receipt.amount': 'Amount',
   'benefit.receipt.amountWords': 'In words',
   'benefit.receipt.from': 'From',
@@ -74,11 +74,11 @@ export const benefit = {
   'benefit.receipt.method.demo': 'test payment (demo — not a real payment)',
   'benefit.receipt.method.other': 'electronic payment',
   'benefit.receipt.placeholder.donation.person':
-    '{issuer} confirms that it received from {donor} a contribution of {amount} ({amount_words}) on {date}, paid by {payment_method}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
+    '{issuer} confirms that it received from {donor} a donation of {amount} ({amount_words}) on {date}, paid by {payment_method}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
   'benefit.receipt.placeholder.donation.company':
-    '{issuer} confirms that it received from {donor} a contribution of {amount} ({amount_words}) on {date}, paid by {payment_method}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
+    '{issuer} confirms that it received from {donor} a donation of {amount} ({amount_words}) on {date}, paid by {payment_method}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
   'benefit.receipt.placeholder.shipping':
-    '{issuer} confirms that it received from {donor} {amount} ({amount_words}) on {date} as reimbursement of the shipping cost for order {order}, charged at cost.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
+    '{issuer} confirms that it received from {donor} {amount} ({amount_words}) on {date} as reimbursement of the shipping cost for donation {order}, charged at cost.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
   'benefit.receipt.placeholder.refund_note':
     '{issuer} returned {amount} ({amount_words}) to {donor} on {date}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',
   'benefit.receipt.heading': 'Receipts',

@@ -9,14 +9,14 @@ due istanze); la produzione nascerà pulita con lo stesso codice e lo stesso mou
 
 | Voce | Valore |
 |---|---|
-| Indirizzo | host `workers.dev` del Worker (non pubblicato: è nella wiki privata), `/shop/` in EN e `/it/shop/` in IT |
-| Admin | `/shop/admin` (password del setup wizard) |
+| Indirizzo | host `workers.dev` del Worker (non pubblicato: è nella wiki privata), `/support/` in EN e `/it/support/` in IT (fino al 2026-10-28 `/shop/`) |
+| Admin | `/support/admin` (password del setup wizard) |
 | Worker | `monopolele-test-shop` |
 | D1 | `monopolele-test-shop-db` |
 | R2 | `monopolele-test-shop-images` (pubblico via Worker), `monopolele-test-shop-files` (privato) |
 | KV | `monopolele-test-shop-session` (creato dal deploy, sessioni Astro) |
 | Segreti Worker | `AUTH_SECRET`, `SECRETS_KEK` (casuali, mai mostrati) |
-| Build | mount `/shop`, `cookiePrefix` `minshop_`, valuta EUR, tema `default` |
+| Build | mount `/support` (dal 2026-10-28; prima `/shop`), `cookiePrefix` `minshop_`, valuta EUR, tema `default` |
 | Indicizzazione | `NOINDEX=true`: `X-Robots-Tag` su ogni risposta, meta `noindex`, robots.txt `Disallow` |
 
 Creato il 2026-10-26 dal ramo `feat/printful` con
@@ -37,7 +37,7 @@ lavora: lo shop si raggiunge dalla rete dati. Non riguarda i visitatori.
   webhook nel vault cifrato. Demo spento. Lightning e OpenNode non configurati:
   la cassa offre solo i metodi configurati, quindi non compaiono (verificato con
   un carrello: unico pulsante Stripe, «Proceed to payment»).
-- Webhook Stripe di test: `<host>/shop/api/webhook/stripe`, versione API
+- Webhook Stripe di test: `<host>/support/api/webhook/stripe` (dal 2026-10-28; prima `/shop/…`), versione API
   `2026-07-29.dahlia` (quella della libreria `stripe` 22.4), eventi
   `checkout.session.completed`, `…async_payment_succeeded`,
   `…async_payment_failed`, `…expired`, `charge.refunded`.
@@ -178,6 +178,6 @@ prodotti. Ora la sostituzione del catalogo scollega prima le righe d'ordine.
   fallisce, e in Admin una vista dei pagamenti falliti, scaduti e in
   elaborazione. Oggi l'ordine semplicemente non nasce e nessuno lo sa: lo si
   vede solo nella dashboard Stripe. Da sviluppare prima della produzione.
-- Valutare Cloudflare Access su `/shop/admin` e `/shop/api/admin`.
+- Valutare Cloudflare Access su `/support/admin` e `/support/api/admin`.
 - `robots.txt` del sito ospite con la sitemap del negozio ed esclusione di
-  `/shop/admin` e `/shop/api/`.
+  `/support/admin` e `/support/api/`.

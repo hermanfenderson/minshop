@@ -120,7 +120,7 @@ describe('buildReceiptDocument', () => {
 
   it('speaks English for English orders', () => {
     const doc = buildReceiptDocument(input({ i18n: createI18n('en') }));
-    expect(doc.title).toBe('Contribution receipt');
+    expect(doc.title).toBe('Donation receipt');
     expect(doc.body[0]).toContain('forty/00');
   });
 

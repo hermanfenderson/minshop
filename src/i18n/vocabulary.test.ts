@@ -7,13 +7,14 @@ import { createI18n } from './translator.ts';
 const benefit = BUNDLED_VOCABULARIES.benefit;
 
 // The areas supporters read: pages, cart, checkout, order page, account, emails, llms.txt.
-const SUPPORTER_AREAS = ['storefront', 'catalog', 'cart', 'checkout', 'order', 'email', 'llms', 'account', 'common'];
+const SUPPORTER_AREAS = ['storefront', 'catalog', 'cart', 'checkout', 'order', 'email', 'llms', 'account', 'common', 'benefit'];
 
-// Shop words that Benefit Mode must never say, per language. Placeholders are
+// Shop words that Benefit Mode must never say, per language, and «contribution»:
+// supporters make a donation (owner's choice, 2026-10-28). Placeholders are
 // stripped first ({price} is a value, not a word).
 const SHOP_WORDS: Record<string, RegExp> = {
-  en: /\bprices?\b|\bshop|\bstore\b|purchas|\bbuy|\borders?\b|\bcarts?\b|checkout|discount|\bproducts?\b/i,
-  it: /prezz|negozi|acquist|carrell|\bordin[ei]\b|\bcassa\b|sconto|prodott/i,
+  en: /\bprices?\b|\bshop|\bstore\b|purchas|\bbuy|\borders?\b|\bcarts?\b|checkout|discount|\bproducts?\b|contribut/i,
+  it: /prezz|negozi|acquist|carrell|\bordin[ei]\b|\bcassa\b|sconto|prodott|contribu/i,
 };
 
 // Messages a supporter never reads in Benefit Mode, so they keep the shop's words.
@@ -50,7 +51,7 @@ describe('benefit vocabulary', () => {
     expect(Object.keys(benefit.it).sort()).toEqual(Object.keys(benefit.en).sort());
   });
 
-  it('speaks of contributions, never of prices, purchases or orders', () => {
+  it('speaks of donations, never of prices, purchases or orders', () => {
     for (const [locale, vocabulary] of Object.entries(benefit)) {
       for (const [key, message] of Object.entries(vocabulary)) {
         for (const text of texts(message)) expect(words(text), `${locale} ${key}`).not.toMatch(SHOP_WORDS[locale]);
@@ -73,7 +74,7 @@ describe('benefit vocabulary', () => {
   });
 
   it('wins over the catalog in the same language, and only when asked for', () => {
-    expect(createI18n('it', { vocabulary: 'benefit' }).t('catalog.sort.price')).toBe('Contributo minimo');
+    expect(createI18n('it', { vocabulary: 'benefit' }).t('catalog.sort.price')).toBe('Donazione minima');
     expect(createI18n('it').t('catalog.sort.price')).toBe('Prezzo');
     expect(createI18n('en', { vocabulary: 'benefit' }).t('storefront.nav.shop')).toBe('Support');
   });

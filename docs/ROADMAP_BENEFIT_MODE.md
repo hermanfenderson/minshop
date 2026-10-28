@@ -141,7 +141,8 @@ no goods and no digital deliverables.
 - Benefit Mode supports every configured locale and every supported URL routing
   strategy.
 - It supports installations under a configurable `mountPath`. For Monopolele:
-  English at `/shop/`, Italian at `/it/shop/`.
+  English at `/support/`, Italian at `/it/support/` (the owner's choice of
+  2026-10-28: in Benefit Mode the store is where people support the festival).
 
 ### R9. Upstream compatibility
 
@@ -287,7 +288,7 @@ Design proposals (to confirm):
   production.
 - Shown in the shop through the presentation models (translatable labels),
   and exposed as a small public, cacheable JSON endpoint under the mount (for
-  example `/shop/api/campaigns/<slug>`), so a host site that Minshop does not
+  example `/support/api/campaigns/<slug>`), so a host site that Minshop does not
   serve can render the progress bar and the list.
 - No store-specific logic in the core (R9). Possibly usable in standard mode
   too; see open questions.
@@ -488,7 +489,7 @@ Authorized 2026-10-27.
       mixed perk + Gratitude carts, standard-mode equivalence unchanged.
 - [ ] Crowdfunding mode (R13): campaigns, totals, opt-in supporter list,
       public JSON endpoint, admin adjustments.
-- [ ] Monopolele acceptance under `/shop/` and `/it/shop/`.
+- [ ] Monopolele acceptance under `/support/` and `/it/support/`.
 
 ### Implementation choices (confirmed 2026-10-28)
 

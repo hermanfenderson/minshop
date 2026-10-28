@@ -1,22 +1,22 @@
 import type { Catalog } from '../../catalog.ts';
 
 export const benefit = {
-  'benefit.product.minimum': 'Contributo minimo: {price}',
-  'benefit.product.amountLabel': 'Il tuo contributo',
+  'benefit.product.minimum': 'Donazione minima: {price}',
+  'benefit.product.amountLabel': 'La tua donazione',
   'benefit.product.amountHelp': 'Qualsiasi importo da {price}.',
-  'benefit.product.encourage': 'Il tuo contributo tiene questo progetto libero e aperto a tutti. Se puoi, valuta di dare qualcosa in più!',
-  'benefit.product.addToCart': 'Aggiungi il contributo',
-  'benefit.product.buyNow': 'Contribuisci ora',
+  'benefit.product.encourage': 'La tua donazione tiene questo progetto libero e aperto a tutti. Se puoi, valuta di dare qualcosa in più!',
+  'benefit.product.addToCart': 'Aggiungi la donazione',
+  'benefit.product.buyNow': 'Dona ora',
 
-  'benefit.llms.minimum': 'da {price} (contributo minimo; è benvenuto qualsiasi importo superiore)',
+  'benefit.llms.minimum': 'da {price} (donazione minima; è benvenuto qualsiasi importo superiore)',
 
-  'benefit.cart.contribution': 'Contributo',
+  'benefit.cart.contribution': 'Donazione',
   'benefit.cart.each': '{price} cad.',
   'benefit.cart.change': 'Cambia',
-  'benefit.cart.total': 'Totale contributo',
+  'benefit.cart.total': 'Totale donazione',
 
   'benefit.donor.heading': 'I tuoi dati per la ricevuta',
-  'benefit.donor.intro': 'Emettiamo una ricevuta del contributo a tuo nome. Questi dati servono per la ricevuta e restano presso di noi.',
+  'benefit.donor.intro': 'Emettiamo una ricevuta della donazione a tuo nome. Questi dati servono per la ricevuta e restano presso di noi.',
   'benefit.donor.privacy': 'Come li trattiamo',
   'benefit.donor.company': 'Sei un’azienda?',
   'benefit.donor.firstName': 'Nome',
@@ -35,11 +35,11 @@ export const benefit = {
   'benefit.donor.displayName': 'Nome da mostrare (lascia vuoto per comparire come «anonimo»)',
   'benefit.donor.error': 'Controlla i dati per la ricevuta: {fields}.',
 
-  'benefit.error.method': 'I contributi si pagano solo con carta.',
+  'benefit.error.method': 'Le donazioni si pagano solo con carta.',
   'benefit.error.invalid': 'Inserisci un importo, per esempio 25 o 25,50.',
   'benefit.error.precision': 'L’importo ha troppi decimali.',
-  'benefit.error.belowMinimum': 'Il contributo minimo per {name} è {price}.',
-  'benefit.error.aboveMaximum': 'Il contributo più alto che possiamo accettare online per {name} è {price}. Scrivici per contributi maggiori.',
+  'benefit.error.belowMinimum': 'La donazione minima per {name} è {price}.',
+  'benefit.error.aboveMaximum': 'La donazione più alta che possiamo accettare online per {name} è {price}. Scrivici per donazioni maggiori.',
 
   // Ricevute (R11/R12/R15). Solo diciture generiche; quelle con valore legale
   // sono i testi dell'ente, configurati in Admin → Ricevute.
@@ -49,7 +49,7 @@ export const benefit = {
   'benefit.receipt.date': 'Data',
   'benefit.receipt.number': 'Ricevuta N.',
   'benefit.receipt.noteNumber': 'Nota N.',
-  'benefit.receipt.order': 'Ordine',
+  'benefit.receipt.order': 'Riferimento',
   'benefit.receipt.amount': 'Importo',
   'benefit.receipt.amountWords': 'In lettere',
   'benefit.receipt.from': 'Da',
@@ -65,11 +65,11 @@ export const benefit = {
   'benefit.receipt.method.demo': 'pagamento di prova (demo — non è un pagamento reale)',
   'benefit.receipt.method.other': 'pagamento elettronico',
   'benefit.receipt.placeholder.donation.person':
-    '{issuer} dichiara di aver ricevuto da {donor} un contributo di {amount} ({amount_words}) in data {date}, tramite {payment_method}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
+    '{issuer} dichiara di aver ricevuto da {donor} una donazione di {amount} ({amount_words}) in data {date}, tramite {payment_method}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
   'benefit.receipt.placeholder.donation.company':
-    '{issuer} dichiara di aver ricevuto da {donor} un contributo di {amount} ({amount_words}) in data {date}, tramite {payment_method}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
+    '{issuer} dichiara di aver ricevuto da {donor} una donazione di {amount} ({amount_words}) in data {date}, tramite {payment_method}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
   'benefit.receipt.placeholder.shipping':
-    '{issuer} dichiara di aver ricevuto da {donor} {amount} ({amount_words}) in data {date} a rimborso delle spese di spedizione dell’ordine {order}, addebitate al costo.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
+    '{issuer} dichiara di aver ricevuto da {donor} {amount} ({amount_words}) in data {date} a rimborso delle spese di spedizione della donazione {order}, addebitate al costo.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
   'benefit.receipt.placeholder.refund_note':
     '{issuer} ha restituito {amount} ({amount_words}) a {donor} in data {date}.\n\n[Testo provvisorio: impostare il testo definitivo in Admin › Ricevute.]',
   'benefit.receipt.heading': 'Ricevute',
