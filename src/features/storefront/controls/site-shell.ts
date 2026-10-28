@@ -48,6 +48,9 @@ export interface SiteShellSource {
     prose?: string;
   };
   colors?: Partial<Record<ShellColor, string>>;
+  /** "dark" when `paper` is dark: native controls (select menus, date pickers,
+   *  scrollbars) are then drawn dark too, instead of light with light text. */
+  scheme?: 'light' | 'dark';
   /** Product photos in cards and on the product page: "3/4" + "contain" for
    *  book covers (never cropped), the default "1/1" + "cover" for products. */
   products?: { aspect?: string; fit?: 'cover' | 'contain' };
@@ -147,6 +150,7 @@ function headCss(): string {
   const aspect = shell.products?.aspect;
   if (aspect && /^\d+(\.\d+)?\s*\/\s*\d+(\.\d+)?$/.test(aspect)) vars.push(`--shell-card-aspect:${aspect}`);
   if (shell.products?.fit === 'contain' || shell.products?.fit === 'cover') vars.push(`--shell-card-fit:${shell.products.fit}`);
+  if (shell.scheme === 'dark' || shell.scheme === 'light') vars.push(`color-scheme:${shell.scheme}`);
   const faces = (shell.fonts?.faces ?? '').replace(/<\/?style/gi, '');
   return `${faces}:root{${vars.join(';')}}`;
 }

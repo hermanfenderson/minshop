@@ -30,6 +30,7 @@ Nei campi `footer.about` e `banner.text` la sintassi `[testo](href)` diventa un 
 | `logo` | `{src, alt, width, height, text?, tagline?}`; senza, il logo dell'Admin |
 | `fonts` | `{stylesheet?: URL https, faces?: regole @font-face, body, heading, prose?}` (font-family CSS) |
 | `colors` | `ink muted faint line paper surface brand brandHover onBrand accent header onHeader headerLine navAccent footer onFooter footerMuted badge onBadge bannerLink` |
+| `scheme` | `"dark"` se `paper` è scuro: i controlli nativi del browser (tendine, calendari) diventano scuri anche loro |
 | `products` | cornice delle foto: `{"aspect": "2/3", "fit": "contain"}` per copertine intere; default `1/1` + `cover` |
 | `nav` | voci del menu `{id?, label, href}` o gruppi `{label, children: [...]}` (tendina) (obbligatorio) |
 | `shopNav` | `id` della voce evidenziata dentro lo shop (es. `libri`) |
