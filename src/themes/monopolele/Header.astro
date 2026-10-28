@@ -220,13 +220,15 @@ const others = model.languages?.items.filter((l) => !l.current) ?? [];
   .mono-header :global(.mono-pill.mono-cart) {
     font-size: 0;
     letter-spacing: 0;
-    gap: 4px;
+    /* No gap: the hidden words are a flex item too and would widen the pill. */
+    gap: 0;
     padding: 10px 11px;
   }
   .mono-header :global(.mono-pill.mono-cart)::before {
     content: '';
     width: 17px;
     height: 17px;
+    margin-right: 4px;
     background: currentColor;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='20' r='1.5'/%3E%3Ccircle cx='18' cy='20' r='1.5'/%3E%3Cpath d='M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6'/%3E%3C/svg%3E") center / contain no-repeat;
   }
@@ -266,6 +268,8 @@ const others = model.languages?.items.filter((l) => !l.current) ?? [];
     list-style: none;
     font-size: 26px;
     line-height: 1;
+    /* The site's toggle is a <button>: its default padding sets where the pills sit. */
+    padding: 1px 6px;
   }
   .mono-mobile-nav {
     position: absolute;
@@ -323,9 +327,6 @@ const others = model.languages?.items.filter((l) => !l.current) ?? [];
     }
     .mono-brand img {
       width: 100%;
-    }
-    .mono-header :global(.mono-pill) {
-      padding: 9px 10px;
     }
   }
   @media (max-width: 480px) {
