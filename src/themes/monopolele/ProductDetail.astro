@@ -25,9 +25,26 @@ interface Props {
   i18n?: I18n;
 }
 
-const { model, purchase } = Astro.props;
+const { model } = Astro.props;
 const i18n = storefrontI18n(Astro.props.i18n);
 const { t } = i18n;
+
+// The plain donation (the Gratitude category, Mauro 2026-10-28): no perk to put
+// in a cart, so only «Donate now», which goes straight to the donor's details
+// and payment; no «minimum» in large type, and an invitation to give generously
+// rather than "a little more" than one euro.
+const plainDonation = model.categories.some((c) => /\/categories\/gratitude$/.test(c.href));
+const generous = i18n.locale === 'it'
+  ? 'Scegli tu quanto donare. Sono le donazioni generose come la tua a tenere i concerti di Monopolele gratuiti e aperti a tutti.'
+  : 'You choose the amount. Generous donations like yours keep Monopolele’s concerts free and open to everyone.';
+const purchase: ProductPurchaseModel =
+  plainDonation && Astro.props.purchase.contribution
+    ? {
+        ...Astro.props.purchase,
+        showAddToCart: false,
+        contribution: { ...Astro.props.purchase.contribution, encouragement: generous },
+      }
+    : Astro.props.purchase;
 ---
 
 <a href={model.backHref} class="text-xs uppercase tracking-widest text-faint hover:text-brand">
@@ -87,6 +104,7 @@ const { t } = i18n;
       }
       <p
         class="mt-4 text-2xl tabular-nums text-muted"
+        hidden={plainDonation}
         data-price-display
         data-base={model.priceCents}
         data-currency={model.currency}

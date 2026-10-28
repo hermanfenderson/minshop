@@ -29,7 +29,10 @@ const { model } = Astro.props;
 const i18n = storefrontI18n(Astro.props.i18n);
 const { t } = i18n;
 // The three ways to give open the first page only; later pages are just more perks.
-const firstPage = (Astro.url.searchParams.get('page') ?? '1') === '1';
+const firstPage = model.pagination.page === 1;
+// Gratitude's URL, built from a card's: a template constructs no URLs from the
+// request, and every product lives next to the others under the same prefix.
+const gratitudeHref = model.products[0]?.href.replace(/[^/]+$/, 'gratitude') ?? null;
 ---
 
 <div class="mb-10">
@@ -37,7 +40,7 @@ const firstPage = (Astro.url.searchParams.get('page') ?? '1') === '1';
   <h1 class="mt-2 font-serif text-4xl font-medium tracking-tight sm:text-5xl">{model.heading}</h1>
 </div>
 
-{firstPage && <SupportIntro i18n={i18n} perksAnchor="omaggi" />}
+{firstPage && <SupportIntro i18n={i18n} perksAnchor="omaggi" gratitudeHref={gratitudeHref} />}
 
 <div id="omaggi" class="scroll-mt-6"></div>
 

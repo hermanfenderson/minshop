@@ -15,11 +15,12 @@ interface Props {
   i18n?: I18n;
   /** Where the perks start on the page. */
   perksAnchor: string;
+  /** The Gratitude product page; no button without it. */
+  gratitudeHref: string | null;
 }
 
-const { perksAnchor } = Astro.props;
+const { perksAnchor, gratitudeHref } = Astro.props;
 const { locale } = storefrontI18n(Astro.props.i18n);
-const gratitudeHref = Astro.locals.urls.href('/products/gratitude');
 // Associazione Voltare Pagina ETS, which runs the festival: the code to write
 // in the 5×1000 box of an Italian tax return.
 const TAX_CODE = '15861571006';
@@ -109,12 +110,12 @@ const [five, gift, perk] = copy.ways;
       <p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{gift.kicker}</p>
       <h2 class="mt-2 font-serif text-2xl">{gift.title}</h2>
       <p class="mt-3 text-sm leading-relaxed text-muted">{gift.body}</p>
-      <p class="mt-auto pt-5">
+      {gratitudeHref && <p class="mt-auto pt-5">
         <a
           href={gratitudeHref}
           class="inline-flex items-center rounded-full bg-brand px-6 py-3 text-xs font-bold uppercase tracking-widest text-on-brand hover:bg-brand-hover"
         >{gift.cta}</a>
-      </p>
+      </p>}
     </li>
     <li class="flex flex-col rounded-xl border border-line bg-surface p-6">
       <p class="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{perk.kicker}</p>
