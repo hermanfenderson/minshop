@@ -220,6 +220,16 @@ export async function loadProductDetail(
         currencyDecimals(options.currency),
       ),
       priceCurrency: options.currency.toUpperCase(),
+      // Benefit Mode: the price is the least a supporter may give.
+      ...(benefit
+        ? {
+            priceSpecification: {
+              '@type': 'PriceSpecification',
+              minPrice: toMajorUnits(displayPriceCents, options.currency).toFixed(currencyDecimals(options.currency)),
+              priceCurrency: options.currency.toUpperCase(),
+            },
+          }
+        : {}),
       availability: soldOut ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
     },
   };

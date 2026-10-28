@@ -15,6 +15,8 @@ export const benefit = {
   'benefit.product.buyNow': 'Contribute now',
 
   // Cart
+  'benefit.llms.minimum': 'from {price} (minimum contribution; any higher amount is welcome)',
+
   'benefit.cart.contribution': 'Contribution',
   'benefit.cart.each': '{price} each',
   'benefit.cart.change': 'Change',

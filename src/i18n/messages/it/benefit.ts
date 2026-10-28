@@ -8,6 +8,8 @@ export const benefit = {
   'benefit.product.addToCart': 'Aggiungi il contributo',
   'benefit.product.buyNow': 'Contribuisci ora',
 
+  'benefit.llms.minimum': 'da {price} (contributo minimo; è benvenuto qualsiasi importo superiore)',
+
   'benefit.cart.contribution': 'Contributo',
   'benefit.cart.each': '{price} cad.',
   'benefit.cart.change': 'Cambia',

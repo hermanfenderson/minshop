@@ -4,6 +4,7 @@ import { getProductBySlug } from '../../../features/products/db';
 import { listVariants, listExtras } from '../../../features/products/variants';
 import { categoriesForProduct } from '../../../features/categories/db';
 import { toCatalogProduct } from '../../../features/catalog/serialize';
+import { commerceMode } from '../../../features/settings/db';
 import { catalogJson, catalogPreflight } from '../../../features/catalog/http';
 import { getConfig } from '../../../config';
 import { publicOrigin } from '../../../features/http/origin';
@@ -45,6 +46,7 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
         extras: translatedAll(tr, 'extra', extras),
         imageBaseUrl: getConfig().images.baseUrl,
         absolute: language.absolute,
+        minimumContribution: (await commerceMode(env.DB, locals.settings)) === 'benefit',
       },
     ),
   );

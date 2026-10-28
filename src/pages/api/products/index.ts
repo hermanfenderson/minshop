@@ -4,6 +4,7 @@ import { listProducts, countProducts } from '../../../features/products/db';
 import { categoriesForProducts } from '../../../features/categories/db';
 import { getSearchProvider } from '../../../features/search';
 import { toCatalogProduct } from '../../../features/catalog/serialize';
+import { commerceMode } from '../../../features/settings/db';
 import { catalogJson, catalogPreflight } from '../../../features/catalog/http';
 import { parseCatalogListQuery } from '../../../features/catalog/query';
 import { getConfig } from '../../../config';
@@ -39,6 +40,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
   }
 
   const imageBaseUrl = getConfig().images.baseUrl;
+  const minimumContribution = (await commerceMode(env.DB, locals.settings)) === 'benefit';
   const categories = await categoriesForProducts(
     env.DB,
     page.map((p) => p.id),
@@ -53,7 +55,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
       translated(language.translations, 'product', p),
       translatedAll(language.translations, 'category', categories.get(p.id) ?? []).map((c) => c.name),
       origin,
-      { imageBaseUrl, absolute: language.absolute },
+      { imageBaseUrl, absolute: language.absolute, minimumContribution },
     ),
   );
 

@@ -45,6 +45,9 @@ export interface CatalogProduct {
   name: string;
   description: string | null;
   price: { amount: number; cents: number; currency: string };
+  /** Benefit Mode only: `price` (and each variant's) is the minimum the
+   *  supporter may raise. Absent = a fixed price, so standard responses are unchanged. */
+  price_kind?: 'minimum_contribution';
   in_stock: boolean;
   variant_label: string | null;
   categories: string[];
@@ -76,6 +79,8 @@ export function toCatalogProduct(
     imageBaseUrl?: string;
     /** Absolute URL builder in the response's language; the store default when omitted. */
     absolute?: (path: string) => string;
+    /** Benefit Mode: prices are minimum contributions and add-ons are off. */
+    minimumContribution?: boolean;
   },
 ): CatalogProduct {
   const variants = options?.variants;
@@ -88,6 +93,7 @@ export function toCatalogProduct(
     name: p.name,
     description: p.description,
     price: money(p.price_cents, p.currency),
+    ...(options?.minimumContribution ? { price_kind: 'minimum_contribution' as const } : {}),
     // With variants, availability comes from them (the variant is the SKU).
     in_stock: hasVariants
       ? variants!.some((v) => sellableStock(p, v.stock) > 0)
@@ -107,7 +113,7 @@ export function toCatalogProduct(
       sku: v.sku,
     }));
   }
-  if (extras) {
+  if (extras && !options?.minimumContribution) {
     out.extras = extras.map((e) => ({
       id: requirePublicId(e.public_id, e.id, 'extra'),
       label: e.label,

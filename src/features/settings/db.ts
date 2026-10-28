@@ -177,6 +177,19 @@ export async function getSetting(db: D1Database, key: SettingKey): Promise<strin
   return row?.value ?? null;
 }
 
+/**
+ * The commerce mode, from the request's settings when the middleware loaded
+ * them, else with one read. API routes outside the language-aware set get no
+ * settings, and the catalog JSON still has to say when prices are minimums.
+ */
+export async function commerceMode(
+  db: D1Database,
+  settings: Pick<StoreSettings, 'commerceMode'> | undefined,
+): Promise<StoreSettings['commerceMode']> {
+  if (settings) return settings.commerceMode;
+  return (await getSetting(db, 'commerce_mode')) === 'benefit' ? 'benefit' : 'standard';
+}
+
 /** Upsert a setting (empty/undefined value deletes it → falls back to the default). */
 export async function setSetting(
   db: D1Database,

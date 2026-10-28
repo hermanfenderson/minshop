@@ -10,6 +10,7 @@ import { publicOrigin } from '../http/origin';
 import { loadTranslations, translatedLocalesByRow } from '../translations/db';
 import { translatedAll } from '../translations/content';
 import { LOCALE_REGISTRY, languageSettings } from '../i18n/settings';
+import { benefitRules } from '../benefit/mode';
 
 // Markdown link text can't contain unescaped brackets; product names are free
 // text, so strip brackets and collapse whitespace. Slugs are URL-safe already.
@@ -28,6 +29,7 @@ export const llmsResponse = async ({ url, locals }: Pick<APIContext, 'url' | 'lo
   // Absolute public URL for a logical path: the canonical origin + mount.
   const abs = (path: string) => `${origin}${locals.urls.href(path)}`;
   const { currency } = getConfig();
+  const minimum = Boolean(benefitRules(locals.settings, currency));
   const storeName = locals.settings?.storeName ?? getConfig().storeName;
   const { t, intl } = locals.i18n;
 
@@ -78,7 +80,10 @@ export const llmsResponse = async ({ url, locals }: Pick<APIContext, 'url' | 'lo
     // This whole-catalog response carries coarse tags, so checkout-frequency
     // product-tag purges cannot keep stock honest here. Omit availability; the
     // catalog API and checkout resolve it through product-scoped/live reads.
-    return `- [${linkText(p.name)}](${link(`/products/${p.slug}`, productCover, p.id)}): ${formatPrice(p.price_cents, currency, intl)}${desc ? ` — ${desc}` : ''}`;
+    const price = formatPrice(p.price_cents, currency, intl);
+    // Benefit Mode: an agent must not read a minimum as the price.
+    const shown = minimum ? t('benefit.llms.minimum', { price }) : price;
+    return `- [${linkText(p.name)}](${link(`/products/${p.slug}`, productCover, p.id)}): ${shown}${desc ? ` — ${desc}` : ''}`;
   });
 
   const categoryLines = categories.map(

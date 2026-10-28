@@ -266,7 +266,9 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
         description:
           'Start a purchase. Returns checkout_url, order_status_url, and — on the ' +
           'lightning rail — a payable BOLT11 invoice an agent can settle with no human. ' +
-          'Poll order_status_url until it reports paid.',
+          'Poll order_status_url until it reports paid. When products report ' +
+          'price_kind "minimum_contribution", the store takes contributions: each item may ' +
+          'carry amount_cents (at least its price), and donor details are required for the receipt.',
         inputSchema: {
           items: z
             .array(
@@ -275,12 +277,36 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
                 slug: z.string().optional(),
                 variant_id: z.string().optional().describe('var_… public ID'),
                 quantity: z.number().int().min(1).default(1),
+                amount_cents: z
+                  .number()
+                  .int()
+                  .positive()
+                  .optional()
+                  .describe('Contribution per unit, in minor units; contribution stores only'),
               }),
             )
             .min(1),
           method: z.string().optional().describe('One of payment_methods; omit for the default'),
           discount_code: z.string().optional(),
           ship_to: z.record(z.string(), z.string()).optional().describe('Required for physical goods'),
+          donor: z
+            .object({
+              company: z.boolean().optional(),
+              first_name: z.string().optional(),
+              last_name: z.string().optional(),
+              company_name: z.string().optional(),
+              tax_code: z.string().optional().describe('Codice fiscale; required for Italian residents'),
+              vat: z.string().optional().describe('VAT number; required for companies'),
+              address: z.string(),
+              postal: z.string(),
+              city: z.string(),
+              region: z.string().optional(),
+              country: z.string().describe('ISO 3166-1 alpha-2'),
+              listed: z.boolean().optional().describe('Consent to appear in the public supporter list'),
+              display_name: z.string().optional(),
+            })
+            .optional()
+            .describe('Who the contribution receipt is made out to; contribution stores only'),
         },
       },
       async (args) =>

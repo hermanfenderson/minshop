@@ -92,4 +92,15 @@ describe('toCatalogProduct', () => {
       { id: 'xtra_q3vr8jm2np', label: 'Gift wrap', price_delta: { amount: 5, cents: 500, currency: 'USD' } },
     ]);
   });
+
+  it('marks Benefit Mode prices as minimums and leaves add-ons out', () => {
+    const extras = [
+      { id: 9, public_id: 'xtra_q3vr8jm2np', product_id: 4, label: 'Gift wrap', price_delta_cents: 500, position: 0, active: 1 },
+    ];
+    const c = toCatalogProduct(base, [], ORIGIN, { extras, minimumContribution: true });
+    expect(c.price_kind).toBe('minimum_contribution');
+    expect(c.price.cents).toBe(2400);
+    expect(c.extras).toBeUndefined();
+    expect(toCatalogProduct(base, [], ORIGIN)).not.toHaveProperty('price_kind');
+  });
 });
