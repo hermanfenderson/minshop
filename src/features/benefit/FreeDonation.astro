@@ -72,7 +72,7 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
         <button
           type="submit"
           class="whitespace-nowrap rounded-full px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-lg transition hover:scale-[1.03] hover:shadow-xl"
-          style="background: linear-gradient(90deg, #f7b500, #f76b1c, #e63946, #b5179e, #5e60ce, #00b4d8, #2ec4b6); text-shadow: 0 1px 2px rgba(0,0,0,.35);"
+          data-rainbow
         >
           {t('benefit.cart.free.add')} ✨
         </button>
@@ -80,3 +80,20 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
     </div>
   </form>
 </dialog>
+
+<style is:inline>
+  /* «Add» in every colour, flowing like an old gif; still for reduced motion. */
+  [data-rainbow] {
+    background: linear-gradient(90deg, #f7b500, #f76b1c, #e63946, #b5179e, #5e60ce, #00b4d8, #2ec4b6, #f7b500);
+    background-size: 300% 100%;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    animation: rainbow-flow 4s linear infinite;
+  }
+  @keyframes rainbow-flow {
+    from { background-position: 0% 50%; }
+    to { background-position: 150% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-rainbow] { animation: none; }
+  }
+</style>
