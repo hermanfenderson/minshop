@@ -93,8 +93,8 @@ non rimette in magazzino).
 - **Promemoria per l'apertura** (Mauro, 2026-10-29): quando lo shop è in produzione gli ordini
   Printful partono in automatico. Admin → Settings → Fulfillment → «New orders»: da «Draft» a
   conferma automatica (`printful_confirm_orders`), con un metodo di pagamento memorizzato su Printful.
-- Gratitude ha `track_inventory` acceso con 100 pezzi, come nel test: dopo 100 donazioni risulta
-  esaurito. Da decidere se spegnere l'inventario per quel prodotto.
+- Gratitude: inventario spento il 2026-10-29 (Mauro), in produzione e nel test (`track_inventory = 0`):
+  sempre disponibile, mai scalato.
 - `store_url` punta a `https://prod.monopolele.com` (sottodominio di verifica creato da Mauro il
   2026-10-29): da cambiare in Admin → Settings → General quando monopolele.com passa al Worker.
 - Indicizzazione: un solo indirizzo, `monopolele.com`. Lo shop dichiara canonical lì
