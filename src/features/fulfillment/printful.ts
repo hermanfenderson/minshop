@@ -1,9 +1,12 @@
 import { toMajorUnits, toMinorUnits } from '../../money.ts';
 import type {
+  FulfillmentEvent,
   FulfillmentOrderInput,
   FulfillmentProvider,
+  FulfillmentShipment,
   RateOutcome,
   RateQuoteInput,
+  ReadOutcome,
   SubmitOutcome,
 } from './provider';
 
@@ -79,6 +82,53 @@ export function pickStandardRate(result: unknown, currency: string): number | nu
     .filter((r) => Number.isFinite(r.cents) && r.cents >= 0);
   if (rates.length === 0) return null;
   return (rates.find((r) => r.id === 'STANDARD') ?? rates.sort((a, b) => a.cents - b.cents)[0]).cents;
+}
+
+/** What Printful notifies: packages leaving or coming back, and the order's own changes. */
+export const PRINTFUL_WEBHOOK_TYPES = [
+  'package_shipped',
+  'package_returned',
+  'order_updated',
+  'order_failed',
+  'order_canceled',
+  'order_put_hold',
+  'order_remove_hold',
+] as const;
+
+const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
+
+/**
+ * The packages of a Printful order (GET /orders/{id} → result.shipments) that
+ * actually left: canceled ones and those not yet handed to a carrier are skipped.
+ */
+export function printfulShipments(result: unknown): FulfillmentShipment[] {
+  const list = (result as { shipments?: unknown } | null)?.shipments;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((raw) => {
+    const s = raw as Record<string, unknown>;
+    if (s?.id == null || s.status === 'canceled') return [];
+    const trackingNumber = text(s.tracking_number);
+    if (s.status !== 'shipped' && !trackingNumber) return [];
+    const seconds = typeof s.shipped_at === 'number' && s.shipped_at > 0 ? s.shipped_at : null;
+    return [
+      {
+        id: String(s.id),
+        carrier: text(s.carrier),
+        service: text(s.service),
+        trackingNumber,
+        trackingUrl: /^https:\/\//.test(String(s.tracking_url ?? '')) ? String(s.tracking_url) : null,
+        shippedAt: seconds ? new Date(seconds * 1000).toISOString() : text(s.ship_date),
+      },
+    ];
+  });
+}
+
+/** Type and order id of a Printful webhook body ({ type, data: { order, shipment } }). */
+export function parsePrintfulEvent(body: unknown): FulfillmentEvent | null {
+  const b = body as { type?: unknown; data?: { order?: { id?: unknown } } } | null;
+  if (!b || typeof b.type !== 'string') return null;
+  const id = b.data?.order?.id;
+  return { type: b.type, providerOrderId: typeof id === 'number' || (typeof id === 'string' && id) ? String(id) : null };
 }
 
 type Fetch = typeof fetch;
@@ -158,6 +208,38 @@ export class PrintfulProvider implements FulfillmentProvider {
       // makes the next attempt safe either way.
       return { ok: false, retryable: true, error: `Printful unreachable: ${err instanceof Error ? err.message : String(err)}` };
     }
+  }
+
+  async getOrder(providerOrderId: string): Promise<ReadOutcome> {
+    try {
+      const { status, body } = await this.call(`/orders/${encodeURIComponent(providerOrderId)}`);
+      if (status === 200 && body?.result && typeof body.result === 'object') {
+        return {
+          ok: true,
+          order: { status: body.result.status ?? 'unknown', shipments: printfulShipments(body.result) },
+        };
+      }
+      return { ok: false, retryable: retryableStatus(status), error: errorText(status, body) };
+    } catch (err) {
+      return { ok: false, retryable: true, error: `Printful unreachable: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+
+  /** One URL per store on Printful's side: this replaces whatever was there. */
+  async registerWebhook(url: string): Promise<{ ok: true } | { ok: false; error: string }> {
+    try {
+      const { status, body } = await this.call('/webhooks', {
+        method: 'POST',
+        body: JSON.stringify({ url, types: PRINTFUL_WEBHOOK_TYPES }),
+      });
+      return status === 200 ? { ok: true } : { ok: false, error: errorText(status, body) };
+    } catch (err) {
+      return { ok: false, error: `Printful unreachable: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+
+  parseEvent(body: unknown): FulfillmentEvent | null {
+    return parsePrintfulEvent(body);
   }
 
   dashboardUrl(): string {

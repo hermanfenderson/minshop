@@ -44,6 +44,7 @@ export type SettingKey =
   | 'ship_from' // JSON ShipFrom — the store's return address for label purchase (read at label time, not in locals)
   | 'printful_shipping_surcharge_pct' // % added to Printful's shipping rate (its rates are before tax); absent = 22
   | 'printful_confirm_orders' // '1' = Printful orders go straight to production; absent = drafts a person confirms
+  | 'printful_webhook_host' // host Printful's shipping webhook was last registered at (Admin); absent = never
   | 'parcel_default' // JSON {length,width,height} — remembered box dimensions for label purchase
   | 'admin_password_hash' // PBKDF2 hash of the admin password (set at setup). NOT in StoreSettings — read only by the auth layer, never loaded into locals.
   // Integrations configured in the admin dashboard (non-secret halves; the keys

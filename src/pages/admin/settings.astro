@@ -57,6 +57,7 @@ import { WEIGHT_UNITS, isWeightUnit } from '../../features/shipping/weight';
 import { shippingFor } from '../../features/shipping/effective';
 import SecretField from '../../components/SecretField.astro';
 import { DEFAULT_SHIPPING_SURCHARGE_PCT, parseSurchargePct } from '../../features/fulfillment/shippingQuote';
+import { fulfillmentWebhookKey, getFulfillmentProvider } from '../../features/fulfillment';
 import MethodToggle from '../../components/MethodToggle.astro';
 import { onDemandImageDeliveryAvailable } from '../../features/products/image';
 import { catalogIsOrphaned } from '../../features/navigation/db';
@@ -320,6 +321,19 @@ if (Astro.request.method === 'POST') {
     // Stored only when it differs from the default, so a later default change reaches it.
     const pct = parseSurchargePct(String(form.get('printful_shipping_surcharge_pct') ?? ''));
     await setSetting(env.DB, 'printful_shipping_surcharge_pct', pct === DEFAULT_SHIPPING_SURCHARGE_PCT ? '' : String(pct));
+  } else if (action === 'printful_webhook') {
+    // Printful keeps one webhook URL per store: registering again just replaces it
+    // (after a domain change, say). Its calls only make the shop read orders back.
+    const provider = await getFulfillmentProvider(env.DB);
+    if (!provider) validationError = 'Save a Printful token first.';
+    else if (!env.AUTH_SECRET) validationError = 'This shop has no AUTH_SECRET, which the webhook address is derived from.';
+    else {
+      const hook = new URL(withMount('/api/webhook/printful'), Astro.url.origin);
+      hook.searchParams.set('k', await fulfillmentWebhookKey(env.AUTH_SECRET));
+      const registered = await provider.registerWebhook(hook.href);
+      if (registered.ok) await setSetting(env.DB, 'printful_webhook_host', hook.host);
+      else validationError = `Printful did not accept the webhook: ${registered.error}`;
+    }
   } else if (action === 'save_languages') {
     const current = languageSettings(Astro.locals.settings);
     const next: I18nSettings = {
@@ -534,6 +548,7 @@ const payments = {
 const vault = capabilities.vault;
 const inD1 = (name: string) => settings.configuredSecrets.includes(name);
 const printfulConfirms = (await getSetting(env.DB, 'printful_confirm_orders')) === '1';
+const printfulWebhookHost = await getSetting(env.DB, 'printful_webhook_host');
 const printfulSurchargePct = parseSurchargePct(await getSetting(env.DB, 'printful_shipping_surcharge_pct'));
 // Per-method toggle/installed state, keyed by method for the cards below.
 const pmMap = Object.fromEntries(pmRows.map((r) => [r.m, r])) as Record<
@@ -928,6 +943,20 @@ const sections = [
           </button>
         )}
       </form>
+      {inD1('printful_api_token') && (
+        <form method="POST" class="mt-4 border-t border-gray-100 pt-3">
+          <input type="hidden" name="_action" value="printful_webhook" />
+          <p class="text-xs text-gray-500">
+            Shipping updates:{' '}
+            {printfulWebhookHost ? <>Printful notifies <span class="font-mono">{printfulWebhookHost}</span></> : 'not connected'}.
+            When a package ships, the order is marked shipped with its tracking and the customer gets the
+            shipped email. Connect again after changing the shop's address.
+          </p>
+          <button type="submit" class="mt-2 rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 hover:border-brand hover:text-brand">
+            {printfulWebhookHost ? 'Connect again' : 'Connect shipping updates'}
+          </button>
+        </form>
+      )}
     </div>
 
     <ul class="mb-10 divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">

@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { PrintfulProvider, pickStandardRate, printfulExternalId, printfulOrderPayload, printfulRatePayload } from './printful';
+import {
+  PRINTFUL_WEBHOOK_TYPES,
+  PrintfulProvider,
+  parsePrintfulEvent,
+  pickStandardRate,
+  printfulExternalId,
+  printfulOrderPayload,
+  printfulRatePayload,
+  printfulShipments,
+} from './printful';
+import { fulfillmentWebhookKey } from './webhookKey';
 import type { FulfillmentOrderInput } from './provider';
 
 const input: FulfillmentOrderInput = {
@@ -122,5 +132,90 @@ describe('shipping quotes', () => {
     expect(
       await new PrintfulProvider('t', down.impl).quoteShipping({ countryCode: 'IT', currency: 'EUR', lines: [] }),
     ).toMatchObject({ ok: false });
+  });
+});
+
+// Shapes as Printful returns them (a real fulfilled order read on 2026-10-29, numbers changed).
+const shippedOrder = {
+  id: 162845412,
+  status: 'fulfilled',
+  shipments: [
+    { id: 80307798, status: 'shipped', carrier: 'EVRI', service: 'Evri Shop to Home Standard', tracking_number: 'H06FXA0000000001', tracking_url: 'https://myorders.co/tracking/80307798/H06FXA0000000001', ship_date: '2026-06-17', shipped_at: 1781695963 },
+    { id: 80307799, status: 'canceled', carrier: 'EVRI', service: null, tracking_number: 'X', tracking_url: null, ship_date: null, shipped_at: 0 },
+    { id: 80307800, status: 'pending', carrier: null, service: null, tracking_number: '', tracking_url: '', ship_date: null, shipped_at: 0 },
+  ],
+};
+
+describe('printfulShipments', () => {
+  it('keeps the packages that left, with their own tracking page', () => {
+    expect(printfulShipments(shippedOrder)).toEqual([
+      {
+        id: '80307798',
+        carrier: 'EVRI',
+        service: 'Evri Shop to Home Standard',
+        trackingNumber: 'H06FXA0000000001',
+        trackingUrl: 'https://myorders.co/tracking/80307798/H06FXA0000000001',
+        shippedAt: new Date(1781695963 * 1000).toISOString(),
+      },
+    ]);
+  });
+
+  it('copes with no shipments and refuses non-https tracking links', () => {
+    expect(printfulShipments({ status: 'draft' })).toEqual([]);
+    expect(printfulShipments(null)).toEqual([]);
+    const [s] = printfulShipments({ shipments: [{ id: 1, status: 'shipped', tracking_number: 'N', tracking_url: 'javascript:alert(1)', ship_date: '2026-06-01' }] });
+    expect(s.trackingUrl).toBeNull();
+    expect(s.shippedAt).toBe('2026-06-01');
+  });
+});
+
+describe('parsePrintfulEvent', () => {
+  it('reads the type and the order id, nothing else', () => {
+    expect(parsePrintfulEvent({ type: 'package_shipped', data: { order: { id: 162845412 }, shipment: { id: 1 } } })).toEqual({
+      type: 'package_shipped',
+      providerOrderId: '162845412',
+    });
+    expect(parsePrintfulEvent({ type: 'product_synced', data: { sync_product: { id: 1 } } })).toEqual({ type: 'product_synced', providerOrderId: null });
+    expect(parsePrintfulEvent('nope')).toBeNull();
+  });
+});
+
+describe('PrintfulProvider read-back and webhook', () => {
+  it('reads the order and its shipments', async () => {
+    const calls: string[] = [];
+    const provider = new PrintfulProvider('t', async (url) => {
+      calls.push(String(url));
+      return new Response(JSON.stringify({ code: 200, result: shippedOrder }), { status: 200 });
+    });
+    const read = await provider.getOrder('162845412');
+    expect(calls).toEqual(['https://api.printful.com/orders/162845412']);
+    expect(read.ok && read.order.status).toBe('fulfilled');
+    expect(read.ok && read.order.shipments.map((s) => s.id)).toEqual(['80307798']);
+  });
+
+  it('marks Printful being busy as retryable', async () => {
+    const provider = new PrintfulProvider('t', async () => new Response('{}', { status: 503 }));
+    expect(await provider.getOrder('1')).toMatchObject({ ok: false, retryable: true });
+  });
+
+  it('registers one URL with the shipping and order events', async () => {
+    let sent: { url: string; types: string[] } | null = null;
+    const provider = new PrintfulProvider('t', async (_url, init) => {
+      sent = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ code: 200, result: {} }), { status: 200 });
+    });
+    expect(await provider.registerWebhook('https://shop.example/api/webhook/printful?k=abc')).toEqual({ ok: true });
+    expect(sent!.url).toBe('https://shop.example/api/webhook/printful?k=abc');
+    expect(sent!.types).toContain('package_shipped');
+    expect(sent!.types).toEqual([...PRINTFUL_WEBHOOK_TYPES]);
+  });
+});
+
+describe('fulfillmentWebhookKey', () => {
+  it('is stable per secret and differs between secrets', async () => {
+    const a = await fulfillmentWebhookKey('secret-a');
+    expect(a).toMatch(/^[0-9a-f]{32}$/);
+    expect(await fulfillmentWebhookKey('secret-a')).toBe(a);
+    expect(await fulfillmentWebhookKey('secret-b')).not.toBe(a);
   });
 });

@@ -25,7 +25,7 @@ import { shouldSendCustomerOrderEmail } from '../../../features/email/orderPolic
 import RefundPanel from '../../../features/refunds/RefundPanel.astro';
 import { formatWeight } from '../../../features/shipping/weight';
 import { parseOrderOrLegacyPublicId } from '../../../features/ids/publicId';
-import { getFulfillment } from '../../../features/fulfillment/store';
+import { getFulfillment, listShipments } from '../../../features/fulfillment/store';
 import { PRINTFUL_DASHBOARD_URL } from '../../../features/fulfillment/printful';
 
 // The route param is the order public ID — ord_ or a preserved legacy shape
@@ -59,6 +59,7 @@ const weightUnit = Astro.locals.settings?.weightUnit ?? 'g';
 // Read-only status of the hand-off that settlement started; only orders with
 // lines linked to Printful have a row. Retry is offered when it stopped.
 const handoff = await getFulfillment(env.DB, order.id);
+const shipments = handoff ? await listShipments(env.DB, order.id) : [];
 const HANDOFF_LABEL: Record<string, string> = {
   pending: 'Waiting to be sent (retried automatically)',
   processing: 'Sending…',
@@ -122,7 +123,7 @@ const dimUnit = distanceUnitFor(weightUnit);
 const parcelWeightValue =
   order.shipping_weight_grams != null ? formatWeightValue(order.shipping_weight_grams, weightUnit) : '';
 
-const trackUrl = trackingUrl(order.tracking_carrier, order.tracking_number);
+const trackUrl = order.tracking_url ?? trackingUrl(order.tracking_carrier, order.tracking_number);
 const error = Astro.url.searchParams.get('error');
 const noticeMsg = Astro.url.searchParams.get('notice');
 // Reissue is offered only where it can work: a settled ord_ order with an
@@ -304,6 +305,26 @@ const willEmailCustomer =
             </>
           )}
         </p>
+        {shipments.length > 0 && (
+          <ul class="mt-2 space-y-1 text-sm">
+            {shipments.map((s) => (
+              <li>
+                Package {s.shipped_at && <>shipped {s.shipped_at.slice(0, 10)}</>}
+                {s.carrier && <> · {s.carrier}</>}
+                {s.tracking_number && (
+                  <>
+                    {' '}·{' '}
+                    {s.tracking_url ? (
+                      <a href={s.tracking_url} target="_blank" rel="noopener" class="tabular-nums text-accent hover:underline">{s.tracking_number}</a>
+                    ) : (
+                      <span class="tabular-nums">{s.tracking_number}</span>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
         {handoff.provider_status === 'draft' && (
           <p class="mt-1 text-xs text-gray-500">A draft: nothing is made or charged until it is confirmed in Printful.</p>
         )}

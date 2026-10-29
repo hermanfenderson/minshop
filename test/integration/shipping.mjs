@@ -68,7 +68,7 @@ const SCHEMA = `
                        public_id TEXT UNIQUE, email TEXT,
                        status TEXT NOT NULL DEFAULT 'paid',
                        fulfillment_status TEXT NOT NULL DEFAULT 'unfulfilled',
-                       tracking_carrier TEXT, tracking_number TEXT,
+                       tracking_carrier TEXT, tracking_number TEXT, tracking_url TEXT,
                        fulfilled_at TEXT, label_url TEXT, delivery_method TEXT);
   CREATE TABLE shipping_labels (order_id INTEGER PRIMARY KEY,
                                 status TEXT NOT NULL, shipment_id TEXT NOT NULL,
