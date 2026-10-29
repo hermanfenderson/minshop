@@ -28,7 +28,7 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
 <dialog
   id={id}
   data-free-donation-modal
-  class="m-auto max-h-[92vh] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-paper p-0 text-current shadow-2xl backdrop:bg-black/60"
+  class="m-auto max-h-[92vh] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-paper p-0 text-current shadow-2xl backdrop:bg-black/60"
   aria-labelledby={`${id}-title`}
 >
   <form method="POST" action={Astro.locals.urls.href('/api/cart')} data-free-donation-form>
@@ -55,12 +55,12 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
       </label>
       {/* «Add» in every colour, «No, thanks» grey and a little sad (Mauro, 2026-10-30). */}
       <div class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button type="button" data-free-donation-skip class="rounded-full bg-gray-500/70 px-6 py-3 text-base text-gray-200 transition hover:bg-gray-500">
+        <button type="button" data-free-donation-skip class="whitespace-nowrap rounded-full bg-gray-500/70 px-5 py-3 text-base text-gray-200 transition hover:bg-gray-500">
           {t('benefit.cart.free.skip')} 🙁
         </button>
         <button
           type="submit"
-          class="rounded-full px-7 py-3 text-base font-semibold uppercase tracking-wider text-white shadow-lg transition hover:scale-[1.03] hover:shadow-xl"
+          class="whitespace-nowrap rounded-full px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-lg transition hover:scale-[1.03] hover:shadow-xl"
           style="background: linear-gradient(90deg, #f7b500, #f76b1c, #e63946, #b5179e, #5e60ce, #00b4d8, #2ec4b6); text-shadow: 0 1px 2px rgba(0,0,0,.35);"
         >
           {t('benefit.cart.free.add')} ✨
