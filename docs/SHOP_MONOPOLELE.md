@@ -90,9 +90,11 @@ non rimette in magazzino).
 
 ## Note aperte
 
-- **Promemoria per l'apertura** (Mauro, 2026-10-29): quando lo shop è in produzione gli ordini
-  Printful partono in automatico. Admin → Settings → Fulfillment → «New orders»: da «Draft» a
-  conferma automatica (`printful_confirm_orders`), con un metodo di pagamento memorizzato su Printful.
+- **Ordini Printful confermati in automatico** dal 2026-10-29 (Mauro): `printful_confirm_orders = 1`.
+  Serve un metodo di pagamento memorizzato su Printful; tornare alle bozze da Admin → Settings → Fulfillment.
+- Tracciamento spedizioni: lo shop **non** riceve ancora i webhook Printful di spedizione (ramo
+  `wip/printful-shipped-tracking`, ROADMAP 7); il cliente riceve il tracking dalle email di Printful,
+  se attive nello store.
 - Gratitude: inventario spento il 2026-10-29 (Mauro), in produzione e nel test (`track_inventory = 0`):
   sempre disponibile, mai scalato.
 - `store_url` punta a `https://prod.monopolele.com` (sottodominio di verifica creato da Mauro il
@@ -113,3 +115,4 @@ non rimette in magazzino).
 |---|---|---|---|
 | 2026-10-29 | `7478d378-b56f-45de-b7a2-a9343c49843a` | `c47ba06` | Primo deploy, segreti nella versione, D1 già popolato. Verificati: setup e admin → login, API admin 401, nessun `noindex`, carrello EN/IT senza pagamento dal sito di produzione. |
 | 2026-10-29 | `f2d4d615-f7bf-469e-8cc6-034f35a08f88` | `c47ba06` | «Doppio salto» (Mauro): `CANONICAL_ORIGIN=https://monopolele.com` (canonical, sitemap, robots, `llms.txt`); `store_url` = `https://prod.monopolele.com`. Shop di test non ripubblicato (nessuna modifica). |
+| 2026-10-29 | `a1c58ce3-c67b-4b39-9632-21134863aa61` | `c21b7b4` | «Doppio salto» (Mauro): favicon ufficiale dalla shell del sito, metodo di pagamento in ricevuta «carta, PayPal o addebito SEPA». Testi delle ricevute (`docs/monopolele/receipt-texts.json`) scritti nel D1 di produzione e di test. Test: `20511bac-6eac-4154-a71e-be308c0dd96a`. |
