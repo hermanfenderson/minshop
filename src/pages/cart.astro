@@ -16,7 +16,8 @@ import { contributionError } from '../features/benefit/messages';
 import { readDonorDraft } from '../features/benefit/donorDraft';
 import DonorFields from '../features/benefit/DonorFields.astro';
 import FreeDonation from '../features/benefit/FreeDonation.astro';
-import { findFreeDonationProduct } from '../features/benefit/freeDonation';
+import { findFreeDonationProduct, freeDonationLast } from '../features/benefit/freeDonation';
+import { translatedPurchase } from '../features/translations/db';
 
 // Cart switched off in Settings → browse-only catalog, no cart page.
 if (!(Astro.locals.settings?.cartEnabled ?? true)) return Astro.redirect(Astro.locals.urls.home(), 302);
@@ -51,11 +52,16 @@ const METHOD: Record<string, { label: string; hint: string; setupHint: string }>
 const cart = readCart(Astro.cookies);
 const currency = getConfig().currency;
 const benefit = benefitRules(settings, currency);
-const { lines, subtotalCents } = await resolveCart(env.DB, cart, Astro.locals.contentLocale, benefit);
-// Offered until it is in the cart; then its own line carries the amount.
+const { lines: cartLines, subtotalCents } = await resolveCart(env.DB, cart, Astro.locals.contentLocale, benefit);
+// The free donation (Gratitude) closes the list, with its amount field; while it
+// is missing, an invitation takes its place; alone, it invites to choose a perk.
 const freeDonationProduct = benefit ? await findFreeDonationProduct(env.DB) : null;
-const freeDonation =
-  freeDonationProduct && !lines.some((l) => l.product.public_id === freeDonationProduct.public_id) ? freeDonationProduct : null;
+const { lines, freeLine } = freeDonationLast(cartLines, freeDonationProduct);
+const freeDonation = freeLine ? null : freeDonationProduct;
+const freeName = freeDonation
+  ? (await translatedPurchase(env.DB, Astro.locals.contentLocale, freeDonation, null, [])).product.name
+  : '';
+const onlyFreeDonation = !!freeLine && lines.length === 1;
 // Benefit Mode: a line whose amount no longer passes (the minimum rose since it
 // was added) says why here; checkout refuses it until it is changed.
 const lineProblem = (l: (typeof lines)[number]) =>
@@ -231,8 +237,14 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
           <div class="w-full sm:max-w-sm">
             {benefit && freeDonation && (
               <div class="mb-6 -mt-4">
-                <FreeDonation product={freeDonation} currency={currency} capCents={benefit.capCents} />
+                <FreeDonation product={freeDonation} name={freeName} currency={currency} capCents={benefit.capCents} />
               </div>
+            )}
+            {onlyFreeDonation && (
+              <p class="-mt-4 mb-6 text-sm text-muted">
+                {t('benefit.cart.perks.invite')}{' '}
+                <a href={shopHref} class="border-b border-brand text-brand">{t('benefit.cart.perks.link')}</a>
+              </p>
             )}
             <div class="flex items-center justify-between">
               <span class="text-xs uppercase tracking-widest text-muted">

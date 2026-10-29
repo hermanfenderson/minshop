@@ -3,7 +3,10 @@ import { env } from 'cloudflare:workers';
 import { formatPrice, getConfig } from '../../config';
 import { benefitRules, isSingleUnitContribution } from '../../features/benefit/mode';
 import FreeDonation from '../../features/benefit/FreeDonation.astro';
-import { findFreeDonationProduct } from '../../features/benefit/freeDonation';
+import { findFreeDonationProduct, freeDonationLast } from '../../features/benefit/freeDonation';
+import { amountInputStep, amountInputValue } from '../../features/benefit/amount';
+import { translatedPurchase } from '../../features/translations/db';
+import { catalogPath } from '../../features/settings/home';
 import { readCart, resolveCart, cartCount } from '../../features/cart/cart';
 import ProductImage from '../../features/products/ProductImage.astro';
 import { getSetting } from '../../features/settings/db';
@@ -17,14 +20,19 @@ export const prerender = false;
 const cart = readCart(Astro.cookies);
 const currency = getConfig().currency;
 const benefit = benefitRules(Astro.locals.settings, currency);
-const [{ lines, subtotalCents }, imageDeliverySetting, freeDonationProduct] = await Promise.all([
+const [{ lines: cartLines, subtotalCents }, imageDeliverySetting, freeDonationProduct] = await Promise.all([
   resolveCart(env.DB, cart, Astro.locals.contentLocale, benefit),
   getSetting(env.DB, 'image_delivery'),
   benefit ? findFreeDonationProduct(env.DB) : Promise.resolve(null),
 ]);
-// Always offered here (the drawer's lines have no amount field): once added,
-// it shows the amount and changes it — the cart keeps one such line.
-const freeDonationLine = freeDonationProduct ? lines.find((l) => l.product.public_id === freeDonationProduct.public_id) : undefined;
+// The free donation (Gratitude) closes the list, with its amount; while it is
+// missing, an invitation takes its place; alone, it invites to choose a perk.
+const { lines, freeLine } = freeDonationLast(cartLines, freeDonationProduct);
+const freeName = freeDonationProduct
+  ? (await translatedPurchase(env.DB, Astro.locals.contentLocale, freeDonationProduct, null, [])).product.name
+  : '';
+const onlyFreeDonation = !!freeLine && lines.length === 1;
+const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 const imageDelivery = imageDeliverySetting === 'cloudflare' ? 'cloudflare' : 'original';
 const count = cartCount(cart);
 const { t } = Astro.locals.i18n;
@@ -64,7 +72,28 @@ const { t } = Astro.locals.i18n;
                 <span class="mt-1 text-xs tabular-nums text-muted">
                   {formatPrice(l.unitPriceCents, undefined, Astro.locals.i18n.intl)}
                 </span>
-                <div class="mt-auto flex items-center gap-4 pt-2">
+                <div class="mt-auto flex flex-wrap items-center gap-4 pt-2">
+                  {benefit && l === freeLine && (
+                    <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center gap-2">
+                      <input type="hidden" name="_action" value="amount" />
+                      <input type="hidden" name="key" value={l.key} />
+                      <input
+                        type="number"
+                        name="amount"
+                        inputmode="decimal"
+                        required
+                        min={amountInputValue(l.minimumCents, currency)}
+                        max={amountInputValue(benefit.capCents, currency)}
+                        step={amountInputStep(currency)}
+                        value={amountInputValue(l.unitPriceCents, currency)}
+                        aria-label={t('benefit.cart.contribution')}
+                        class="w-20 border-b border-line bg-transparent py-0.5 text-right text-sm tabular-nums focus:border-brand focus:outline-none"
+                      />
+                      <button type="submit" class="text-xs uppercase tracking-widest text-faint hover:text-brand">
+                        {t('benefit.cart.change')}
+                      </button>
+                    </form>
+                  )}
                   {/* A single-unit donation has no quantity, as on the cart page. */}
                   {!(benefit && isSingleUnitContribution(l.product)) && (
                   <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center gap-2">
@@ -104,14 +133,14 @@ const { t } = Astro.locals.i18n;
           ))}
         </ul>
 
-        {benefit && freeDonationProduct && (
-          <FreeDonation
-            product={freeDonationProduct}
-            currency={currency}
-            capCents={benefit.capCents}
-            currentCents={freeDonationLine?.unitPriceCents ?? null}
-            compact
-          />
+        {benefit && freeDonationProduct && !freeLine && (
+          <FreeDonation product={freeDonationProduct} name={freeName} currency={currency} capCents={benefit.capCents} compact />
+        )}
+        {onlyFreeDonation && (
+          <p class="mt-4 text-sm text-muted">
+            {t('benefit.cart.perks.invite')}{' '}
+            <a href={shopHref} class="border-b border-brand text-brand">{t('benefit.cart.perks.link')}</a>
+          </p>
         )}
 
         <div class="mt-6 border-t border-line pt-4">

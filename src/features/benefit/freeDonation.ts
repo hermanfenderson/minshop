@@ -20,3 +20,16 @@ export async function findFreeDonationProduct(db: D1Database): Promise<Product |
     )
     .first<Product>();
 }
+
+/**
+ * The cart's lines with the free donation, if present, moved to the end — it
+ * closes the list whatever order things were added in — and that line itself.
+ */
+export function freeDonationLast<L extends { product: { public_id: string | null } }>(
+  lines: L[],
+  freeDonation: { public_id: string | null } | null,
+): { lines: L[]; freeLine: L | null } {
+  const isFree = (l: L) => !!freeDonation?.public_id && l.product.public_id === freeDonation.public_id;
+  const freeLine = lines.find(isFree) ?? null;
+  return { lines: freeLine ? [...lines.filter((l) => !isFree(l)), freeLine] : lines, freeLine };
+}

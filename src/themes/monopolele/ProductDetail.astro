@@ -29,31 +29,30 @@ const { model } = Astro.props;
 const i18n = storefrontI18n(Astro.props.i18n);
 const { t } = i18n;
 
-// The plain donation (the Gratitude category, Mauro 2026-10-28): «Donate now»
-// leads, straight to the donor's details and payment; the cart button stays,
-// second and named for whoever gives it together with perks. No «minimum» in
-// large type, and an invitation to give generously rather than "a little more"
-// than one euro.
+// The plain donation (the Gratitude category, Mauro 2026-10-28): no «minimum»
+// in large type, and an invitation to give generously rather than "a little
+// more" than one euro. Its one button, «Donate now», goes through the cart like
+// everything else (Mauro 2026-10-30): the cart lists it last and, when it is
+// alone there, invites to choose a perk.
 const plainDonation = model.categories.some((c) => /\/categories\/gratitude$/.test(c.href));
 const generous = i18n.locale === 'it'
   ? 'Scegli tu quanto donare. Sono le donazioni generose come la tua a tenere i concerti di Monopolele gratuiti e aperti a tutti.'
   : 'You choose the amount. Generous donations like yours keep Monopolele’s concerts free and open to everyone.';
-// Perks (Mauro 2026-10-29): one button, «Add to cart»; the cart offers a free
-// donation on top and its «Donate» goes on. «Donate now» skipping the cart
-// stays only on the plain donation, where it says what it does.
+// Perks (Mauro 2026-10-29): one button, «Add to cart»; the cart offers the
+// free donation on top, and its «Donate» goes on.
 const purchase: ProductPurchaseModel =
   plainDonation && Astro.props.purchase.contribution
     ? {
         ...Astro.props.purchase,
+        showBuyNow: false,
         contribution: { ...Astro.props.purchase.contribution, encouragement: generous },
       }
     : Astro.props.purchase.contribution
       ? { ...Astro.props.purchase, showBuyNow: false }
       : Astro.props.purchase;
-const addWithPerks = i18n.locale === 'it' ? 'Aggiungi al carrello con gli omaggi' : 'Add to cart with your perks';
 const formI18n: I18n = plainDonation
   ? ({ ...i18n, t: ((key: string, vars?: Record<string, unknown>) =>
-      key === 'benefit.product.addToCart' ? addWithPerks : i18n.t(key as never, vars as never)) as I18n['t'] } as I18n)
+      i18n.t((key === 'benefit.product.addToCart' ? 'benefit.product.buyNow' : key) as never, vars as never)) as I18n['t'] } as I18n)
   : i18n;
 ---
 
@@ -85,8 +84,7 @@ const formI18n: I18n = plainDonation
       i18n={i18n}
     />
 
-    {/* For the plain donation «Donate now» leads in place as well as in colour. */}
-    <div class:list={['order-3 [&>*:first-child]:mt-0', plainDonation && '[&_[data-fullpage]]:order-first']}>
+    <div class="order-3 [&>*:first-child]:mt-0">
       <ProductPurchaseForm model={purchase} i18n={formI18n} />
     </div>
   </div>

@@ -22,8 +22,10 @@ export const benefit = {
   'benefit.cart.change': 'Change',
   'benefit.cart.total': 'Total donation',
   // A free donation added in the cart: the shop's single-unit donation (Gratitude)
-  'benefit.cart.free.label': 'Add a free donation',
-  'benefit.cart.free.hint': 'Any amount from {price}, on top of your perks and on the same receipt.',
+  'benefit.cart.free.label': 'Add {name}, a free donation',
+  'benefit.cart.free.hint': 'Any amount from {price}, on the same receipt.',
+  'benefit.cart.perks.invite': 'Would you like a perk too?',
+  'benefit.cart.perks.link': 'Choose a perk',
   'benefit.cart.free.add': 'Add',
 
   // Donor details, collected before payment for the receipt (R14)

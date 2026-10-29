@@ -1,50 +1,57 @@
 ---
 import { formatPrice } from '../../config';
+import ProductImage from '../products/ProductImage.astro';
 import { amountInputStep, amountInputValue } from './amount';
 import type { Product } from '../products/db';
 
 /**
- * Benefit Mode cart: «Add a free donation». Posts the shop's plain donation
- * product (findFreeDonationProduct) with the chosen amount, like its own page
- * does; once it is in the cart its line carries the amount field instead.
+ * Benefit Mode cart, while the free donation (findFreeDonationProduct, e.g.
+ * Gratitude) is not in it: an invitation with its picture and an amount, posted
+ * like its own page does. Once added it is the cart's last line, with its amount.
  */
 interface Props {
   product: Product;
+  /** Its name in the visitor's language. */
+  name: string;
   currency: string;
   capCents: number;
   /** The drawer: tighter spacing, smaller field. */
   compact?: boolean;
-  /** Already in the cart at this amount: the field shows it and the button changes it. */
-  currentCents?: number | null;
 }
 
-const { product, currency, capCents, compact = false, currentCents = null } = Astro.props;
+const { product, name, currency, capCents, compact = false } = Astro.props;
 const { t } = Astro.locals.i18n;
 const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.intl);
 const id = compact ? 'free-donation-drawer' : 'free-donation';
 ---
 
-<form method="POST" action={Astro.locals.urls.href('/api/cart')} class:list={[compact ? 'mt-4' : 'mt-6', 'rounded-md border border-dashed border-line px-4 py-3']}>
+<form
+  method="POST"
+  action={Astro.locals.urls.href('/api/cart')}
+  class:list={[compact ? 'mt-4' : 'mt-6', 'flex gap-4 rounded-md border border-dashed border-line px-4 py-3']}
+>
   <input type="hidden" name="_action" value="add" />
   <input type="hidden" name="product_id" value={product.public_id} />
-  <label for={id} class="block text-xs uppercase tracking-widest text-muted">{t('benefit.cart.free.label')}</label>
-  <div class="mt-2 flex items-center gap-3">
-    <input
-      id={id}
-      type="number"
-      name="amount"
-      inputmode="decimal"
-      required
-      min={amountInputValue(product.price_cents, currency)}
-      max={amountInputValue(capCents, currency)}
-      step={amountInputStep(currency)}
-      value={currentCents != null ? amountInputValue(currentCents, currency) : undefined}
-      placeholder={amountInputValue(product.price_cents, currency)}
-      class:list={[compact ? 'w-20 text-sm' : 'w-28', 'border-b border-line bg-transparent py-1 text-right tabular-nums focus:border-brand focus:outline-none']}
-    />
-    <button type="submit" class="text-xs font-medium uppercase tracking-widest text-brand hover:text-brand-hover">
-      {currentCents != null ? t('benefit.cart.change') : t('benefit.cart.free.add')}
-    </button>
+  <ProductImage imageKey={product.image_key} alt="" usage="thumbnail" sizes="64px" fade class="h-16 w-16 shrink-0 rounded object-cover" />
+  <div class="min-w-0 flex-1">
+    <label for={id} class="block text-sm">{t('benefit.cart.free.label', { name })}</label>
+    <div class="mt-2 flex items-center gap-3">
+      <input
+        id={id}
+        type="number"
+        name="amount"
+        inputmode="decimal"
+        required
+        min={amountInputValue(product.price_cents, currency)}
+        max={amountInputValue(capCents, currency)}
+        step={amountInputStep(currency)}
+        placeholder={amountInputValue(product.price_cents, currency)}
+        class:list={[compact ? 'w-20 text-sm' : 'w-28', 'border-b border-line bg-transparent py-1 text-right tabular-nums focus:border-brand focus:outline-none']}
+      />
+      <button type="submit" class="text-xs font-medium uppercase tracking-widest text-brand hover:text-brand-hover">
+        {t('benefit.cart.free.add')}
+      </button>
+    </div>
+    <p class="mt-2 text-xs text-muted">{t('benefit.cart.free.hint', { price: minimum })}</p>
   </div>
-  <p class="mt-2 text-xs text-muted">{t('benefit.cart.free.hint', { price: minimum })}</p>
 </form>

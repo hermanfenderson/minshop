@@ -15,8 +15,10 @@ export const benefit = {
   'benefit.cart.change': 'Cambia',
   'benefit.cart.total': 'Totale donazione',
   // Donazione libera aggiunta dal carrello: la donazione semplice del negozio (Gratitude)
-  'benefit.cart.free.label': 'Aggiungi una donazione libera',
-  'benefit.cart.free.hint': 'Qualsiasi importo da {price}, in aggiunta agli omaggi e nella stessa ricevuta.',
+  'benefit.cart.free.label': 'Aggiungi {name}, una donazione libera',
+  'benefit.cart.free.hint': 'Qualsiasi importo da {price}, nella stessa ricevuta.',
+  'benefit.cart.perks.invite': 'Vuoi anche un omaggio?',
+  'benefit.cart.perks.link': 'Scegli un omaggio',
   'benefit.cart.free.add': 'Aggiungi',
 
   'benefit.donor.heading': 'I tuoi dati per la ricevuta',
