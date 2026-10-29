@@ -100,6 +100,11 @@ non rimette in magazzino).
 - Indicizzazione: un solo indirizzo, `monopolele.com`. Lo shop dichiara canonical lì
   (`CANONICAL_ORIGIN`), il Worker del sito aggiunge `noindex` su ogni altro host
   (`prod.monopolele.com`, workers.dev); `www` va in 301 con una regola Cloudflare.
+- **Testi delle ricevute** (approvati da Mauro il 2026-10-29, dal modello in uso di Voltare Pagina ETS):
+  [`docs/monopolele/receipt-texts.json`](monopolele/receipt-texts.json), chiavi `receipt_text:<slot>:<lingua>`
+  per privati, aziende, spedizione, nota di restituzione e piè di pagina, IT ed EN (l'allegato
+  resta il testo predefinito). In inglese i benefici fiscali valgono per i contribuenti in Italia
+  e prevale il testo italiano. Da caricare prima nel test (anteprima PDF), poi in produzione.
 - Disponibilità 100 per variante: segnaposto ereditato da WooCommerce, anche per gli ukulele.
 
 ## Registro deploy

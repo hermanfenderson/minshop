@@ -62,7 +62,7 @@ export const benefit = {
   'benefit.receipt.replaces': 'Il presente documento annulla e sostituisce la ricevuta {label}.',
   'benefit.receipt.cancels': 'La presente nota annulla la ricevuta {label}.',
   'benefit.receipt.signature': 'Firma del legale rappresentante e timbro',
-  'benefit.receipt.method.stripe': 'pagamento elettronico (carta o wallet, tramite Stripe)',
+  'benefit.receipt.method.stripe': 'pagamento elettronico tramite Stripe (carta, PayPal o addebito SEPA)',
   'benefit.receipt.method.demo': 'pagamento di prova (demo — non è un pagamento reale)',
   'benefit.receipt.method.other': 'pagamento elettronico',
   'benefit.receipt.placeholder.donation.person':

@@ -71,7 +71,7 @@ export const benefit = {
   'benefit.receipt.replaces': 'This document cancels and replaces receipt {label}.',
   'benefit.receipt.cancels': 'This note cancels receipt {label}.',
   'benefit.receipt.signature': 'Signature of the legal representative and stamp',
-  'benefit.receipt.method.stripe': 'electronic payment (card or wallet, via Stripe)',
+  'benefit.receipt.method.stripe': 'electronic payment via Stripe (card, PayPal or SEPA Direct Debit)',
   'benefit.receipt.method.demo': 'test payment (demo — not a real payment)',
   'benefit.receipt.method.other': 'electronic payment',
   'benefit.receipt.placeholder.donation.person':
