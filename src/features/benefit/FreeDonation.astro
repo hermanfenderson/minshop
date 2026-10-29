@@ -2,6 +2,7 @@
 import { formatPrice } from '../../config';
 import ProductImage from '../products/ProductImage.astro';
 import { amountInputStep, amountInputValue } from './amount';
+import { suggestedFreeDonationCents } from './freeDonation';
 import type { Product } from '../products/db';
 
 /**
@@ -58,6 +59,7 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
           min={amountInputValue(product.price_cents, currency)}
           max={amountInputValue(capCents, currency)}
           step={amountInputStep(currency)}
+          value={amountInputValue(suggestedFreeDonationCents(product.price_cents, currency), currency)}
           class="w-32 border-b border-line bg-transparent py-1 text-right text-2xl tabular-nums focus:border-brand focus:outline-none"
         />
         <span class="text-xl text-muted">{currency.toUpperCase() === 'EUR' ? '€' : currency.toUpperCase()}</span>

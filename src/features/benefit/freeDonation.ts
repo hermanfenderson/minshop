@@ -1,4 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import { minorUnitsPerMajor } from '../../money.ts';
 import type { Product } from '../products/db';
 
 /**
@@ -32,4 +33,15 @@ export function freeDonationLast<L extends { product: { public_id: string | null
   const isFree = (l: L) => !!freeDonation?.public_id && l.product.public_id === freeDonation.public_id;
   const freeLine = lines.find(isFree) ?? null;
   return { lines: freeLine ? [...lines.filter((l) => !isFree(l)), freeLine] : lines, freeLine };
+}
+
+/**
+ * The amount the free donation starts at, in the modal and on its own page, so
+ * «Add» works at once (Mauro, 2026-10-30): 10 in major units, or the product's
+ * minimum when that is higher.
+ */
+export const SUGGESTED_FREE_DONATION_MAJOR = 10;
+
+export function suggestedFreeDonationCents(minimumCents: number, currency: string): number {
+  return Math.max(minimumCents, SUGGESTED_FREE_DONATION_MAJOR * minorUnitsPerMajor(currency));
 }
