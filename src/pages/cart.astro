@@ -15,6 +15,8 @@ import { amountInputStep, amountInputValue } from '../features/benefit/amount';
 import { contributionError } from '../features/benefit/messages';
 import { readDonorDraft } from '../features/benefit/donorDraft';
 import DonorFields from '../features/benefit/DonorFields.astro';
+import FreeDonation from '../features/benefit/FreeDonation.astro';
+import { findFreeDonationProduct } from '../features/benefit/freeDonation';
 
 // Cart switched off in Settings → browse-only catalog, no cart page.
 if (!(Astro.locals.settings?.cartEnabled ?? true)) return Astro.redirect(Astro.locals.urls.home(), 302);
@@ -50,6 +52,10 @@ const cart = readCart(Astro.cookies);
 const currency = getConfig().currency;
 const benefit = benefitRules(settings, currency);
 const { lines, subtotalCents } = await resolveCart(env.DB, cart, Astro.locals.contentLocale, benefit);
+// Offered until it is in the cart; then its own line carries the amount.
+const freeDonationProduct = benefit ? await findFreeDonationProduct(env.DB) : null;
+const freeDonation =
+  freeDonationProduct && !lines.some((l) => l.product.public_id === freeDonationProduct.public_id) ? freeDonationProduct : null;
 // Benefit Mode: a line whose amount no longer passes (the minimum rose since it
 // was added) says why here; checkout refuses it until it is changed.
 const lineProblem = (l: (typeof lines)[number]) =>
@@ -223,6 +229,11 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
             Subtotal on top, payment methods stacked beneath it. */}
         <div class="mt-10 flex justify-end">
           <div class="w-full sm:max-w-sm">
+            {benefit && freeDonation && (
+              <div class="mb-6 -mt-4">
+                <FreeDonation product={freeDonation} currency={currency} capCents={benefit.capCents} />
+              </div>
+            )}
             <div class="flex items-center justify-between">
               <span class="text-xs uppercase tracking-widest text-muted">
                 {benefit ? t('benefit.cart.total') : t('cart.summary.subtotal')}

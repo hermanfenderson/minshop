@@ -10,11 +10,13 @@ const benefit = BUNDLED_VOCABULARIES.benefit;
 const SUPPORTER_AREAS = ['storefront', 'catalog', 'cart', 'checkout', 'order', 'email', 'llms', 'account', 'common', 'benefit'];
 
 // Shop words that Benefit Mode must never say, per language, and «contribution»:
-// supporters make a donation (owner's choice, 2026-10-28). Placeholders are
-// stripped first ({price} is a value, not a word).
+// supporters make a donation (owner's choice, 2026-10-28). «Cart» is allowed:
+// a neutral container everyone understands, so perks are «added to the cart»
+// (owner's choice, 2026-10-29). Placeholders are stripped first ({price} is a
+// value, not a word).
 const SHOP_WORDS: Record<string, RegExp> = {
-  en: /\bprices?\b|\bshop|\bstore\b|purchas|\bbuy|\borders?\b|\bcarts?\b|checkout|discount|\bproducts?\b|contribut/i,
-  it: /prezz|negozi|acquist|carrell|\bordin[ei]\b|\bcassa\b|sconto|prodott|contribu/i,
+  en: /\bprices?\b|\bshop|\bstore\b|purchas|\bbuy|\borders?\b|checkout|discount|\bproducts?\b|contribut/i,
+  it: /prezz|negozi|acquist|\bordin[ei]\b|\bcassa\b|sconto|prodott|contribu/i,
 };
 
 // Messages a supporter never reads in Benefit Mode, so they keep the shop's words.

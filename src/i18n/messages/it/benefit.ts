@@ -5,7 +5,7 @@ export const benefit = {
   'benefit.product.amountLabel': 'La tua donazione',
   'benefit.product.amountHelp': 'Qualsiasi importo da {price}.',
   'benefit.product.encourage': 'La tua donazione tiene questo progetto libero e aperto a tutti. Se puoi, valuta di dare qualcosa in più!',
-  'benefit.product.addToCart': 'Aggiungi la donazione',
+  'benefit.product.addToCart': 'Aggiungi al carrello',
   'benefit.product.buyNow': 'Dona ora',
 
   'benefit.llms.minimum': 'da {price} (donazione minima; è benvenuto qualsiasi importo superiore)',
@@ -14,6 +14,10 @@ export const benefit = {
   'benefit.cart.each': '{price} cad.',
   'benefit.cart.change': 'Cambia',
   'benefit.cart.total': 'Totale donazione',
+  // Donazione libera aggiunta dal carrello: la donazione semplice del negozio (Gratitude)
+  'benefit.cart.free.label': 'Aggiungi una donazione libera',
+  'benefit.cart.free.hint': 'Qualsiasi importo da {price}, in aggiunta agli omaggi e nella stessa ricevuta.',
+  'benefit.cart.free.add': 'Aggiungi',
 
   'benefit.donor.heading': 'I tuoi dati per la ricevuta',
   'benefit.donor.intro': 'Emettiamo una ricevuta della donazione a tuo nome. Questi dati servono per la ricevuta e restano presso di noi.',

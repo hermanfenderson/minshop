@@ -38,13 +38,18 @@ const plainDonation = model.categories.some((c) => /\/categories\/gratitude$/.te
 const generous = i18n.locale === 'it'
   ? 'Scegli tu quanto donare. Sono le donazioni generose come la tua a tenere i concerti di Monopolele gratuiti e aperti a tutti.'
   : 'You choose the amount. Generous donations like yours keep Monopolele’s concerts free and open to everyone.';
+// Perks (Mauro 2026-10-29): one button, «Add to cart»; the cart offers a free
+// donation on top and its «Donate» goes on. «Donate now» skipping the cart
+// stays only on the plain donation, where it says what it does.
 const purchase: ProductPurchaseModel =
   plainDonation && Astro.props.purchase.contribution
     ? {
         ...Astro.props.purchase,
         contribution: { ...Astro.props.purchase.contribution, encouragement: generous },
       }
-    : Astro.props.purchase;
+    : Astro.props.purchase.contribution
+      ? { ...Astro.props.purchase, showBuyNow: false }
+      : Astro.props.purchase;
 const addWithPerks = i18n.locale === 'it' ? 'Aggiungi al carrello con gli omaggi' : 'Add to cart with your perks';
 const formI18n: I18n = plainDonation
   ? ({ ...i18n, t: ((key: string, vars?: Record<string, unknown>) =>

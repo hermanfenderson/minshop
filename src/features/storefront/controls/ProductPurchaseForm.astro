@@ -199,7 +199,9 @@ const buyLabel = contribution ? t('benefit.product.buyNow') : t('storefront.prod
             {model.showAddToCart && (
               <button
                 type="submit"
-                class="rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-muted transition hover:border-brand hover:text-brand"
+                class={model.showBuyNow
+                  ? 'rounded-md border border-line px-8 py-3 text-sm font-medium uppercase tracking-wider text-muted transition hover:border-brand hover:text-brand'
+                  : 'rounded-md bg-brand px-8 py-3 text-sm font-medium uppercase tracking-wider text-on-brand transition hover:bg-brand-hover'}
               >
                 {addLabel}
               </button>

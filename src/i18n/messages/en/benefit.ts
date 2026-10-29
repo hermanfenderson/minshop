@@ -11,7 +11,7 @@ export const benefit = {
   'benefit.product.amountLabel': 'Your donation',
   'benefit.product.amountHelp': 'Any amount from {price}.',
   'benefit.product.encourage': 'Your donation keeps this project free and open to everyone. If you can, consider giving a little more!',
-  'benefit.product.addToCart': 'Add donation',
+  'benefit.product.addToCart': 'Add to cart',
   'benefit.product.buyNow': 'Donate now',
 
   // Cart
@@ -21,6 +21,10 @@ export const benefit = {
   'benefit.cart.each': '{price} each',
   'benefit.cart.change': 'Change',
   'benefit.cart.total': 'Total donation',
+  // A free donation added in the cart: the shop's single-unit donation (Gratitude)
+  'benefit.cart.free.label': 'Add a free donation',
+  'benefit.cart.free.hint': 'Any amount from {price}, on top of your perks and on the same receipt.',
+  'benefit.cart.free.add': 'Add',
 
   // Donor details, collected before payment for the receipt (R14)
   'benefit.donor.heading': 'Your details for the receipt',
