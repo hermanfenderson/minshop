@@ -5,7 +5,6 @@ import { benefitRules, isSingleUnitContribution } from '../../features/benefit/m
 import FreeDonation from '../../features/benefit/FreeDonation.astro';
 import { findFreeDonationProduct, freeDonationLast } from '../../features/benefit/freeDonation';
 import { amountInputStep, amountInputValue } from '../../features/benefit/amount';
-import { translatedPurchase } from '../../features/translations/db';
 import { catalogPath } from '../../features/settings/home';
 import { readCart, resolveCart, cartCount } from '../../features/cart/cart';
 import ProductImage from '../../features/products/ProductImage.astro';
@@ -28,10 +27,8 @@ const [{ lines: cartLines, subtotalCents }, imageDeliverySetting, freeDonationPr
 // The free donation (Gratitude) closes the list, with its amount; while it is
 // missing, an invitation takes its place; alone, it invites to choose a perk.
 const { lines, freeLine } = freeDonationLast(cartLines, freeDonationProduct);
-const freeName = freeDonationProduct
-  ? (await translatedPurchase(env.DB, Astro.locals.contentLocale, freeDonationProduct, null, [])).product.name
-  : '';
 const onlyFreeDonation = !!freeLine && lines.length === 1;
+const offerFreeDonation = !!(benefit && freeDonationProduct && !freeLine);
 const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 const imageDelivery = imageDeliverySetting === 'cloudflare' ? 'cloudflare' : 'original';
 const count = cartCount(cart);
@@ -62,7 +59,7 @@ const { t } = Astro.locals.i18n;
               </a>
               <div class="flex flex-1 flex-col">
                 <a href={Astro.locals.urls.product(l.product.slug)} class="text-sm leading-snug hover:text-brand">
-                  {l.product.name}
+                  {l === freeLine ? t('benefit.cart.free.name') : l.product.name}
                 </a>
                 {(l.variant || l.extras.length > 0) && (
                   <span class="mt-0.5 text-xs text-muted">
@@ -133,9 +130,6 @@ const { t } = Astro.locals.i18n;
           ))}
         </ul>
 
-        {benefit && freeDonationProduct && !freeLine && (
-          <FreeDonation product={freeDonationProduct} name={freeName} currency={currency} capCents={benefit.capCents} compact />
-        )}
         {onlyFreeDonation && (
           <p class="mt-4 text-sm text-muted">
             {t('benefit.cart.perks.invite')}{' '}
@@ -150,6 +144,7 @@ const { t } = Astro.locals.i18n;
           </div>
           <a
             href={Astro.locals.urls.href('/express')}
+            data-free-donation-ask={offerFreeDonation ? 'free-donation-drawer' : undefined}
             class="mt-4 block w-full rounded-md bg-brand px-6 py-3 text-center text-sm font-medium uppercase tracking-wider text-on-brand hover:bg-brand-hover"
           >
             {t('cart.drawer.checkout')}
@@ -164,4 +159,7 @@ const { t } = Astro.locals.i18n;
       </Fragment>
     )
   }
+  {offerFreeDonation && benefit && freeDonationProduct && (
+    <FreeDonation id="free-donation-drawer" product={freeDonationProduct} currency={currency} capCents={benefit.capCents} />
+  )}
 </div>

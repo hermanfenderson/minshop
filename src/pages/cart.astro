@@ -17,7 +17,6 @@ import { readDonorDraft } from '../features/benefit/donorDraft';
 import DonorFields from '../features/benefit/DonorFields.astro';
 import FreeDonation from '../features/benefit/FreeDonation.astro';
 import { findFreeDonationProduct, freeDonationLast } from '../features/benefit/freeDonation';
-import { translatedPurchase } from '../features/translations/db';
 
 // Cart switched off in Settings → browse-only catalog, no cart page.
 if (!(Astro.locals.settings?.cartEnabled ?? true)) return Astro.redirect(Astro.locals.urls.home(), 302);
@@ -58,9 +57,6 @@ const { lines: cartLines, subtotalCents } = await resolveCart(env.DB, cart, Astr
 const freeDonationProduct = benefit ? await findFreeDonationProduct(env.DB) : null;
 const { lines, freeLine } = freeDonationLast(cartLines, freeDonationProduct);
 const freeDonation = freeLine ? null : freeDonationProduct;
-const freeName = freeDonation
-  ? (await translatedPurchase(env.DB, Astro.locals.contentLocale, freeDonation, null, [])).product.name
-  : '';
 const onlyFreeDonation = !!freeLine && lines.length === 1;
 // Benefit Mode: a line whose amount no longer passes (the minimum rose since it
 // was added) says why here; checkout refuses it until it is changed.
@@ -143,7 +139,7 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                   class="h-16 w-16 shrink-0 rounded object-cover"
                 />
                 <span class="min-w-0">
-                  <span class="block truncate">{l.product.name}</span>
+                  <span class="block truncate">{l === freeLine ? t('benefit.cart.free.name') : l.product.name}</span>
                   {(l.variant || l.extras.length > 0) && (
                     <span class="block truncate text-xs text-muted">
                       {[l.variant?.label, ...l.extras.map((e) => e.label)].filter(Boolean).join(' · ')}
@@ -235,11 +231,6 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
             Subtotal on top, payment methods stacked beneath it. */}
         <div class="mt-10 flex justify-end">
           <div class="w-full sm:max-w-sm">
-            {benefit && freeDonation && (
-              <div class="mb-6 -mt-4">
-                <FreeDonation product={freeDonation} name={freeName} currency={currency} capCents={benefit.capCents} />
-              </div>
-            )}
             {onlyFreeDonation && (
               <p class="-mt-4 mb-6 text-sm text-muted">
                 {t('benefit.cart.perks.invite')}{' '}
@@ -258,7 +249,12 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                 {t('cart.summary.unavailable')}
               </p>
             ) : (
-            <form method="POST" action={Astro.locals.urls.href('/api/checkout')} class="mt-4 space-y-2">
+            <form
+              method="POST"
+              action={Astro.locals.urls.href('/api/checkout')}
+              class="mt-4 space-y-2"
+              data-free-donation-ask={benefit && freeDonation ? 'free-donation-cart' : undefined}
+            >
               <input type="hidden" name="source" value="cart" />
               {benefit && (
                 <DonorFields
@@ -334,4 +330,5 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
       </Fragment>
     )
   }
+  {benefit && freeDonation && <FreeDonation id="free-donation-cart" product={freeDonation} currency={currency} capCents={benefit.capCents} />}
 </Layout>

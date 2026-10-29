@@ -227,6 +227,62 @@ const shellIcons = siteShell(Astro.locals.locale).icons;
 
     <script>
       // @ts-nocheck -- plain-JS client script (annotations would ship to the browser)
+      // Benefit Mode: going on to donate with no free donation in the cart asks
+      // once, in a modal (features/benefit/FreeDonation.astro). «Add» puts it in
+      // the cart and goes on; «No, thanks» goes on and is remembered for the visit.
+      // Delegated, because the drawer's markup is replaced on every refresh.
+      {
+        const declinedKey = 'minshop_free_donation_declined';
+        const declined = () => {
+          try {
+            return sessionStorage.getItem(declinedKey) === '1';
+          } catch {
+            return false;
+          }
+        };
+        const ask = (trigger, proceed) => {
+          const modal = document.getElementById(trigger.getAttribute('data-free-donation-ask'));
+          if (!(modal instanceof HTMLDialogElement) || declined()) return false;
+          const form = modal.querySelector('[data-free-donation-form]');
+          const skip = modal.querySelector('[data-free-donation-skip]');
+          form.onsubmit = async (e) => {
+            e.preventDefault();
+            await fetch(form.action, {
+              method: 'POST',
+              headers: { 'X-Partial': '1' },
+              body: new URLSearchParams(new FormData(form)),
+            });
+            modal.close();
+            proceed();
+          };
+          skip.onclick = () => {
+            try {
+              sessionStorage.setItem(declinedKey, '1');
+            } catch {}
+            modal.close();
+            proceed();
+          };
+          modal.showModal();
+          return true;
+        };
+        document.addEventListener('click', (e) => {
+          const link = e.target instanceof Element ? e.target.closest('a[data-free-donation-ask]') : null;
+          if (link && ask(link, () => (location.href = link.href))) e.preventDefault();
+        });
+        // The cart page's donate form: asked after the browser has checked the donor's fields.
+        // The button pressed (it names the payment method) goes with the resubmit.
+        document.addEventListener('submit', (e) => {
+          const form = e.target;
+          if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-free-donation-ask')) return;
+          if (form.dataset.freeDonationAsked === '1') return;
+          const submitter = e.submitter;
+          const proceed = () => {
+            form.dataset.freeDonationAsked = '1';
+            form.requestSubmit(submitter instanceof HTMLElement ? submitter : undefined);
+          };
+          if (ask(form, proceed)) e.preventDefault();
+        });
+      }
       const drawer = document.querySelector('[data-cart-drawer]');
       if (drawer instanceof HTMLElement) {
         const panel = drawer.querySelector('[data-cart-panel]');
