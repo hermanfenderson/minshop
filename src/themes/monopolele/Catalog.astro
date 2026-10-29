@@ -33,6 +33,11 @@ const firstPage = model.pagination.page === 1;
 // Gratitude's URL, built from a card's: a template constructs no URLs from the
 // request, and every product lives next to the others under the same prefix.
 const gratitudeHref = model.products[0]?.href.replace(/[^/]+$/, 'gratitude') ?? null;
+// The freewill donation has its own place above (Mauro 2026-10-30): neither the
+// product nor its category is listed with the perks.
+const isFreeDonation = (href: string) => /\/gratitude$/.test(href);
+const products = model.products.filter((card) => !isFreeDonation(card.href));
+const categories = model.categories.filter((category) => !isFreeDonation(category.href));
 ---
 
 <div class="mb-10">
@@ -45,9 +50,9 @@ const gratitudeHref = model.products[0]?.href.replace(/[^/]+$/, 'gratitude') ?? 
 <div id="omaggi" class="scroll-mt-6"></div>
 
 {
-  model.categories.length > 0 && (
+  categories.length > 0 && (
     <div class="mb-12 flex flex-wrap gap-x-6 gap-y-2 text-xs uppercase tracking-widest text-muted">
-      {model.categories.map((category) => (
+      {categories.map((category) => (
         <a
           href={category.href}
           class="border-b-[3px] border-transparent pb-0.5 hover:border-nav-accent"
@@ -65,7 +70,7 @@ const gratitudeHref = model.products[0]?.href.replace(/[^/]+$/, 'gratitude') ?? 
   /* role="status" is the contract, not the wording: an empty catalog must
      announce itself to assistive technology rather than rendering a blank
      grid. Reword it freely; keep the role and keep it non-empty. */
-  model.products.length === 0 && (
+  products.length === 0 && (
     <p role="status" class="text-muted">
       {t('storefront.catalog.empty')}
     </p>
@@ -73,7 +78,7 @@ const gratitudeHref = model.products[0]?.href.replace(/[^/]+$/, 'gratitude') ?? 
 }
 
 <ul class="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-3 lg:grid-cols-4">
-  {model.products.map((card, i) => <ProductCard card={card} index={i} i18n={i18n} />)}
+  {products.map((card, i) => <ProductCard card={card} index={i} i18n={i18n} />)}
 </ul>
 
 <CatalogPagination model={model.pagination} i18n={i18n} />

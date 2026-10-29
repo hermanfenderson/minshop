@@ -35,6 +35,9 @@ const { t } = i18n;
 // everything else (Mauro 2026-10-30): the cart lists it last and, when it is
 // alone there, invites to choose a perk.
 const plainDonation = model.categories.some((c) => /\/categories\/gratitude$/.test(c.href));
+// The freewill donation is never listed: not its category, not as a related card.
+const categories = model.categories.filter((c) => !/\/categories\/gratitude$/.test(c.href));
+const related = model.related.filter((card) => !/\/gratitude$/.test(card.href));
 const generous = i18n.locale === 'it'
   ? 'Scegli tu quanto donare. Sono le donazioni generose come la tua a tenere i concerti di Monopolele gratuiti e aperti a tutti.'
   : 'You choose the amount. Generous donations like yours keep Monopolele’s concerts free and open to everyone.';
@@ -101,9 +104,9 @@ const formI18n: I18n = plainDonation
   <div class="contents md:flex md:flex-col md:gap-6">
     <div class="reveal order-1 flex flex-col" style="animation-delay:90ms">
       {
-        model.categories.length > 0 && (
+        categories.length > 0 && (
           <div class="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs uppercase tracking-widest text-faint">
-            {model.categories.map((category) => (
+            {categories.map((category) => (
               <a href={category.href} class="hover:text-brand">
                 {category.text}
               </a>
@@ -226,13 +229,13 @@ const formI18n: I18n = plainDonation
 </script>
 
 {
-  model.related.length > 0 && (
+  related.length > 0 && (
     <section class="mt-20 border-t border-line pt-12">
       <h2 class="mb-8 text-xs uppercase tracking-[0.25em] text-faint">
         {t('storefront.product.youMayAlsoLike')}
       </h2>
       <ul class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-4">
-        {model.related.map((card, i) => (
+        {related.map((card, i) => (
           <ProductCard card={card} index={i} headingLevel="h3" i18n={i18n} />
         ))}
       </ul>
