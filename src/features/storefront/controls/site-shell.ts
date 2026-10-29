@@ -35,6 +35,8 @@ export interface SiteShellSource {
   origin?: string;
   home?: ShellText;
   logo?: { src: string; alt?: ShellText; width?: number; height?: number; text?: ShellText; tagline?: ShellText };
+  /** The website's site icon, so the store shows the same one (PNG files). */
+  icons?: { png32?: string; png192?: string; appleTouch?: string };
   fonts?: {
     /** https stylesheet (e.g. Google Fonts). */
     stylesheet?: string;
@@ -81,6 +83,8 @@ export interface SiteShell {
   name: string;
   homeHref: string;
   logo: { src: string; alt: string; width?: number; height?: number; text: string | null; tagline: string | null } | null;
+  /** Null: the store's own favicon. */
+  icons: { png32: string | null; png192: string | null; appleTouch: string | null } | null;
   nav: ShellLink[];
   cartLabel: string | null;
   banner: ShellSegment[] | null;
@@ -173,6 +177,13 @@ export function siteShell(locale: string): SiteShell {
           height: shell.logo.height,
           text: pick(shell.logo.text, locale),
           tagline: pick(shell.logo.tagline, locale),
+        }
+      : null,
+    icons: shell.icons
+      ? {
+          png32: shell.icons.png32 ? absolute(shell.icons.png32) : null,
+          png192: shell.icons.png192 ? absolute(shell.icons.png192) : null,
+          appleTouch: shell.icons.appleTouch ? absolute(shell.icons.appleTouch) : null,
         }
       : null,
     nav: shell.nav.map((item) => link(item, locale)),

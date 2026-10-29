@@ -10,6 +10,7 @@ import { normalizeSearchQuery } from '../features/search/query';
 import { EMPTY_MENUS, visibleItems } from '../features/navigation/db';
 import { getEmailProvider } from '../features/email';
 import { buildShellModel } from '../features/storefront/shell';
+import { siteShell } from '../features/storefront/controls/site-shell';
 import { announcementFor } from '../features/settings/db';
 import { isIndexablePage, requestSeo, type RequestSeo } from '../features/i18n/seoRequest';
 import StoreHeader from '#theme/Header.astro';
@@ -118,6 +119,8 @@ const shell = buildShellModel({
     })),
   },
 });
+// The website's own icon when its shell names one (site-shell themes, docs/SITE_SHELL.md).
+const shellIcons = siteShell(Astro.locals.locale).icons;
 ---
 
 <!doctype html>
@@ -125,14 +128,19 @@ const shell = buildShellModel({
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href={withMount('/favicon.ico')} sizes="16x16 32x32 48x48" />
-    <link rel="icon" type="image/svg+xml" href={withMount('/favicon.svg')} />
+    {shellIcons ? <>
+      {shellIcons.png32 && <link rel="icon" type="image/png" sizes="32x32" href={shellIcons.png32} />}
+      {shellIcons.png192 && <link rel="icon" type="image/png" sizes="192x192" href={shellIcons.png192} />}
+    </> : <>
+      <link rel="icon" href={withMount('/favicon.ico')} sizes="16x16 32x32 48x48" />
+      <link rel="icon" type="image/svg+xml" href={withMount('/favicon.svg')} />
+    </>}
     {/* Declared so Safari stops probing the site root for it. Those probes are
         not free here: /apple-touch-icon*.png is not excluded by the middleware's
         document check, so each 404 ran the settings+menus D1 batch and rendered
         the branded 404 page. The files are also present as static assets, which
         answers the agents that probe regardless without invoking the Worker. */}
-    <link rel="apple-touch-icon" sizes="180x180" href={withMount('/apple-touch-icon.png')} />
+    <link rel="apple-touch-icon" sizes="180x180" href={shellIcons?.appleTouch ?? withMount('/apple-touch-icon.png')} />
     <title>{pageTitle}</title>
     <meta name="description" content={desc} />
     {!indexable && <meta name="robots" content="noindex" />}

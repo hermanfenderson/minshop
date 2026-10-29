@@ -28,6 +28,7 @@ Nei campi `footer.about` e `banner.text` la sintassi `[testo](href)` diventa un 
 | `origin` | facoltativo: prefisso dei link relativi, quando lo shop gira su un altro host (es. `https://monopolele.com`) |
 | `home` | link del logo, default `/` |
 | `logo` | `{src, alt, width, height, text?, tagline?}`; senza, il logo dell'Admin |
+| `icons` | `{png32?, png192?, appleTouch?}`: l'icona del sito (PNG), al posto della favicon di Minshop |
 | `fonts` | `{stylesheet?: URL https, faces?: regole @font-face, body, heading, prose?}` (font-family CSS) |
 | `colors` | `ink muted faint line paper surface brand brandHover onBrand accent header onHeader headerLine navAccent footer onFooter footerMuted badge onBadge bannerLink` |
 | `scheme` | `"dark"` se `paper` è scuro: i controlli nativi del browser (tendine, calendari) diventano scuri anche loro |
