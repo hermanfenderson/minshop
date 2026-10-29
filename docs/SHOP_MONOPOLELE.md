@@ -48,7 +48,8 @@ cambiarla). Le chiavi si incollano solo nell'Admin, mai in chat o nei file.
    1. Dashboard Stripe in modalità **live** → Sviluppatori → Chiavi API → copia la *Secret key*
       (`sk_live_…`).
    2. Sviluppatori → Webhook → *Aggiungi destinazione*: eventi dell'account, versione API
-      **`2026-07-29.dahlia`**, eventi `checkout.session.completed`,
+      **`2026-09-30.endive`** (`dahlia` non è più offerta dalla dashboard; nessun campo letto dallo
+      shop cambia, verificato il 2026-10-29; le chiamate dello shop restano `dahlia`, dalla libreria), eventi `checkout.session.completed`,
       `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
       `checkout.session.expired`, `charge.refunded`; URL
       `https://monopolele-shop.<account>.workers.dev/support/api/webhook/stripe` (l'indirizzo
