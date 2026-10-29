@@ -1,7 +1,7 @@
 ---
 import { env } from 'cloudflare:workers';
 import { formatPrice, getConfig } from '../../config';
-import { benefitRules } from '../../features/benefit/mode';
+import { benefitRules, isSingleUnitContribution } from '../../features/benefit/mode';
 import FreeDonation from '../../features/benefit/FreeDonation.astro';
 import { findFreeDonationProduct } from '../../features/benefit/freeDonation';
 import { readCart, resolveCart, cartCount } from '../../features/cart/cart';
@@ -64,6 +64,8 @@ const { t } = Astro.locals.i18n;
                   {formatPrice(l.unitPriceCents, undefined, Astro.locals.i18n.intl)}
                 </span>
                 <div class="mt-auto flex items-center gap-4 pt-2">
+                  {/* A single-unit donation has no quantity, as on the cart page. */}
+                  {!(benefit && isSingleUnitContribution(l.product)) && (
                   <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center gap-2">
                     <input type="hidden" name="_action" value="update" />
                     <input type="hidden" name="key" value={l.key} />
@@ -83,6 +85,7 @@ const { t } = Astro.locals.i18n;
                       {t('cart.line.update')}
                     </button>
                   </form>
+                  )}
                   <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="flex items-center">
                     <input type="hidden" name="_action" value="remove" />
                     <input type="hidden" name="key" value={l.key} />
