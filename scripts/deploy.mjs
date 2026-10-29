@@ -149,7 +149,9 @@ const ops = {
   build: () => run('npx', ['astro', 'build']),
   loadCacheConfig: () => deploymentCacheConfig(),
   migrate: () => run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'DB', '--remote']),
-  deploy: () => run('npx', ['wrangler', 'deploy']),
+  // MINSHOP_SECRETS_FILE: secrets uploaded WITH the version (an instance's first
+  // deploy), so the Worker never runs without them. Additive: others are kept.
+  deploy: () => run('npx', ['wrangler', 'deploy', ...(process.env.MINSHOP_SECRETS_FILE ? ['--secrets-file', process.env.MINSHOP_SECRETS_FILE] : [])]),
   purge: (cacheConfig) => purgeAfterDeploy(cacheConfig.origin, cacheConfig.secret),
 };
 

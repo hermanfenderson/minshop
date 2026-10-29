@@ -13,6 +13,14 @@
 #   .instances/<slug>.env so scripts/deploy-instance.sh redeploys the same shape:
 #     MINSHOP_MOUNT_PATH, MINSHOP_COOKIE_PREFIX  build-time mount and cookie prefix
 #     MINSHOP_NOINDEX=1                          test/staging instance: NOINDEX var
+#     THEME, SITE_SHELL                          theme and, for the site-shell themes, the shell
+#   Other options:
+#     MINSHOP_R2_LOCATION=eeur                   location hint for the two buckets
+#     MINSHOP_DEFER_DEPLOY=1                     stop after the migrations: no build, no Worker,
+#                                                no secrets. Populate D1 first (for example with
+#                                                scripts/copy-content.mjs), then the first deploy:
+#                                                MINSHOP_SECRETS_FILE=<file> scripts/deploy-instance.sh <slug>
+#                                                The setup wizard is never reachable that way.
 #
 # Deploys via the SAME path as `npm run deploy` (the Astro adapter integrates with
 # ./wrangler.jsonc), so we temporarily swap in the instance config and restore the
@@ -58,9 +66,10 @@ DB_ID="$(printf '%s' "$DB_OUT" | grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-
 echo "    database_id=$DB_ID"
 
 echo "▸ [2/5] Creating R2 bucket '$BUCKET'…"
-$W r2 bucket create "$BUCKET"
+LOCATION=(); [ -n "${MINSHOP_R2_LOCATION:-}" ] && LOCATION=(--location "$MINSHOP_R2_LOCATION")
+$W r2 bucket create "$BUCKET" ${LOCATION[@]+"${LOCATION[@]}"}
 echo "    Creating private digital-file bucket '$FILES_BUCKET'…"
-$W r2 bucket create "$FILES_BUCKET"
+$W r2 bucket create "$FILES_BUCKET" ${LOCATION[@]+"${LOCATION[@]}"}
 echo "    Keep this bucket private: do not enable r2.dev or attach a custom domain."
 
 # FREE-PLAN DEFAULT: D1 + R2 only. Semantic search (Workers AI + Vectorize) is
@@ -86,8 +95,29 @@ fi
 cp wrangler.jsonc ".instances/${SLUG}.wrangler.jsonc"
 echo "    mount=${MINSHOP_MOUNT_PATH:-/} cookiePrefix=${MINSHOP_COOKIE_PREFIX:-}"
 
+record_meta() {
+  { echo "SLUG=$SLUG"; echo "DB_NAME=$DB_NAME"; echo "DB_ID=$DB_ID"; echo "BUCKET=$BUCKET"; echo "FILES_BUCKET=$FILES_BUCKET"
+    echo "MINSHOP_MOUNT_PATH=${MINSHOP_MOUNT_PATH:-}"; echo "MINSHOP_COOKIE_PREFIX=${MINSHOP_COOKIE_PREFIX:-}"
+    [ -n "${THEME:-}" ] && echo "THEME=$THEME"
+    [ -n "${SITE_SHELL:-}" ] && echo "SITE_SHELL=$SITE_SHELL"
+    true; } > "$META"
+}
+
 echo "▸ [4/5] Applying migrations + building…"
 $W d1 migrations apply DB --remote
+if [[ "${MINSHOP_DEFER_DEPLOY:-}" =~ ^(1|true|yes|on)$ ]]; then
+  record_meta
+  cat <<EOF
+
+✓ Resources for '$SLUG' created, migrations applied. No Worker deployed yet. (metadata: $META)
+
+  1. Populate D1 (admin password + setup_complete close the setup wizard), e.g.
+       node scripts/copy-content.mjs <source-slug> $SLUG --apply
+  2. First deploy, with fresh random AUTH_SECRET and SECRETS_KEK in a private file:
+       MINSHOP_SECRETS_FILE=<file> scripts/deploy-instance.sh $SLUG
+EOF
+  exit 0
+fi
 npx --yes astro build
 
 echo "▸ [5/5] Deploying + setting AUTH_SECRET + SECRETS_KEK…"
@@ -99,8 +129,7 @@ openssl rand -base64 32 | $W secret put AUTH_SECRET
 openssl rand -base64 32 | $W secret put SECRETS_KEK
 
 # Record what was created so destroy-cf.sh can find it.
-{ echo "SLUG=$SLUG"; echo "DB_NAME=$DB_NAME"; echo "DB_ID=$DB_ID"; echo "BUCKET=$BUCKET"; echo "FILES_BUCKET=$FILES_BUCKET"
-  echo "MINSHOP_MOUNT_PATH=${MINSHOP_MOUNT_PATH:-}"; echo "MINSHOP_COOKIE_PREFIX=${MINSHOP_COOKIE_PREFIX:-}"; } > "$META"
+record_meta
 
 cat <<EOF
 
