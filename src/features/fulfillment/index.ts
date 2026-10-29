@@ -1,18 +1,26 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import { deliverOrderNotifications } from '../email/outbox';
+import { queueNotification } from '../email/outboxStore';
 import { getSecret } from '../secrets/store';
 import { getSetting } from '../settings/db';
 import { buildFulfillmentInput } from './order';
+export { fulfillmentWebhookKey } from './webhookKey';
 import { PrintfulProvider } from './printful';
 import { buyerShippingCents, parseSurchargePct } from './shippingQuote';
 import type { FulfillmentProvider } from './provider';
 import {
   claimFulfillment,
+  findFulfillmentOrder,
+  fulfillFromShipment,
   listDueFulfillments,
+  listUnshippedFulfillments,
   loadVariantRefs,
   loadFulfillableOrder,
   markFulfillmentFailed,
   markFulfillmentSubmitted,
   queueFulfillment,
+  recordProviderStatus,
+  recordShipments,
 } from './store';
 
 /**
@@ -48,7 +56,10 @@ export async function dispatchFulfillment(db: D1Database, orderId: number): Prom
   }
 }
 
-/** Cron: push rows left pending by an outage, or abandoned mid-attempt. */
+/**
+ * Cron: push rows left pending by an outage, or abandoned mid-attempt; then read
+ * back a few handed-over orders not shipped yet, in case a webhook never came.
+ */
 export async function sweepFulfillments(db: D1Database): Promise<void> {
   const provider = await getFulfillmentProvider(db);
   if (!provider) return;
@@ -59,6 +70,61 @@ export async function sweepFulfillments(db: D1Database): Promise<void> {
       console.error(`Fulfillment retry failed for order ${orderId}:`, err);
     }
   }
+  for (const row of await listUnshippedFulfillments(db)) {
+    try {
+      await syncFulfillment(db, row.order_id, row.provider_order_id, provider, null);
+    } catch (err) {
+      console.error(`Fulfillment read-back failed for order ${row.order_id}:`, err);
+    }
+  }
+}
+
+export type SyncOutcome = 'unknown-order' | 'synced' | 'shipped' | { retryable: boolean; error: string };
+
+/**
+ * A fulfiller's webhook for its order `providerOrderId`. The body is not
+ * believed: the order is read back from the fulfiller's API.
+ */
+export async function handleFulfillmentEvent(
+  db: D1Database,
+  provider: FulfillmentProvider,
+  providerOrderId: string,
+  origin: string,
+): Promise<SyncOutcome> {
+  const orderId = await findFulfillmentOrder(db, provider.name, providerOrderId);
+  if (orderId == null) return 'unknown-order';
+  return syncFulfillment(db, orderId, providerOrderId, provider, origin);
+}
+
+/**
+ * Read the fulfiller's order back and record what changed: its status, every
+ * new package, and — with the first package — the order shipped, with the
+ * customer's email queued (once, like the admin's own Fulfil).
+ */
+export async function syncFulfillment(
+  db: D1Database,
+  orderId: number,
+  providerOrderId: string,
+  provider: FulfillmentProvider,
+  requestOrigin: string | null,
+): Promise<SyncOutcome> {
+  const read = await provider.getOrder(providerOrderId);
+  if (!read.ok) return { retryable: read.retryable, error: read.error };
+  await recordProviderStatus(db, orderId, read.order.status);
+  const added = await recordShipments(db, orderId, provider.name, read.order.shipments);
+  if (added.length === 0 || !(await fulfillFromShipment(db, orderId, added[0]))) return 'synced';
+  await queueNotification(db, orderId, 'order-shipped');
+  // Links in the email use the shop's public address, never the host the
+  // fulfiller happened to call. Without one, the outbox sweep sends it later.
+  const origin = (await getSetting(db, 'store_url')) || requestOrigin;
+  if (origin) {
+    try {
+      await deliverOrderNotifications(db, orderId, origin);
+    } catch (err) {
+      console.error(`Shipped-notification delivery failed for order ${orderId}:`, err);
+    }
+  }
+  return 'shipped';
 }
 
 export async function pushFulfillment(db: D1Database, orderId: number, provider: FulfillmentProvider): Promise<void> {

@@ -231,7 +231,7 @@ export function orderShippedEmail(
   const { t, th } = i18n;
   const cfg = getConfig();
   const num = orderReference(order.public_id, order.id, cfg.orderNumber);
-  const url = trackingUrl(order.tracking_carrier, order.tracking_number);
+  const url = order.tracking_url ?? trackingUrl(order.tracking_carrier, order.tracking_number);
   const orderUrl = guestOrderUrl ?? null;
   const carrier = carrierName(order.tracking_carrier, i18n);
 

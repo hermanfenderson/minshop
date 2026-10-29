@@ -30,6 +30,7 @@ const order = (over: Partial<Order> = {}): Order =>
     fulfillment_status: 'unfulfilled',
     tracking_carrier: null,
     tracking_number: null,
+    tracking_url: null,
     fulfilled_at: null,
     ship_address: null,
     created_at: '2026-01-01',

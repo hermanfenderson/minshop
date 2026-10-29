@@ -42,6 +42,8 @@ export interface Order {
   fulfillment_status: string; // 'unfulfilled' | 'fulfilled'
   tracking_carrier: string | null;
   tracking_number: string | null;
+  /** The fulfiller's tracking page (0048); built-in carriers derive theirs from the number. */
+  tracking_url: string | null;
   fulfilled_at: string | null;
   /** Purchased label PDF (Shippo), or null for manual fulfillment. */
   label_url: string | null;
@@ -374,7 +376,7 @@ export async function fulfillOrder(
     .prepare(
       `UPDATE orders
          SET fulfillment_status = 'fulfilled', tracking_carrier = ?, tracking_number = ?,
-             fulfilled_at = datetime('now')
+             tracking_url = NULL, fulfilled_at = datetime('now')
        WHERE id = ?
          AND NOT EXISTS (
            SELECT 1 FROM shipping_labels
@@ -397,7 +399,7 @@ export async function unfulfillOrder(db: D1Database, id: number): Promise<void> 
     .prepare(
       `UPDATE orders
          SET fulfillment_status = 'unfulfilled', tracking_carrier = NULL,
-             tracking_number = NULL, fulfilled_at = NULL
+             tracking_number = NULL, tracking_url = NULL, fulfilled_at = NULL
        WHERE id = ?`,
     )
     .bind(id)

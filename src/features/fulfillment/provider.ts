@@ -54,11 +54,45 @@ export interface RateQuoteInput {
 
 export type RateOutcome = { ok: true; amountCents: number } | { ok: false; error: string };
 
+export interface FulfillmentShipment {
+  /** The fulfiller's id for this package: a repeated report is recognised by it. */
+  id: string;
+  carrier: string | null;
+  service: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  /** ISO timestamp, or null when the fulfiller has not said. */
+  shippedAt: string | null;
+}
+
+export interface ProviderOrderState {
+  /** The fulfiller's own word for it: 'draft', 'pending', 'inprocess', 'fulfilled', 'canceled', … */
+  status: string;
+  shipments: FulfillmentShipment[];
+}
+
+export type ReadOutcome = { ok: true; order: ProviderOrderState } | { ok: false; retryable: boolean; error: string };
+
+/** What a webhook says happened, before anything in it is believed. */
+export interface FulfillmentEvent {
+  type: string;
+  /** The fulfiller's order id, to be read back from its API. */
+  providerOrderId: string | null;
+}
+
 export interface FulfillmentProvider {
   readonly name: string;
   /** The fulfiller's own cheapest standard delivery for these units, before tax. */
   quoteShipping(input: RateQuoteInput): Promise<RateOutcome>;
   submitOrder(input: FulfillmentOrderInput): Promise<SubmitOutcome>;
+  /**
+   * The order as the fulfiller has it now. Webhooks are only a nudge (Printful's
+   * are not signed): every change is taken from here, never from the payload.
+   */
+  getOrder(providerOrderId: string): Promise<ReadOutcome>;
+  /** Point the fulfiller's notifications at `url` (replacing any earlier one). */
+  registerWebhook(url: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  parseEvent(body: unknown): FulfillmentEvent | null;
   /** Where the merchant sees this order in the fulfiller's dashboard. */
   dashboardUrl(providerOrderId: string): string;
 }

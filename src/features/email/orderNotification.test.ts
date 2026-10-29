@@ -28,6 +28,7 @@ const order = (overrides: Partial<Order> = {}): Order =>
     fulfillment_status: 'unfulfilled',
     tracking_carrier: null,
     tracking_number: null,
+    tracking_url: null,
     fulfilled_at: null,
     label_url: null,
     delivery_method: null,

@@ -92,9 +92,12 @@ non rimette in magazzino).
 
 - **Ordini Printful confermati in automatico** dal 2026-10-29 (Mauro): `printful_confirm_orders = 1`.
   Serve un metodo di pagamento memorizzato su Printful; tornare alle bozze da Admin → Settings → Fulfillment.
-- Tracciamento spedizioni: lo shop **non** riceve ancora i webhook Printful di spedizione (ramo
-  `wip/printful-shipped-tracking`, ROADMAP 7); il cliente riceve il tracking dalle email di Printful,
-  se attive nello store.
+- Tracciamento spedizioni (2026-10-29, ROADMAP 7): Admin → Settings → Print on demand →
+  «Connect shipping updates» registra presso Printful il webhook dello shop (URL con chiave derivata
+  da `AUTH_SECRET`; Printful non firma le chiamate). A ogni avviso lo shop rilegge l'ordine da
+  Printful: registra i pacchi (`order_shipments`), al primo segna l'ordine spedito con corriere,
+  numero e pagina di tracking e manda l'email «spedito»; i pacchi successivi compaiono in Admin.
+  Se un avviso si perde, il cron rilegge gli ordini non spediti ogni 6 ore per 60 giorni.
 - Gratitude: inventario spento il 2026-10-29 (Mauro), in produzione e nel test (`track_inventory = 0`):
   sempre disponibile, mai scalato.
 - `store_url` punta a `https://prod.monopolele.com` (sottodominio di verifica creato da Mauro il

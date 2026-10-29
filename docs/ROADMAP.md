@@ -8,12 +8,12 @@ store in the code.
 |---|---|---|
 | 1 | Test shop on Cloudflare, Stripe only (Monopolele, step 1) | Done 2026-10-26 — [report](SHOP_TEST_MONOPOLELE.md) |
 | 2 | Failed and pending payment follow-up (below) | Done 2026-10-27 — tested on the test shop |
-| 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | Drafts and live shipping rates done (2026-10-27). Shipped/tracking webhooks parked on `wip/printful-shipped-tracking`, after Benefit Mode |
+| 3 | Printful connector and WooCommerce catalog import (Monopolele, step 2) | Drafts and live shipping rates done (2026-10-27). Shipped/tracking webhooks: row 7 |
 | 4 | Benefit Mode | **Next** — authorized 2026-10-27; it moves donations off WordPress. [Specification](ROADMAP_BENEFIT_MODE.md) |
 | 5 | `monopolele` theme (below) | After Benefit Mode |
 | 5a | Two-axis variant picker (below) | Done 2026-10-26 (option A) |
 | 6 | Production instance — includes Turnstile (below) | After Benefit Mode and the theme |
-| 7 | Printful shipped/tracking webhooks | After Benefit Mode; tested with one real confirmed order |
+| 7 | Printful shipped/tracking webhooks | Built 2026-10-29 (`feat/benefit-mode`): webhook registered from Admin, read-back from Printful's API, `order_shipments` (0048), first package fulfils the order and sends the shipped email, cron read-back as fallback. Real shipment pending: the first confirmed production order |
 
 ## Failed and pending payment follow-up
 
