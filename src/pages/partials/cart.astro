@@ -22,8 +22,9 @@ const [{ lines, subtotalCents }, imageDeliverySetting, freeDonationProduct] = aw
   getSetting(env.DB, 'image_delivery'),
   benefit ? findFreeDonationProduct(env.DB) : Promise.resolve(null),
 ]);
-const freeDonation =
-  freeDonationProduct && !lines.some((l) => l.product.public_id === freeDonationProduct.public_id) ? freeDonationProduct : null;
+// Always offered here (the drawer's lines have no amount field): once added,
+// it shows the amount and changes it — the cart keeps one such line.
+const freeDonationLine = freeDonationProduct ? lines.find((l) => l.product.public_id === freeDonationProduct.public_id) : undefined;
 const imageDelivery = imageDeliverySetting === 'cloudflare' ? 'cloudflare' : 'original';
 const count = cartCount(cart);
 const { t } = Astro.locals.i18n;
@@ -103,7 +104,15 @@ const { t } = Astro.locals.i18n;
           ))}
         </ul>
 
-        {benefit && freeDonation && <FreeDonation product={freeDonation} currency={currency} capCents={benefit.capCents} compact />}
+        {benefit && freeDonationProduct && (
+          <FreeDonation
+            product={freeDonationProduct}
+            currency={currency}
+            capCents={benefit.capCents}
+            currentCents={freeDonationLine?.unitPriceCents ?? null}
+            compact
+          />
+        )}
 
         <div class="mt-6 border-t border-line pt-4">
           <div class="flex items-center justify-between">

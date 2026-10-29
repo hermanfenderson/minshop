@@ -14,9 +14,11 @@ interface Props {
   capCents: number;
   /** The drawer: tighter spacing, smaller field. */
   compact?: boolean;
+  /** Already in the cart at this amount: the field shows it and the button changes it. */
+  currentCents?: number | null;
 }
 
-const { product, currency, capCents, compact = false } = Astro.props;
+const { product, currency, capCents, compact = false, currentCents = null } = Astro.props;
 const { t } = Astro.locals.i18n;
 const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.intl);
 const id = compact ? 'free-donation-drawer' : 'free-donation';
@@ -36,11 +38,12 @@ const id = compact ? 'free-donation-drawer' : 'free-donation';
       min={amountInputValue(product.price_cents, currency)}
       max={amountInputValue(capCents, currency)}
       step={amountInputStep(currency)}
+      value={currentCents != null ? amountInputValue(currentCents, currency) : undefined}
       placeholder={amountInputValue(product.price_cents, currency)}
       class:list={[compact ? 'w-20 text-sm' : 'w-28', 'border-b border-line bg-transparent py-1 text-right tabular-nums focus:border-brand focus:outline-none']}
     />
     <button type="submit" class="text-xs font-medium uppercase tracking-widest text-brand hover:text-brand-hover">
-      {t('benefit.cart.free.add')}
+      {currentCents != null ? t('benefit.cart.change') : t('benefit.cart.free.add')}
     </button>
   </div>
   <p class="mt-2 text-xs text-muted">{t('benefit.cart.free.hint', { price: minimum })}</p>
