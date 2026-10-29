@@ -64,11 +64,13 @@ cambiarla). Le chiavi si incollano solo nell'Admin, mai in chat o nei file.
 4. **Email**: in Resend crea una chiave nuova con solo invio sul dominio `monopolele.com` (già
    verificato). Admin → Settings → **Email**: chiave Resend, mittente `info@monopolele.com`,
    avvisi di nuovo ordine (copiato dal test: `mauro@monopolele.com`).
-5. **Printful**: rinomina lo store collegato a WooCommerce in «Monopolele WooCommerce», crea lo
-   store **API** «Monopolele» e un token privato limitato a quello store. Poi, con Claude: i
-   prodotti si copiano con `scripts/printful-copy.mjs copy` (sorgente letta con un token di sola
-   lettura), le varianti si ricollegano con `printful-copy.mjs link`, il token va in Admin →
-   Settings → Fulfillment, «New orders: Draft» finché non si è provato un ordine vero.
+5. **Printful** — ✅ fatto il 2026-10-29. Store «Monopolele WooCommerce» (rinominato), store API
+   **«Monopolele»** (id 18981974) creato da Mauro; token in `.env.printful-prod` (sorgente: store
+   «Monopolele TEST», destinazione: «Monopolele») e `.env.printful-test` (WooCommerce → TEST), fuori
+   da Git. 20 prodotti copiati da TEST con `printful-copy.mjs copy` (TEST solo letto), 173 varianti
+   su 173 ricollegate per SKU con `link --instance monopolele-shop`; token nel vault (Admin →
+   Settings → Fulfillment), ordini in bozza. Ukulele (3) e Gratitude restano senza Printful:
+   li spedisce lo shop o non si spedisce nulla.
 6. **Prova finale** dopo i punti 2–4: un acquisto vero di piccolo importo con carta, ricevuta
    ed email, poi rimborso dall'Admin.
 7. Facoltativo: Cloudflare Access su `/support/admin` e `/support/api/admin`.

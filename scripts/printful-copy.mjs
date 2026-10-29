@@ -2,9 +2,9 @@
 // Copy Printful products from one store to an API store, then link the shop's
 // variants to them.
 //
-//   node --env-file=.env.printful scripts/printful-copy.mjs list
-//   node --env-file=.env.printful scripts/printful-copy.mjs copy [--only <sourceProductId>] [--apply]
-//   node --env-file=.env.printful scripts/printful-copy.mjs link --local | --instance <slug> [--apply]
+//   node --env-file=.env.printful-<test|prod> scripts/printful-copy.mjs list
+//   node --env-file=.env.printful-<test|prod> scripts/printful-copy.mjs copy [--only <sourceProductId>] [--apply]
+//   node --env-file=.env.printful-<test|prod> scripts/printful-copy.mjs link --local | --instance <slug> [--apply]
 //
 // PRINTFUL_SOURCE_TOKEN reads the store the products live in today (any store
 // type; read-only scopes are enough). PRINTFUL_TOKEN is the API store's token
@@ -34,7 +34,7 @@ const apply = flag('--apply');
 function token(name) {
   const value = process.env[name];
   if (!value) {
-    console.error(`${name} is not set (run with --env-file=.env.printful).`);
+    console.error(`${name} is not set (run with --env-file=.env.printful-test or -prod).`);
     process.exit(1);
   }
   return value;
