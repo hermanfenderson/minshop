@@ -31,9 +31,18 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
   class="m-auto max-h-[92vh] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-paper p-0 text-current shadow-2xl backdrop:bg-black/60"
   aria-labelledby={`${id}-title`}
 >
-  <form method="POST" action={Astro.locals.urls.href('/api/cart')} data-free-donation-form>
+  <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="relative" data-free-donation-form>
     <input type="hidden" name="_action" value="add" />
     <input type="hidden" name="product_id" value={product.public_id} />
+    {/* Closing without choosing stays in the cart; the question comes back next time. */}
+    <button
+      type="button"
+      data-free-donation-close
+      aria-label={t('storefront.cartDrawer.close')}
+      class="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-2xl leading-none text-white hover:bg-black/75"
+    >
+      ×
+    </button>
     {/* The picture leads, in full. */}
     <ProductImage imageKey={product.image_key} alt="" usage="card" sizes="28rem" class="aspect-square w-full object-cover" />
     <div class="p-6">

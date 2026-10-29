@@ -255,6 +255,11 @@ const shellIcons = siteShell(Astro.locals.locale).icons;
             modal.close();
             proceed();
           };
+          modal.querySelector('[data-free-donation-close]').onclick = () => modal.close();
+          // A click on the backdrop lands on the dialog itself, outside its content.
+          modal.onclick = (e) => {
+            if (e.target === modal) modal.close();
+          };
           skip.onclick = () => {
             try {
               sessionStorage.setItem(declinedKey, '1');
