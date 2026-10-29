@@ -75,6 +75,9 @@ cambiarla). Le chiavi si incollano solo nell'Admin, mai in chat o nei file.
 
 ## Note aperte
 
+- **Promemoria per l'apertura** (Mauro, 2026-10-29): quando lo shop è in produzione gli ordini
+  Printful partono in automatico. Admin → Settings → Fulfillment → «New orders»: da «Draft» a
+  conferma automatica (`printful_confirm_orders`), con un metodo di pagamento memorizzato su Printful.
 - Gratitude ha `track_inventory` acceso con 100 pezzi, come nel test: dopo 100 donazioni risulta
   esaurito. Da decidere se spegnere l'inventario per quel prodotto.
 - `store_url` punta a `https://prod.monopolele.com` (sottodominio di verifica creato da Mauro il
