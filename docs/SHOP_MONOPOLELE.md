@@ -76,6 +76,18 @@ cambiarla). Le chiavi si incollano solo nell'Admin, mai in chat o nei file.
    ed email, poi rimborso dall'Admin.
 7. Facoltativo: Cloudflare Access su `/support/admin` e `/support/api/admin`.
 
+## Collaudo live (2026-10-29)
+
+| Prova | Esito |
+|---|---|
+| Gratitude 1 € con Stripe live (Mauro), ordine `ord_0jzsksx9f5` | ✅ ordine pagato, ricevuta **W1/2026** emessa 4 s dopo |
+| Rimborso totale dall'Admin | ✅ ordine «refunded», nota **WR1/2026** che sostituisce la W1/2026 |
+| `charge.refunded` dal webhook live (versione `endive`) | ✅ elaborato al primo tentativo, 1,00 € rimborsato, nessun doppio conteggio |
+| Email al donatore e all'admin | ⚠️ «skipped»: Resend non ancora configurato |
+
+Effetti: la serie delle ricevute di produzione parte con W1/WR1 (prova); Gratitude è a 99 (il rimborso
+non rimette in magazzino).
+
 ## Note aperte
 
 - **Promemoria per l'apertura** (Mauro, 2026-10-29): quando lo shop è in produzione gli ordini
