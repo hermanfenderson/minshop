@@ -56,7 +56,7 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
       {/* «Add» in every colour, «No, thanks» grey and a little sad (Mauro, 2026-10-30). */}
       <div class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button type="button" data-free-donation-skip class="whitespace-nowrap rounded-full bg-gray-500/70 px-5 py-3 text-base text-gray-200 transition hover:bg-gray-500">
-          {t('benefit.cart.free.skip')} 🙁
+          <span class="inline-flex items-center gap-2">{t('benefit.cart.free.skip')} <span class="text-2xl leading-none" aria-hidden="true">🙁</span></span>
         </button>
         <button
           type="submit"

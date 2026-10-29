@@ -15,6 +15,12 @@ store in the code.
 | 6 | Production instance — includes Turnstile (below) | After Benefit Mode and the theme |
 | 7 | Printful shipped/tracking webhooks | Built 2026-10-29 (`feat/benefit-mode`): webhook registered from Admin, read-back from Printful's API, `order_shipments` (0048), first package fulfils the order and sends the shipped email, cron read-back as fallback. Real shipment pending: the first confirmed production order |
 
+## Note for later: the free donation as a surprise elsewhere
+
+Mauro, 2026-10-30: keep the cart's free-donation modal (`features/benefit/FreeDonation.astro`,
+picture in full, rainbow «Add», grey «No, thanks») and reuse it with a slightly different
+message to appear «by surprise» in other places of the site. Not planned yet.
+
 ## Failed and pending payment follow-up
 
 Found while testing the Monopolele test shop (2026-10-26). Orders are
