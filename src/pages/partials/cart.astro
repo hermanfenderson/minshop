@@ -39,7 +39,8 @@ const { t } = Astro.locals.i18n;
   {
     lines.length === 0 ? (
       <p class="py-10 text-center text-sm text-muted">
-        {t('cart.page.empty')}
+        {t('cart.page.empty')}{' '}
+        <a href={shopHref} class="border-b border-brand text-brand">{t('cart.page.continueShopping')}</a>.
       </p>
     ) : (
       <Fragment>

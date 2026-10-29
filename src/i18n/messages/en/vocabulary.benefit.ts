@@ -33,7 +33,7 @@ export const benefitVocabulary: Catalog = {
   'cart.page.title': 'Cart',
   'cart.page.heading': 'Cart',
   'cart.page.empty': "You haven't chosen how to support us yet.",
-  'cart.page.continueShopping': 'Choose more perks',
+  'cart.page.continueShopping': 'Find out how',
   'cart.line.each': '{price} each',
   'cart.summary.subtotal': 'Total donation',
   'cart.summary.unavailable': 'Donations are currently unavailable.',

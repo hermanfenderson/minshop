@@ -33,7 +33,7 @@ export const benefitVocabulary: Catalog = {
   'cart.page.title': 'Carrello',
   'cart.page.heading': 'Carrello',
   'cart.page.empty': 'Non hai ancora scelto come sostenerci.',
-  'cart.page.continueShopping': 'Scegli altri omaggi',
+  'cart.page.continueShopping': 'Scopri come fare',
   'cart.line.each': '{price} ciascuno',
   'cart.summary.subtotal': 'Totale donazione',
   'cart.summary.unavailable': 'Al momento non è possibile completare la donazione.',

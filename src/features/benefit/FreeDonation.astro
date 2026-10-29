@@ -28,7 +28,7 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
 <dialog
   id={id}
   data-free-donation-modal
-  class="max-h-[92vh] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-paper p-0 text-current shadow-2xl backdrop:bg-black/60"
+  class="m-auto max-h-[92vh] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-paper p-0 text-current shadow-2xl backdrop:bg-black/60"
   aria-labelledby={`${id}-title`}
 >
   <form method="POST" action={Astro.locals.urls.href('/api/cart')} data-free-donation-form>
