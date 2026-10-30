@@ -285,6 +285,108 @@ export function orderShippedEmail(
   };
 }
 
+/** One package of an order, as its email tells it (features/fulfillment/packages.ts). */
+export interface ShippedPackage {
+  carrier: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  items: Array<{ name: string; quantity: number }>;
+}
+
+/**
+ * One email per package. An order that leaves in one package reads as before
+ * («your order is on its way»); one that leaves in several says what this
+ * package holds and what is still to come, so nobody waits for a parcel that
+ * already arrived or wonders where the rest went.
+ */
+export function packageShippedEmail(
+  order: Order,
+  pkg: ShippedPackage,
+  /** Units still waiting for a package, by line. */
+  waiting: Array<{ name: string; quantity: number }>,
+  /** All packages of the order so far, this one included. */
+  packageCount: number,
+  storeName: string,
+  guestOrderUrl?: string | null,
+  i18n: I18n = enI18n,
+): EmailMessage {
+  const { t, th } = i18n;
+  const num = orderReference(order.public_id, order.id, getConfig().orderNumber);
+  const url = pkg.trackingUrl ?? trackingUrl(pkg.carrier, pkg.trackingNumber);
+  const orderUrl = guestOrderUrl ?? null;
+  const carrier = carrierName(pkg.carrier, i18n);
+  const whole = packageCount === 1 && waiting.length === 0;
+  const line = (i: { name: string; quantity: number }) => (i.quantity > 1 ? `${i.quantity} × ${i.name}` : i.name);
+
+  const text = [
+    whole ? t('email.shipped.textShipped', { num }) : t('email.package.textShipped', { num }),
+    ...(!whole && pkg.items.length > 0 ? [``, t('email.package.contains'), ...pkg.items.map((i) => `- ${line(i)}`)] : []),
+    ...(pkg.trackingNumber
+      ? [
+          ``,
+          t('email.shipped.textCarrier', { carrier }),
+          t('email.shipped.textTracking', { number: pkg.trackingNumber }),
+          ...(url ? [t('email.shipped.textTrackIt', { url })] : []),
+        ]
+      : []),
+    ...(waiting.length > 0
+      ? [``, t('email.package.waiting'), ...waiting.map((i) => `- ${line(i)}`)]
+      : !whole
+        ? [``, t('email.package.lastOne')]
+        : []),
+    ...(orderUrl ? [``, t('email.text.viewOrder', { url: orderUrl })] : []),
+  ].join('\n');
+
+  const list = (items: Array<{ name: string; quantity: number }>) =>
+    `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">${items.map((i) => escapeHtml(line(i))).join('<br>')}</p>`;
+  const trackingHtml = pkg.trackingNumber
+    ? emailLabel(t('email.shipped.tracking')) +
+      `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">
+        ${escapeHtml(carrier)}<br>
+        ${
+          url
+            ? `<a href="${url}" style="color:${PALETTE.brand};font-weight:600;">${escapeHtml(pkg.trackingNumber)}</a>`
+            : escapeHtml(pkg.trackingNumber)
+        }
+      </p>`
+    : '';
+  const containsHtml = !whole && pkg.items.length > 0 ? emailLabel(t('email.package.contains')) + list(pkg.items) : '';
+  const waitingHtml =
+    waiting.length > 0
+      ? emailLabel(t('email.package.waiting')) + list(waiting)
+      : !whole
+        ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">${escapeHtml(t('email.package.lastOne'))}</p>`
+        : '';
+
+  const html = emailShell({
+    storeName,
+    heading: whole ? t('email.shipped.heading') : t('email.package.heading'),
+    subheading: whole ? th('email.shipped.subheading', { num }) : th('email.package.subheading', { num }),
+    body:
+      containsHtml +
+      trackingHtml +
+      waitingHtml +
+      (url
+        ? emailButton(url, t('email.shipped.trackPackage'))
+        : orderUrl
+          ? emailButton(orderUrl, t('email.button.viewOrder'))
+          : ''),
+    footer:
+      orderUrl && url
+        ? `${t('email.shipped.orderDetails')} <a href="${orderUrl}" style="color:${PALETTE.muted};">${orderUrl}</a>`
+        : undefined,
+  });
+
+  return {
+    to: order.email!,
+    subject: whole
+      ? t('email.shipped.subject', { store: storeName, num })
+      : t('email.package.subject', { store: storeName, num }),
+    html,
+    text,
+  };
+}
+
 /**
  * Refund notice. Sent once per newly recognised refund — the amount the total
  * just advanced by, not the cumulative total — so a partial refund followed by

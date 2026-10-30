@@ -25,7 +25,8 @@ import { shouldSendCustomerOrderEmail } from '../../../features/email/orderPolic
 import RefundPanel from '../../../features/refunds/RefundPanel.astro';
 import { formatWeight } from '../../../features/shipping/weight';
 import { parseOrderOrLegacyPublicId } from '../../../features/ids/publicId';
-import { getFulfillment, listShipments } from '../../../features/fulfillment/store';
+import { getFulfillment } from '../../../features/fulfillment/store';
+import { listPackages, loadPackableLines, packedQuantities, waitingLines } from '../../../features/fulfillment/packages';
 import { PRINTFUL_DASHBOARD_URL } from '../../../features/fulfillment/printful';
 
 // The route param is the order public ID — ord_ or a preserved legacy shape
@@ -59,7 +60,10 @@ const weightUnit = Astro.locals.settings?.weightUnit ?? 'g';
 // Read-only status of the hand-off that settlement started; only orders with
 // lines linked to Printful have a row. Retry is offered when it stopped.
 const handoff = await getFulfillment(env.DB, order.id);
-const shipments = handoff ? await listShipments(env.DB, order.id) : [];
+// Packages (migration 0049): the fulfiller's and the ones sent from here, with
+// what each holds, and what is still to ship.
+const packages = await listPackages(env.DB, order.id);
+const waiting = waitingLines(await loadPackableLines(env.DB, order.id), await packedQuantities(env.DB, order.id));
 const HANDOFF_LABEL: Record<string, string> = {
   pending: 'Waiting to be sent (retried automatically)',
   processing: 'Sending…',
@@ -305,26 +309,6 @@ const willEmailCustomer =
             </>
           )}
         </p>
-        {shipments.length > 0 && (
-          <ul class="mt-2 space-y-1 text-sm">
-            {shipments.map((s) => (
-              <li>
-                Package {s.shipped_at && <>shipped {s.shipped_at.slice(0, 10)}</>}
-                {s.carrier && <> · {s.carrier}</>}
-                {s.tracking_number && (
-                  <>
-                    {' '}·{' '}
-                    {s.tracking_url ? (
-                      <a href={s.tracking_url} target="_blank" rel="noopener" class="tabular-nums text-accent hover:underline">{s.tracking_number}</a>
-                    ) : (
-                      <span class="tabular-nums">{s.tracking_number}</span>
-                    )}
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
         {handoff.provider_status === 'draft' && (
           <p class="mt-1 text-xs text-gray-500">A draft: nothing is made or charged until it is confirmed in Printful.</p>
         )}
@@ -345,6 +329,43 @@ const willEmailCustomer =
 
   <div class="mb-8 rounded-lg border border-line p-5">
     <h2 class="mb-3 text-xs uppercase tracking-widest text-gray-400">Fulfillment</h2>
+    {
+      packages.length > 0 && (
+        <div class="mb-5 space-y-3 text-sm">
+          {packages.map((p, i) => (
+            <div class="rounded-md border border-line bg-white/60 p-3">
+              <p>
+                <span class="font-medium">Package {i + 1}</span>
+                {' '}· {p.provider === 'manual' ? 'sent by you' : p.provider === 'printful' ? 'Printful' : p.provider}
+                {(p.shipped_at ?? p.created_at) && <> · {(p.shipped_at ?? p.created_at).slice(0, 10)}</>}
+                {p.carrier && <> · {carrierName(p.carrier)}</>}
+                {p.tracking_number && (
+                  <>
+                    {' '}·{' '}
+                    {(p.tracking_url ?? trackingUrl(p.carrier, p.tracking_number)) ? (
+                      <a href={p.tracking_url ?? trackingUrl(p.carrier, p.tracking_number)} target="_blank" rel="noopener" class="tabular-nums text-accent hover:underline">{p.tracking_number}</a>
+                    ) : (
+                      <span class="tabular-nums">{p.tracking_number}</span>
+                    )}
+                  </>
+                )}
+              </p>
+              {p.items.length > 0 ? (
+                <p class="mt-1 text-gray-600">{p.items.map((it) => (it.quantity > 1 ? `${it.quantity} × ${it.name}` : it.name)).join(' · ')}</p>
+              ) : (
+                <p class="mt-1 text-xs text-gray-500">Contents not reported yet.</p>
+              )}
+            </div>
+          ))}
+          {waiting.length > 0 && (
+            <p class="text-gray-600">
+              <span class="font-medium">Still to ship:</span>{' '}
+              {waiting.map((l) => (l.quantity - l.packed > 1 ? `${l.quantity - l.packed} × ${l.name}` : l.name)).join(' · ')}
+            </p>
+          )}
+        </div>
+      )
+    }
     {
       labelUnreconciled && labelRecord && (
         <div class="mb-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
@@ -603,6 +624,26 @@ const willEmailCustomer =
           class="flex flex-wrap items-end gap-3 text-sm"
         >
           <input type="hidden" name="_action" value="fulfill" />
+          {waiting.length > 0 && (
+            <fieldset class="w-full">
+              <legend class="block text-xs uppercase tracking-widest text-gray-400">In this package</legend>
+              <div class="mt-1 space-y-1">
+                {waiting.map((l) => (
+                  <label class="flex items-center gap-2">
+                    <input
+                      type="number"
+                      name={`item_${l.id}`}
+                      value={l.quantity - l.packed}
+                      min="0"
+                      max={l.quantity - l.packed}
+                      class="w-16 rounded-md border border-line bg-paper px-2 py-1 tabular-nums"
+                    />
+                    <span>of {l.quantity - l.packed} × {l.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <label class="block">
             <span class="block text-xs uppercase tracking-widest text-gray-400">Carrier</span>
             <select name="carrier" class="mt-1 rounded-md border border-line bg-paper px-3 py-2">
@@ -619,11 +660,17 @@ const willEmailCustomer =
               class="mt-1 rounded-md border border-line bg-paper px-3 py-2"
             />
           </label>
+          {waiting.length > 0 && (
+            <label class="block">
+              <span class="block text-xs uppercase tracking-widest text-gray-400">Tracking link (optional)</span>
+              <input name="tracking_url" type="url" placeholder="https://" class="mt-1 rounded-md border border-line bg-paper px-3 py-2" />
+            </label>
+          )}
           <button
             type="submit"
             class="rounded-md bg-brand px-5 py-2 font-medium text-white hover:bg-brand-hover"
           >
-            Mark as fulfilled
+            {waiting.length > 0 ? 'Record package' : 'Mark as fulfilled'}
           </button>
         </form>
         </div>

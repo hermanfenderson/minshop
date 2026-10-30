@@ -16,6 +16,7 @@ import {
   markCheckoutNotificationFailed,
   listUndeliveredCheckoutKinds,
   type CheckoutNotificationKind,
+  packageShippedId,
 } from './outboxStore';
 
 export { NOTIFICATION_KINDS, type NotificationKind } from './outboxStore';
@@ -23,7 +24,8 @@ import { getConfig } from '../../config';
 import { getSetting, setSetting, getStoreSettings, type StoreSettings } from '../settings/db';
 import { getOrder, listOrderItemsWithImages } from '../orders/db';
 import { getEmailProvider } from './index';
-import { orderConfirmationEmail, orderNotificationEmail, orderShippedEmail } from './orderConfirmation';
+import { orderConfirmationEmail, orderNotificationEmail, orderShippedEmail, packageShippedEmail } from './orderConfirmation';
+import { listPackages, loadPackableLines, packedQuantities, waitingLines } from '../fulfillment/packages';
 import { guestLinkReissueEmail } from './guestLinkReissue';
 import { guestOrderPath, getGuestAccess, sweepAbandonedGuestAccess } from '../orders/guestAccess.ts';
 import { emailLanguage } from '../i18n/email';
@@ -103,7 +105,9 @@ export async function deliverOrderNotifications(
   const undelivered = await listUndeliveredKinds(db, orderId);
   const kinds = undelivered.filter(
     (k): k is NotificationKind =>
-      (NOTIFICATION_KINDS as readonly string[]).includes(k) || isGuestLinkReissueKind(k),
+      (NOTIFICATION_KINDS as readonly string[]).includes(k) ||
+      isGuestLinkReissueKind(k) ||
+      packageShippedId(k) !== null,
   );
 
   for (const kind of kinds) {
@@ -163,6 +167,35 @@ export async function deliverOrderNotifications(
           order,
           storeName,
           customer.urls.absolute(`/order/${access.access_token}`),
+          customer.i18n,
+        );
+        await emailer.send({ ...msg, idempotencyKey: `${kind}/${order.public_id ?? orderId}` });
+        await markSent(db, orderId, kind, attempts);
+        continue;
+      }
+
+      // One package of the order left (migration 0049): what it holds, its
+      // tracking, and what is still to come. A package removed meanwhile (the
+      // admin marked the order unshipped) is skipped, not sent.
+      const shipmentId = packageShippedId(kind);
+      if (shipmentId !== null) {
+        const packages = await listPackages(db, orderId);
+        const pkg = packages.find((p) => p.id === shipmentId);
+        const applicable = Boolean(order.email) && shouldSendCustomerOrderEmail(order.payment_method) && Boolean(pkg);
+        if (!applicable) {
+          await markSkipped(db, orderId, kind, attempts);
+          continue;
+        }
+        const waiting = waitingLines(await loadPackableLines(db, orderId), await packedQuantities(db, orderId)).map(
+          (l) => ({ name: l.name, quantity: l.quantity - l.packed }),
+        );
+        const msg = packageShippedEmail(
+          order,
+          { carrier: pkg!.carrier, trackingNumber: pkg!.tracking_number, trackingUrl: pkg!.tracking_url, items: pkg!.items },
+          waiting,
+          packages.filter((p) => p.id <= shipmentId).length,
+          storeName,
+          await orderLink(),
           customer.i18n,
         );
         await emailer.send({ ...msg, idempotencyKey: `${kind}/${order.public_id ?? orderId}` });

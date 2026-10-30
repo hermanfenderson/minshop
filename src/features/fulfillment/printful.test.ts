@@ -156,7 +156,26 @@ describe('printfulShipments', () => {
         trackingNumber: 'H06FXA0000000001',
         trackingUrl: 'https://myorders.co/tracking/80307798/H06FXA0000000001',
         shippedAt: new Date(1781695963 * 1000).toISOString(),
+        items: null,
       },
+    ]);
+  });
+
+  it('says what each package holds, by the line id we handed over or the sync variant', () => {
+    const split = {
+      status: 'fulfilled',
+      items: [
+        { id: 501, external_id: '11', sync_variant_id: 4011, quantity: 1 },
+        { id: 502, external_id: null, sync_variant_id: 4022, quantity: 2 },
+      ],
+      shipments: [
+        { id: 1, status: 'shipped', tracking_number: 'A', items: [{ item_id: 501, quantity: 1 }] },
+        { id: 2, status: 'shipped', tracking_number: 'B', items: [{ item_id: 502, quantity: 2 }, { item_id: 999, quantity: 1 }] },
+      ],
+    };
+    expect(printfulShipments(split).map((s) => s.items)).toEqual([
+      [{ externalId: '11', ref: '4011', quantity: 1 }],
+      [{ externalId: null, ref: '4022', quantity: 2 }],
     ]);
   });
 

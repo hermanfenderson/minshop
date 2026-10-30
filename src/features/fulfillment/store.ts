@@ -1,6 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { FulfillableOrder, OrderLineRow } from './order';
-import type { FulfillmentShipment } from './provider';
 
 /**
  * The order_fulfillments state machine (migration 0043) — every statement
@@ -36,7 +35,7 @@ export const MAX_FULFILLMENT_ATTEMPTS = 6;
 export const FULFILLMENT_LEASE_SECONDS = 120;
 
 const LINES_SQL = `
-  SELECT oi.name, oi.quantity, oi.price_cents,
+  SELECT oi.id, oi.name, oi.quantity, oi.price_cents,
          COALESCE(v.fulfillment_ref, CASE WHEN oi.variant_id IS NULL THEN p.fulfillment_ref END) AS ref
     FROM order_items oi
     LEFT JOIN product_variants v ON v.id = oi.variant_id
@@ -216,74 +215,11 @@ export async function recordProviderStatus(db: D1Database, orderId: number, stat
     .run();
 }
 
-/** Store the packages not seen before; returns those, in the fulfiller's order. */
-export async function recordShipments(
-  db: D1Database,
-  orderId: number,
-  provider: string,
-  shipments: FulfillmentShipment[],
-): Promise<FulfillmentShipment[]> {
-  const added: FulfillmentShipment[] = [];
-  for (const s of shipments) {
-    const res = await db
-      .prepare(
-        `INSERT OR IGNORE INTO order_shipments
-           (order_id, provider, provider_shipment_id, carrier, service, tracking_number, tracking_url, shipped_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(orderId, provider, s.id, s.carrier, s.service, s.trackingNumber, s.trackingUrl, s.shippedAt)
-      .run();
-    if ((res.meta?.changes ?? 0) > 0) added.push(s);
-  }
-  return added;
-}
-
-/**
- * The first package marks the order shipped with its tracking, once: an order
- * already fulfilled (by hand, a label, or an earlier package) is left alone, and
- * so is one with a label purchase in flight. True = it changed now, so the
- * customer's shipped email is due.
- */
-export async function fulfillFromShipment(db: D1Database, orderId: number, s: FulfillmentShipment): Promise<boolean> {
-  const res = await db
-    .prepare(
-      `UPDATE orders
-          SET fulfillment_status = 'fulfilled', tracking_carrier = ?, tracking_number = ?, tracking_url = ?,
-              fulfilled_at = datetime('now')
-        WHERE id = ? AND fulfillment_status = 'unfulfilled'
-          AND NOT EXISTS (
-            SELECT 1 FROM shipping_labels
-             WHERE order_id = orders.id AND status IN ('purchasing', 'uncertain')
-          )`,
-    )
-    .bind(s.carrier, s.trackingNumber, s.trackingUrl, orderId)
-    .run();
-  return (res.meta?.changes ?? 0) > 0;
-}
-
-export interface ShipmentRow {
-  provider_shipment_id: string;
-  carrier: string | null;
-  service: string | null;
-  tracking_number: string | null;
-  tracking_url: string | null;
-  shipped_at: string | null;
-}
-
-export async function listShipments(db: D1Database, orderId: number): Promise<ShipmentRow[]> {
-  const { results } = await db
-    .prepare(
-      `SELECT provider_shipment_id, carrier, service, tracking_number, tracking_url, shipped_at
-         FROM order_shipments WHERE order_id = ? ORDER BY id`,
-    )
-    .bind(orderId)
-    .all<ShipmentRow>();
-  return results ?? [];
-}
-
 /**
  * Handed-over orders not shipped yet, for the cron to read back in case a
- * webhook never came: each at most every 6 hours, for 60 days.
+ * webhook never came: each at most every 6 hours, for 60 days. One the
+ * fulfiller has finished is not read again, even while the shop still owes
+ * its own items.
  */
 export async function listUnshippedFulfillments(
   db: D1Database,
@@ -294,7 +230,7 @@ export async function listUnshippedFulfillments(
       `SELECT f.order_id, f.provider_order_id
          FROM order_fulfillments f JOIN orders o ON o.id = f.order_id
         WHERE f.state = 'submitted' AND f.provider_order_id IS NOT NULL
-          AND COALESCE(f.provider_status, '') <> 'canceled'
+          AND COALESCE(f.provider_status, '') NOT IN ('canceled', 'fulfilled')
           AND o.fulfillment_status = 'unfulfilled'
           AND f.created_at > datetime('now', '-60 days')
           AND f.updated_at < datetime('now', '-6 hours')

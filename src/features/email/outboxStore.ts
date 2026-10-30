@@ -35,7 +35,26 @@ const CHECKOUTS: Outbox = { table: 'checkout_notifications', key: 'reservation_i
 export const GUEST_LINK_REISSUE_PREFIX = 'guest-link-reissue:';
 export type GuestLinkReissueKind = `${typeof GUEST_LINK_REISSUE_PREFIX}${number}`;
 
-export type NotificationKind = (typeof NOTIFICATION_KINDS)[number] | GuestLinkReissueKind;
+/**
+ * One email per package (migration 0049): `package-shipped:<order_shipments.id>`,
+ * so every package of an order gets its own row and idempotency key.
+ */
+export const PACKAGE_SHIPPED_PREFIX = 'package-shipped:';
+export type PackageShippedKind = `${typeof PACKAGE_SHIPPED_PREFIX}${number}`;
+
+export function packageShippedKind(shipmentId: number): PackageShippedKind {
+  return `${PACKAGE_SHIPPED_PREFIX}${shipmentId}`;
+}
+
+/** The package a package-shipped kind names, or null for any other kind. */
+export function packageShippedId(kind: string): number | null {
+  if (!kind.startsWith(PACKAGE_SHIPPED_PREFIX)) return null;
+  const raw = kind.slice(PACKAGE_SHIPPED_PREFIX.length);
+  const n = Number(raw);
+  return /^\d+$/.test(raw) && Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number] | GuestLinkReissueKind | PackageShippedKind;
 
 export function isGuestLinkReissueKind(kind: string): kind is GuestLinkReissueKind {
   return kind.startsWith(GUEST_LINK_REISSUE_PREFIX) && reissueGeneration(kind) !== null;
