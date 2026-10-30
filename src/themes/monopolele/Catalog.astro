@@ -45,9 +45,10 @@ const categories = model.categories.filter((category) => !isFreeDonation(categor
   <h1 class="mt-2 font-serif text-4xl font-medium tracking-tight sm:text-5xl">{model.heading}</h1>
 </div>
 
-{firstPage && <SupportIntro i18n={i18n} perksAnchor="omaggi" gratitudeHref={gratitudeHref} />}
+{firstPage && <SupportIntro i18n={i18n} perksAnchor="perks" gratitudeHref={gratitudeHref} />}
 
-<div id="omaggi" class="scroll-mt-6"></div>
+{/* #perks: the cart's «donation with a perk» invitation lands here. */}
+<div id="perks" class="scroll-mt-6"></div>
 
 {
   categories.length > 0 && (

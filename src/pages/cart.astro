@@ -234,7 +234,7 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
             {onlyFreeDonation && (
               <p class="-mt-4 mb-6 text-sm text-muted">
                 {t('benefit.cart.perks.invite')}{' '}
-                <a href={shopHref} class="border-b border-brand text-brand">{t('benefit.cart.perks.link')}</a>
+                <a href={`${shopHref}#perks`} class="border-b border-brand text-brand">{t('benefit.cart.perks.link')}</a>
               </p>
             )}
             <div class="flex items-center justify-between">

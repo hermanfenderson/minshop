@@ -26,8 +26,8 @@ export const benefit = {
   'benefit.cart.free.question': 'Would you like to add a freewill donation?',
   'benefit.cart.free.hint': 'Any amount from {price}, on the same receipt. Donations like yours keep this project free and open to everyone.',
   'benefit.cart.free.skip': 'No, thanks',
-  'benefit.cart.perks.invite': 'Would you like a perk too?',
-  'benefit.cart.perks.link': 'Choose a perk',
+  'benefit.cart.perks.invite': 'Would you like to add a donation with a perk too?',
+  'benefit.cart.perks.link': 'See the donations with a perk',
   'benefit.cart.free.add': 'Add and continue',
 
   // Donor details, collected before payment for the receipt (R14)

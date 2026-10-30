@@ -19,8 +19,8 @@ export const benefit = {
   'benefit.cart.free.question': 'Vuoi aggiungere una donazione libera?',
   'benefit.cart.free.hint': 'Qualsiasi importo da {price}, nella stessa ricevuta. Sono donazioni come la tua a tenere questo progetto libero e aperto a tutti.',
   'benefit.cart.free.skip': 'No, grazie',
-  'benefit.cart.perks.invite': 'Vuoi anche un omaggio?',
-  'benefit.cart.perks.link': 'Scegli un omaggio',
+  'benefit.cart.perks.invite': 'Vuoi aggiungere anche una donazione con omaggio?',
+  'benefit.cart.perks.link': 'Vedi le donazioni con omaggio',
   'benefit.cart.free.add': 'Aggiungi e continua',
 
   'benefit.donor.heading': 'I tuoi dati per la ricevuta',
