@@ -268,7 +268,7 @@ const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homeP
                   {t('cart.summary.shipTo')}
                   <select
                     name="country"
-                    class="rounded-md border border-line px-2 py-1.5 text-sm normal-case tracking-normal text-ink"
+                    class="min-w-0 max-w-[65%] rounded-md border border-line px-2 py-1.5 text-sm normal-case tracking-normal text-ink"
                   >
                     {destination.countries.map((c) => (
                       <option value={c} selected={c === destination.defaultCountry}>
