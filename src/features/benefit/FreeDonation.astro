@@ -29,7 +29,7 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
 <dialog
   id={id}
   data-free-donation-modal
-  class="m-auto max-h-[92vh] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-paper p-0 text-current shadow-2xl backdrop:bg-black/60"
+  class="m-auto max-h-[92vh] w-[min(31rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line bg-paper p-0 text-current shadow-2xl backdrop:bg-black/60"
   aria-labelledby={`${id}-title`}
 >
   <form method="POST" action={Astro.locals.urls.href('/api/cart')} class="relative" data-free-donation-form>
@@ -65,8 +65,8 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
         <span class="text-xl text-muted">{currency.toUpperCase() === 'EUR' ? '€' : currency.toUpperCase()}</span>
       </label>
       {/* «Add» in every colour, «No, thanks» grey and a little sad (Mauro, 2026-10-30). */}
-      <div class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button type="button" data-free-donation-skip class="whitespace-nowrap rounded-full bg-gray-500/70 px-5 py-3 text-base text-gray-200 transition hover:bg-gray-500">
+      <div class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <button type="button" data-free-donation-skip class="whitespace-nowrap rounded-full bg-gray-500/70 px-4 py-3 text-base text-gray-200 transition hover:bg-gray-500">
           <span class="inline-flex items-center gap-2">{t('benefit.cart.free.skip')} <span class="text-2xl leading-none" aria-hidden="true">🙁</span></span>
         </button>
         <button
