@@ -57,6 +57,7 @@ import { translated, translatedAll, translationLocale } from '../../features/tra
 import { benefitRules, BENEFIT_PAYMENT_METHODS, isSingleUnitContribution } from '../../features/benefit/mode';
 import { checkContribution, readContribution } from '../../features/benefit/amount';
 import { contributionError } from '../../features/benefit/messages';
+import { findFreeDonationProduct } from '../../features/benefit/freeDonation';
 import { parseDonor, type Donor, type DonorProblem } from '../../features/benefit/donor';
 import { writeDonorDraft } from '../../features/benefit/donorDraft';
 
@@ -255,6 +256,14 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
   }
 
   if (lines.length === 0) return redirect('/cart', 303);
+
+  // Benefit Mode: the free donation is «Free donation» / «Donazione libera» on the
+  // order, its page and its emails, as in the cart, not the product's own name
+  // (Gratitude) — Mauro, 2026-10-30.
+  if (benefit) {
+    const free = await findFreeDonationProduct(env.DB);
+    if (free) for (const l of lines) if (l.product.id === free.id) l.name = i18n.t('benefit.cart.free.name');
+  }
 
   // Don't oversell — check the variant's stock (or the product's), not the base.
   const short = lines.find((l) => l.availableStock < l.qty);
