@@ -83,13 +83,20 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
 
 <style is:inline>
   /* «Add» in every colour, flowing like an old gif; still for reduced motion. */
+  /* Festive on purpose (Mauro, 2026-10-30): the colours run fast, the button
+     hops now and then, and the sparkle is large, glows and twinkles. Still
+     for reduced motion. */
   [data-rainbow] {
-    background: linear-gradient(90deg, #f7b500, #f76b1c, #e63946, #b5179e, #5e60ce, #00b4d8, #2ec4b6, #f7b500);
+    background: linear-gradient(90deg, #ffbe0b, #fb5607, #ff006e, #8338ec, #3a86ff, #06d6a0, #ffbe0b);
     background-size: 300% 100%;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-    animation: rainbow-flow 4s linear infinite;
+    animation:
+      rainbow-flow 1.4s linear infinite,
+      rainbow-hop 2.8s ease-in-out infinite;
   }
-  /* The sparkle stands out (Mauro, 2026-10-30): larger, glowing, twinkling. */
+  [data-rainbow]:hover {
+    animation-duration: 0.7s, 2.8s;
+  }
   [data-sparkle] {
     display: inline-block;
     font-size: 1.6em;
@@ -102,6 +109,12 @@ const minimum = formatPrice(product.price_cents, undefined, Astro.locals.i18n.in
   @keyframes rainbow-flow {
     from { background-position: 0% 50%; }
     to { background-position: 150% 50%; }
+  }
+  @keyframes rainbow-hop {
+    0%, 70%, 100% { transform: translateY(0) rotate(0); }
+    76% { transform: translateY(-4px) rotate(-2deg); }
+    82% { transform: translateY(0) rotate(2deg); }
+    88% { transform: translateY(-2px) rotate(-1deg); }
   }
   @keyframes sparkle-twinkle {
     0%, 100% { transform: scale(1) rotate(0); }
