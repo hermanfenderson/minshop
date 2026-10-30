@@ -43,10 +43,11 @@ const generous = i18n.locale === 'it'
   : 'You choose the amount. Generous donations like yours keep Monopolele’s concerts free and open to everyone.';
 // Perks (Mauro 2026-10-29): one button, «Add to cart»; the cart offers the
 // free donation on top, and its «Donate» goes on.
-// 10, or the minimum when higher, with the field's own decimals (the step's).
-// Same rule as the cart's modal (features/benefit/freeDonation.ts).
-const suggestedValue = (c: { min: string; step: string }) =>
-  Math.max(Number(c.min), 10).toFixed((c.step.split('.')[1] ?? '').length);
+// 10, or the minimum when higher, with the field's own decimals: the minimum's
+// («10.00»), since the step is "any" (amountInputStep). Same rule as the cart's
+// modal (features/benefit/freeDonation.ts).
+const suggestedValue = (c: { min: string }) =>
+  Math.max(Number(c.min), 10).toFixed((c.min.split('.')[1] ?? '').length);
 const purchase: ProductPurchaseModel =
   plainDonation && Astro.props.purchase.contribution
     ? {
