@@ -102,6 +102,7 @@ export const benefitVocabulary: Catalog = {
 
   'email.totals.discount': 'Riduzione',
   'email.text.discount': 'Riduzione: -{amount}',
+  'order.confirmed.discount': 'Riduzione',
   'email.text.viewOrder': 'Vedi la tua donazione: {url}',
   'email.button.viewOrder': 'Vedi la tua donazione',
   'email.confirmation.subject': 'La tua donazione #{num} a {store}',
