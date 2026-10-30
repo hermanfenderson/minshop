@@ -181,6 +181,11 @@ const formI18n: I18n = plainDonation
 </div>
 
 <style>
+  /* No price on every variant (Mauro, 2026-10-30): the minimum donation above
+     and the one under the amount follow the chosen variant already. */
+  .mono-buy :global(label:has(> span > input[name='variant_id']) > .tabular-nums) {
+    display: none;
+  }
   /* The button beside the amount, where there is room (Mauro, 2026-10-30). The
      form's markup belongs to ProductPurchaseForm, so this only reorders it: the
      amount block opens up into the form's grid, the buttons take the cell next
