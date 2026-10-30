@@ -4,11 +4,12 @@ import { siteShell } from '../../features/storefront/controls/site-shell';
 import { storefrontI18n, type I18n } from '../../features/storefront/controls/i18n';
 
 /**
- * Monopolele's footer: the 2027 site's single line (copyright · edition on the
- * left, links on the right), from the site's shell. The store's own footer
- * links (Admin → Navigation: terms, privacy, …) join the site's.
- */
-interface Props {
+ * Monopolele's footer. Behind the site's Worker the placeholder [data-site-shell="footer"]
+ * receives the site's own footer, with every section of the menu (monopolele-web,
+ * deploy/worker/src/shell.js; Mauro, 2026-10-30); inside it, the fallback for the shop on its own:
+ * the site's single line from the shell. The store's own footer links (Admin → Navigation: terms,
+ * privacy, …) stay outside the placeholder, so they are there either way.
+ */interface Props {
   model: StorefrontShellModel;
   i18n?: I18n;
 }
@@ -18,12 +19,17 @@ const i18n = storefrontI18n(Astro.props.i18n);
 const { t } = i18n;
 const shell = siteShell(i18n.locale);
 const footer = shell.footer;
-const links = [
-  ...(footer?.links ?? []).filter((l) => l.href).map((l) => ({ text: l.label, href: l.href! })),
-  ...model.footerLinks,
-];
+const links = (footer?.links ?? []).filter((l) => l.href).map((l) => ({ text: l.label, href: l.href! }));
 ---
 
+{
+  model.footerLinks.length > 0 && (
+    <nav aria-label={t('storefront.footer.nav')} class="mono-shop-links">
+      {model.footerLinks.map((link, i) => <>{i > 0 && ' · '}<a href={link.href}>{link.text}</a></>)}
+    </nav>
+  )
+}
+<div class="mono-footer-slot" data-site-shell="footer" data-locale={i18n.locale}>
 <footer class="mono-footer">
   <div class="mono-foot">
     <span>{footer?.legal ?? `© ${shell.name}`}</span>
@@ -36,11 +42,26 @@ const links = [
     }
   </div>
 </footer>
+</div>
 
 <style>
   /* Values from monopolele-web src/styles/editions/2027/splash.css (.site-footer, .foot). */
-  .mono-footer {
+  .mono-shop-links {
+    width: min(1320px, calc(100% - 104px));
+    margin: 4rem auto 1.5rem;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+  .mono-shop-links a {
+    color: inherit;
+  }
+  .mono-footer-slot {
     margin-top: 4rem;
+  }
+  .mono-shop-links + .mono-footer-slot {
+    margin-top: 0;
+  }
+  .mono-footer {
     border-top: 1px solid var(--color-header-line);
     background: var(--color-footer);
     padding: 25px 0;
