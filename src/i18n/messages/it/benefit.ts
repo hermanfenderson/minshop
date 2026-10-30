@@ -32,7 +32,7 @@ export const benefit = {
   'benefit.donor.companyName': 'Ragione sociale',
   'benefit.donor.taxCode': 'Codice fiscale',
   'benefit.donor.taxCodeHint': 'Obbligatorio per chi risiede in Italia.',
-  'benefit.donor.companyTaxCode': 'Codice fiscale dell’azienda, se diverso dalla partita IVA',
+  'benefit.donor.companyTaxCode': 'Codice fiscale',
   'benefit.donor.vat': 'Partita IVA',
   'benefit.donor.address': 'Indirizzo',
   'benefit.donor.postal': 'CAP',

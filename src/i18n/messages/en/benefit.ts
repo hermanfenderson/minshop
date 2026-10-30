@@ -40,7 +40,7 @@ export const benefit = {
   'benefit.donor.companyName': 'Company name',
   'benefit.donor.taxCode': 'Tax code (codice fiscale)',
   'benefit.donor.taxCodeHint': 'Required for residents of Italy.',
-  'benefit.donor.companyTaxCode': 'Company tax code, if different from the VAT number',
+  'benefit.donor.companyTaxCode': 'Tax code',
   'benefit.donor.vat': 'VAT number',
   'benefit.donor.address': 'Address',
   'benefit.donor.postal': 'Postcode',
