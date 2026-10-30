@@ -178,7 +178,7 @@ export function readReceiptDocument(json: string): ReceiptDocument | null {
 
 /** Draw the document. Images are the bytes behind stampKey / logoKey, when they could be read. */
 export function renderReceiptPdf(doc: ReceiptDocument, images: { stamp?: Uint8Array | null; logo?: Uint8Array | null } = {}): Uint8Array<ArrayBuffer> {
-  const flow = new PdfFlow();
+  const flow = new PdfFlow().footer(doc.footer, { size: 8, color: 0.35 });
   const logo = images.logo ? jpegInfo(images.logo) : null;
   if (logo && images.logo) flow.image({ bytes: images.logo, info: logo }, 150, 70).space(10);
   flow.text(doc.title.toUpperCase(), { face: 'bold', size: 14, align: 'center' }).space(12);
@@ -194,10 +194,9 @@ export function renderReceiptPdf(doc: ReceiptDocument, images: { stamp?: Uint8Ar
     flow.rule();
   }
   for (const note of doc.notes) flow.space(8).text(note, { face: 'bold' });
-  flow.space(22).text(doc.signature, { align: 'right', size: 9 });
   const stamp = images.stamp ? jpegInfo(images.stamp) : null;
+  // Signature and stamp stay together, on the page that holds them both.
+  flow.space(22).keep(16 + (stamp ? 94 : 0)).text(doc.signature, { align: 'right', size: 9 });
   if (stamp && images.stamp) flow.space(4).image({ bytes: images.stamp, info: stamp }, 200, 90, 'right');
-  flow.space(24);
-  for (const line of doc.footer) flow.text(line, { size: 8, color: 0.35, align: 'center' }).space(3);
   return flow.toBytes({ title: `${doc.title} ${doc.label}` });
 }

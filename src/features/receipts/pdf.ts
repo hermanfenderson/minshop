@@ -146,6 +146,9 @@ export class PdfFlow {
   private pages: string[][] = [[]];
   private images: PdfImage[] = [];
   private y: number;
+  /** Lowest y the flow may reach: the margin, or above a page footer. */
+  private bottom: number;
+  private footerOps: string[] = [];
   readonly left: number;
   readonly width: number;
 
@@ -153,6 +156,7 @@ export class PdfFlow {
     this.left = margin;
     this.width = A4.width - margin * 2;
     this.y = A4.height - margin;
+    this.bottom = margin;
   }
 
   private get ops(): string[] {
@@ -160,9 +164,41 @@ export class PdfFlow {
   }
 
   private ensure(height: number): void {
-    if (this.y - height >= this.margin) return;
+    if (this.y - height >= this.bottom) return;
     this.pages.push([]);
     this.y = A4.height - this.margin;
+  }
+
+  /**
+   * Lines fixed at the foot of every page, centred and small, set before the
+   * flow starts: the flow stops above them and goes on to a new page, so a
+   * footer never ends up alone on a page of its own.
+   */
+  footer(lines: string[], options: { size?: number; color?: number; gap?: number } = {}): this {
+    const size = options.size ?? 8;
+    const leading = size * 1.35;
+    const gap = options.gap ?? 3;
+    const wrapped = lines.map((line) => wrapText(line, 'regular', size, this.width));
+    const height = wrapped.reduce((sum, block) => sum + block.length * leading, 0) + gap * Math.max(0, wrapped.length - 1);
+    const base = this.margin / 2;
+    let y = base + height;
+    this.footerOps = [];
+    wrapped.forEach((block, index) => {
+      if (index > 0) y -= gap;
+      for (const line of block) {
+        y -= leading;
+        const x = this.left + (this.width - textWidth(line, 'regular', size)) / 2;
+        this.footerOps.push(`BT ${num(options.color ?? 0)} g /F1 ${num(size)} Tf ${num(x)} ${num(y + leading - size)} Td ${pdfString(line)} Tj ET`);
+      }
+    });
+    this.bottom = Math.max(this.margin, base + height + 16);
+    return this;
+  }
+
+  /** Start a new page unless `height` points still fit: keeps a block together. */
+  keep(height: number): this {
+    this.ensure(height);
+    return this;
   }
 
   space(points: number): this {
@@ -249,6 +285,7 @@ export class PdfFlow {
     // Latin-1 only, so one character is one byte and offsets stay exact.
     const latin1 = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0) & 0xff);
 
+    if (this.footerOps.length) for (const page of this.pages) page.push(...this.footerOps);
     const pageCount = this.pages.length;
     // 1 catalog, 2 pages, 3–4 fonts, 5 info, then images, then page/content pairs.
     const firstImage = 6;
