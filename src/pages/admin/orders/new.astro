@@ -46,10 +46,10 @@ interface Choice {
 }
 const { results: rows } = await env.DB
   .prepare(
-    `SELECT p.id, p.name, p.price_cents, p.track_inventory, v.id AS variant_id, v.name AS variant_name, v.price_cents AS variant_price
-       FROM products p LEFT JOIN product_variants v ON v.product_id = p.id
+    `SELECT p.id, p.name, p.price_cents, p.track_inventory, v.id AS variant_id, v.label AS variant_name, v.price_cents AS variant_price
+       FROM products p LEFT JOIN product_variants v ON v.product_id = p.id AND v.active = 1
       WHERE p.active = 1 AND COALESCE(p.requires_shipping, 1) = 0
-      ORDER BY p.name, v.id`,
+      ORDER BY p.name, v.position, v.id`,
   )
   .all<{ id: number; name: string; price_cents: number; track_inventory: number; variant_id: number | null; variant_name: string | null; variant_price: number | null }>();
 const choices: Choice[] = (rows ?? []).map((r) => ({
