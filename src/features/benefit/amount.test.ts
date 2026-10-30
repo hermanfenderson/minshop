@@ -59,8 +59,8 @@ describe('input helpers', () => {
   it('shows minor units the way a number input reads them back', () => {
     expect(amountInputValue(2500, 'EUR')).toBe('25.00');
     expect(amountInputValue(1000, 'JPY')).toBe('1000');
-    expect(amountInputStep('EUR')).toBe('1');
-    expect(amountInputStep('JPY')).toBe('1');
+    expect(amountInputStep('EUR')).toBe('any');
+    expect(amountInputStep('JPY')).toBe('any');
     expect(parseAmountInput(amountInputValue(1234, 'BHD'), 'BHD')).toEqual({ ok: true, cents: 1234 });
   });
 });

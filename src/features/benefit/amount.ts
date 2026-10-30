@@ -70,10 +70,10 @@ export function amountInputValue(cents: number, currency: string): string {
 }
 
 /**
- * The `step` attribute for that input: one whole unit in every currency (1 €,
- * not 1 cent — Mauro, 2026-10-30), counted from the minimum, so the arrows
- * move a donation by a euro at a time.
+ * The `step` attribute for that input: "any" (Mauro, 2026-10-30). The arrows
+ * then move a donation by one whole unit (1 €, not 1 cent), and a typed
+ * amount may still have cents: the server checks the minimum and the cap.
  */
 export function amountInputStep(_currency: string): string {
-  return '1';
+  return 'any';
 }
