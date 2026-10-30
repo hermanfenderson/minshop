@@ -45,6 +45,14 @@ export const email = {
   'email.shipped.textCarrier': 'Corriere: {carrier}',
   'email.shipped.textTracking': 'Numero di tracciamento: {number}',
   'email.shipped.textTrackIt': 'Segui la spedizione: {url}',
+  // Un'email per pacco, quando un ordine parte in più pacchi (migrazione 0049)
+  'email.package.subject': 'È partito un pacco del tuo ordine #{num} su {store}',
+  'email.package.heading': 'Un pacco è in viaggio',
+  'email.package.subheading': 'Una parte dell’ordine #{num} è stata spedita.',
+  'email.package.textShipped': 'È partito un pacco del tuo ordine #{num}!',
+  'email.package.contains': 'In questo pacco:',
+  'email.package.waiting': 'Arriverà con un altro pacco:',
+  'email.package.lastOne': 'È l’ultimo pacco: è partito tutto.',
 
   'email.refunded.subjectFull': 'Il tuo ordine #{num} su {store} è stato rimborsato',
   'email.refunded.subjectPartial': 'Un rimborso per il tuo ordine #{num} su {store}',

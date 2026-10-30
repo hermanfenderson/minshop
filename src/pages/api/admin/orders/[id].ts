@@ -13,6 +13,14 @@ import {
 import { getSecret } from '../../../../features/secrets/store';
 import { getFulfillmentProvider, pushFulfillment } from '../../../../features/fulfillment';
 import { getFulfillment, retryFulfillment } from '../../../../features/fulfillment/store';
+import {
+  deleteManualPackages,
+  fulfilWhenAllPacked,
+  loadPackableLines,
+  packedQuantities,
+  recordPackage,
+  waitingLines,
+} from '../../../../features/fulfillment/packages';
 import { setSetting } from '../../../../features/settings/db';
 import {
   carrierCodeFor,
@@ -35,7 +43,7 @@ import {
   recordQuote,
   recordRefundedAttempt,
 } from '../../../../features/shipping/labelStore';
-import { queueNotification } from '../../../../features/email/outboxStore';
+import { packageShippedKind, queueNotification } from '../../../../features/email/outboxStore';
 import {
   recordExternalRefund,
   syncProviderRefund,
@@ -72,6 +80,8 @@ export const POST: APIRoute = async ({ request, params, redirect: astroRedirect 
   const back = redirect(`/admin/orders/${publicId}`, 303);
 
   if (action === 'unfulfill') {
+    // The packages recorded here go with it; the fulfiller's stay (they left).
+    await deleteManualPackages(env.DB, id);
     await unfulfillOrder(env.DB, id);
     return back;
   }
@@ -620,6 +630,43 @@ export const POST: APIRoute = async ({ request, params, redirect: astroRedirect 
   // Fulfill
   const carrier = String(form.get('carrier') ?? '').trim() || null;
   const trackingNumber = String(form.get('tracking_number') ?? '').trim() || null;
+
+  // An order with lines that ship goes out package by package (migration
+  // 0049): this one holds the lines ticked in the form (all still waiting when
+  // the form names none), and the order is shipped once nothing waits.
+  const lines = await loadPackableLines(env.DB, id);
+  const waiting = waitingLines(lines, await packedQuantities(env.DB, id));
+  if (waiting.length > 0) {
+    const named = waiting.some((l) => form.has(`item_${l.id}`));
+    const items = waiting.flatMap((l) => {
+      const wanted = named ? Math.floor(Number(form.get(`item_${l.id}`) ?? 0)) : l.quantity - l.packed;
+      const quantity = Math.min(Number.isFinite(wanted) ? wanted : 0, l.quantity - l.packed);
+      return quantity > 0 ? [{ orderItemId: l.id, quantity }] : [];
+    });
+    if (items.length === 0) return fail('Tick at least one item for this package.');
+    const link = String(form.get('tracking_url') ?? '').trim();
+    const shipmentId = await recordPackage(env.DB, {
+      orderId: id,
+      provider: 'manual',
+      providerShipmentId: crypto.randomUUID(),
+      carrier,
+      service: null,
+      trackingNumber,
+      trackingUrl: /^https:\/\//.test(link) ? link.slice(0, 500) : null,
+      shippedAt: new Date().toISOString(),
+      items,
+    });
+    if (shipmentId == null) return fail('The package could not be recorded; try again.');
+    await queueNotification(env.DB, id, packageShippedKind(shipmentId));
+    await fulfilWhenAllPacked(env.DB, id);
+    try {
+      await deliverOrderNotifications(env.DB, id, new URL(request.url).origin);
+    } catch (err) {
+      console.error('Package-notification delivery failed:', err);
+    }
+    return back;
+  }
+
   if (!(await fulfillOrder(env.DB, id, carrier, trackingNumber))) {
     return fail(
       'This order has a label purchase in progress or awaiting reconciliation — finish or discard that first.',

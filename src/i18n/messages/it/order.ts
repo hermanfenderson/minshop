@@ -15,6 +15,13 @@ export const order = {
   'order.confirmed.refundedFull': 'Rimborso di {amount} effettuato.',
   'order.confirmed.refundedPartial':
     'Rimborso di {amount} effettuato; resta pagato un importo di {remaining}.',
+  // Spedizione nella pagina dell'ordine: una voce per pacco (migrazione 0049)
+  'order.shipping.heading': 'Spedizione',
+  'order.shipping.none': 'Non è ancora partito nulla: ti scriveremo con il tracciamento di ogni pacco.',
+  'order.shipping.package': 'Pacco {n}',
+  'order.shipping.shippedOn': 'spedito il {date}',
+  'order.shipping.track': 'Segui la spedizione',
+  'order.shipping.waiting': 'In preparazione:',
   'order.confirmed.continueShopping': 'Continua gli acquisti',
   'order.payment.demo': 'Demo (nessun addebito)',
   'order.downloads.heading': 'Download',

@@ -16,15 +16,15 @@ const order: FulfillableOrder = {
   currency: 'eur',
   ship_address: JSON.stringify(address),
 };
-const tee: OrderLineRow = { name: 'Tee', quantity: 1, price_cents: 2500, ref: '4011' };
-const gratitude: OrderLineRow = { name: 'Gratitude', quantity: 1, price_cents: 1000, ref: null };
+const tee: OrderLineRow = { id: 11, name: 'Tee', quantity: 1, price_cents: 2500, ref: '4011' };
+const gratitude: OrderLineRow = { id: 12, name: 'Gratitude', quantity: 1, price_cents: 1000, ref: null };
 
 describe('buildFulfillmentInput', () => {
   it('sends only the lines linked to the fulfiller', () => {
     const built = buildFulfillmentInput(order, [tee, gratitude]);
     expect(built.kind).toBe('send');
     if (built.kind !== 'send') return;
-    expect(built.input.lines).toEqual([{ ref: '4011', quantity: 1, unitPriceCents: 2500, name: 'Tee' }]);
+    expect(built.input.lines).toEqual([{ ref: '4011', quantity: 1, unitPriceCents: 2500, name: 'Tee', externalId: '11' }]);
     expect(built.input.currency).toBe('EUR');
     expect(built.input.recipient).toMatchObject({ countryCode: 'IT', address2: null, zip: '70043' });
   });

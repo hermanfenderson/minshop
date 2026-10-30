@@ -53,6 +53,14 @@ export const email = {
   'email.shipped.textCarrier': 'Carrier: {carrier}',
   'email.shipped.textTracking': 'Tracking: {number}',
   'email.shipped.textTrackIt': 'Track it: {url}',
+  // One email per package, when an order leaves in several (migration 0049)
+  'email.package.subject': 'A package from your {store} order #{num} has shipped',
+  'email.package.heading': 'A package is on its way',
+  'email.package.subheading': 'Part of order #{num} has shipped.',
+  'email.package.textShipped': 'A package from your order #{num} has shipped!',
+  'email.package.contains': 'In this package:',
+  'email.package.waiting': 'Still to come, in another package:',
+  'email.package.lastOne': 'This is the last package: everything has shipped.',
 
   // Refund notice
   'email.refunded.subjectFull': 'Your {store} order #{num} has been refunded',

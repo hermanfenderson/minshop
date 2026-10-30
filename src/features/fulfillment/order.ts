@@ -8,6 +8,8 @@ import type { FulfillmentLine, FulfillmentOrderInput } from './provider';
  */
 
 export interface OrderLineRow {
+  /** order_items.id: the fulfiller hands it back on each package. */
+  id: number;
   name: string;
   quantity: number;
   price_cents: number;
@@ -31,7 +33,13 @@ export type BuildResult =
 export function fulfillmentLines(rows: OrderLineRow[]): FulfillmentLine[] {
   return rows
     .filter((row) => row.ref && row.quantity > 0)
-    .map((row) => ({ ref: row.ref!, quantity: row.quantity, unitPriceCents: row.price_cents, name: row.name }));
+    .map((row) => ({
+      ref: row.ref!,
+      quantity: row.quantity,
+      unitPriceCents: row.price_cents,
+      name: row.name,
+      externalId: String(row.id),
+    }));
 }
 
 function parseAddress(raw: string | null): ShippingAddress | null {

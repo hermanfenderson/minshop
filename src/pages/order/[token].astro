@@ -12,6 +12,8 @@ import { catalogPath } from '../../features/settings/home';
 import { getReservationStatusSnapshot } from '../../features/orders/reservations';
 import { pendingOrderState } from '../../features/orders/pendingState';
 import { listOrderReceipts } from '../../features/receipts';
+import { listPackages, loadPackableLines, packedQuantities, waitingLines } from '../../features/fulfillment/packages';
+import { carrierName, trackingUrl } from '../../features/orders/tracking';
 
 // Guest access: new orders are addressed ONLY by their otk_ access token
 // (resolved through the registry); legacy orders keep their pre-cutover
@@ -41,6 +43,15 @@ Astro.response.headers.set('referrer-policy', 'no-referrer');
 if (order) clearCart(Astro.cookies);
 const items = order ? await listOrderItems(env.DB, order.id) : [];
 // Benefit Mode: the receipts issued for this order, once their snapshot exists.
+// Shipping (migration 0049): every package with its tracking and contents, and
+// what is still being prepared. Only behind the private link, like downloads.
+const showShipping = Boolean(order && isAccessToken(token) && order.status === 'paid');
+const packages = showShipping ? await listPackages(env.DB, order!.id) : [];
+const stillWaiting = showShipping
+  ? waitingLines(await loadPackableLines(env.DB, order!.id), await packedQuantities(env.DB, order!.id))
+  : [];
+const shipDate = (iso: string | null) =>
+  iso ? new Date(iso.includes('T') ? iso : `${iso.replace(' ', 'T')}Z`).toLocaleDateString(Astro.locals.i18n.locale, { day: 'numeric', month: 'long' }) : null;
 const receipts = order?.donor ? (await listOrderReceipts(env.DB, order.id)).filter((r) => r.document) : [];
 
 // Customer reference: the ord_ token portion for new orders; legacy orders keep
@@ -119,6 +130,47 @@ const pageTitle = order
         <p class="mt-4 text-lg font-semibold">
           {t('order.confirmed.total', { amount: formatPrice(order.amount_total_cents, order.currency) })}
         </p>
+        {showShipping && (packages.length > 0 || (stillWaiting.length > 0 && order.fulfillment_status !== 'fulfilled')) && (
+          <section class="mt-8 rounded-lg border border-line bg-surface p-5" data-shipping>
+            <h2 class="font-serif text-2xl">{t('order.shipping.heading')}</h2>
+            {packages.length === 0 && <p class="mt-3 text-sm text-muted">{t('order.shipping.none')}</p>}
+            <ul class="mt-3 space-y-4">
+              {packages.map((p, i) => {
+                const link = p.tracking_url ?? trackingUrl(p.carrier, p.tracking_number);
+                const date = shipDate(p.shipped_at ?? p.created_at);
+                return (
+                  <li>
+                    <p class="font-medium">
+                      {t('order.shipping.package', { n: i + 1 })}
+                      {date && <span class="font-normal text-muted"> · {t('order.shipping.shippedOn', { date })}</span>}
+                    </p>
+                    {p.items.length > 0 && (
+                      <p class="text-sm text-muted">{p.items.map((it) => (it.quantity > 1 ? `${it.quantity} × ${it.name}` : it.name)).join(' · ')}</p>
+                    )}
+                    {p.tracking_number && (
+                      <p class="text-sm">
+                        {p.carrier && <>{carrierName(p.carrier, Astro.locals.i18n)} · </>}
+                        {link ? (
+                          <a href={link} target="_blank" rel="noopener" class="border-b border-brand text-brand">
+                            {t('order.shipping.track')} ({p.tracking_number})
+                          </a>
+                        ) : (
+                          <span class="tabular-nums">{p.tracking_number}</span>
+                        )}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {stillWaiting.length > 0 && order.fulfillment_status !== 'fulfilled' && (
+              <p class="mt-4 text-sm">
+                <span class="font-medium">{t('order.shipping.waiting')}</span>{' '}
+                <span class="text-muted">{stillWaiting.map((l) => (l.quantity - l.packed > 1 ? `${l.quantity - l.packed} × ${l.name}` : l.name)).join(' · ')}</span>
+              </p>
+            )}
+          </section>
+        )}
         {items.some((item) => item.file_key) && isAccessToken(token) && (
           <section class="mt-8 rounded-lg border border-line bg-surface p-5">
             <h2 class="font-serif text-2xl">{t('order.downloads.heading')}</h2>

@@ -4,6 +4,7 @@ import type {
   FulfillmentOrderInput,
   FulfillmentProvider,
   FulfillmentShipment,
+  FulfillmentShipmentItem,
   RateOutcome,
   RateQuoteInput,
   ReadOutcome,
@@ -53,6 +54,7 @@ export function printfulOrderPayload(input: FulfillmentOrderInput) {
       quantity: line.quantity,
       retail_price: toMajorUnits(line.unitPriceCents, input.currency).toFixed(2),
       name: line.name,
+      ...(line.externalId ? { external_id: line.externalId } : {}),
     })),
   };
 }
@@ -104,6 +106,30 @@ const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ?
 export function printfulShipments(result: unknown): FulfillmentShipment[] {
   const list = (result as { shipments?: unknown } | null)?.shipments;
   if (!Array.isArray(list)) return [];
+  // A package names the order's items by Printful's own item id; the order's
+  // items carry the external id we gave each line and their sync variant.
+  const orderItems = (result as { items?: unknown }).items;
+  const byItemId = new Map<string, { externalId: string | null; ref: string | null }>();
+  if (Array.isArray(orderItems)) {
+    for (const raw of orderItems) {
+      const i = raw as Record<string, unknown>;
+      if (i?.id == null) continue;
+      byItemId.set(String(i.id), {
+        externalId: i.external_id == null ? null : text(String(i.external_id)),
+        ref: i.sync_variant_id == null ? null : String(i.sync_variant_id),
+      });
+    }
+  }
+  const packageItems = (raw: unknown): FulfillmentShipmentItem[] | null => {
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    const items = raw.flatMap((r) => {
+      const i = r as Record<string, unknown>;
+      const known = i?.item_id == null ? undefined : byItemId.get(String(i.item_id));
+      const quantity = Number(i?.quantity);
+      return known && Number.isInteger(quantity) && quantity > 0 ? [{ ...known, quantity }] : [];
+    });
+    return items.length > 0 ? items : null;
+  };
   return list.flatMap((raw) => {
     const s = raw as Record<string, unknown>;
     if (s?.id == null || s.status === 'canceled') return [];
@@ -118,6 +144,7 @@ export function printfulShipments(result: unknown): FulfillmentShipment[] {
         trackingNumber,
         trackingUrl: /^https:\/\//.test(String(s.tracking_url ?? '')) ? String(s.tracking_url) : null,
         shippedAt: seconds ? new Date(seconds * 1000).toISOString() : text(s.ship_date),
+        items: packageItems(s.items),
       },
     ];
   });

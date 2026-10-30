@@ -15,6 +15,13 @@ export const order = {
   'order.confirmed.paidWith': 'Paid with {method}',
   'order.confirmed.refundedFull': 'Refunded {amount}.',
   'order.confirmed.refundedPartial': 'Refunded {amount} — {remaining} still paid.',
+  // Shipping on the order page: one entry per package (migration 0049)
+  'order.shipping.heading': 'Shipping',
+  'order.shipping.none': 'Nothing has shipped yet: we will email you the tracking of every package.',
+  'order.shipping.package': 'Package {n}',
+  'order.shipping.shippedOn': 'shipped {date}',
+  'order.shipping.track': 'Track it',
+  'order.shipping.waiting': 'Being prepared:',
   'order.confirmed.continueShopping': 'Continue shopping',
   'order.payment.demo': 'Demo (no charge)',
   'order.downloads.heading': 'Downloads',

@@ -27,6 +27,8 @@ export interface FulfillmentLine {
   /** What the buyer paid per unit, for the packing slip and customs. */
   unitPriceCents: number;
   name: string;
+  /** Our order line's id, handed to the fulfiller so its packages name our lines back. */
+  externalId?: string;
 }
 
 export interface FulfillmentOrderInput {
@@ -63,6 +65,17 @@ export interface FulfillmentShipment {
   trackingUrl: string | null;
   /** ISO timestamp, or null when the fulfiller has not said. */
   shippedAt: string | null;
+  /**
+   * What the package holds, as the fulfiller names it: our line's id when we
+   * handed one over (externalId), else the unit's ref. null = not reported.
+   */
+  items: FulfillmentShipmentItem[] | null;
+}
+
+export interface FulfillmentShipmentItem {
+  externalId: string | null;
+  ref: string | null;
+  quantity: number;
 }
 
 export interface ProviderOrderState {
