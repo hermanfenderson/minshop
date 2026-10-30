@@ -81,27 +81,21 @@ const formI18n: I18n = plainDonation
 }
 
 
-{/* The variant selector and the buttons sit right under the photos, so every
-    change of color shows its photo. Phone: name and price, photos, selector,
-    description. Desktop: photos and selector on the left, name, price and
-    description on the right. The two column wrappers are `contents` on a
-    phone, so their children are ordered as one column. */}
-<div class="mt-6 grid gap-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:items-start md:gap-16">
-  <div class="contents md:flex md:flex-col md:gap-8">
-    <ProductGallery
-      images={model.images}
-      hero={model.heroImage}
-      soldOut={model.soldOut}
-      class="reveal order-2 shell-gallery"
-      i18n={i18n}
-    />
+{/* Layout A (Mauro, 2026-10-30): everything needed to choose sits beside the
+    photos — name, minimum donation, the selectors on one row, amount and
+    button — and the description runs full width below. On a phone: name and
+    price, photos, selectors and button, description. The right column is
+    `contents` on a phone, so its children join the single column in order. */}
+<div class="mt-6 grid gap-8 md:grid-cols-2 md:items-start md:gap-16">
+  <ProductGallery
+    images={model.images}
+    hero={model.heroImage}
+    soldOut={model.soldOut}
+    class="reveal order-2 shell-gallery md:order-1"
+    i18n={i18n}
+  />
 
-    <div class="order-3 [&>*:first-child]:mt-0">
-      <ProductPurchaseForm model={purchase} i18n={formI18n} />
-    </div>
-  </div>
-
-  <div class="contents md:flex md:flex-col md:gap-6">
+  <div class="contents md:order-2 md:flex md:flex-col">
     <div class="reveal order-1 flex flex-col" style="animation-delay:90ms">
       {
         categories.length > 0 && (
@@ -146,33 +140,44 @@ const formI18n: I18n = plainDonation
       }
     </div>
 
-    <div class="reveal order-4 flex flex-col" style="animation-delay:90ms">
-      {
-        /* A long description shows its first lines and a "Show more" toggle; the
-           script below adds both, so without JavaScript the text is all there. */
-        model.descriptionHtml && (
-          <div data-collapsible>
-            <div
-              data-collapsible-body
-              class="markdown-content max-w-prose text-muted data-[collapsed]:max-h-72 data-[collapsed]:overflow-hidden data-[collapsed]:[mask-image:linear-gradient(to_bottom,black_70%,transparent)]"
-              set:html={model.descriptionHtml}
-            />
-            <button
-              type="button"
-              data-collapsible-toggle
-              data-more={t('storefront.product.showMore')}
-              data-less={t('storefront.product.showLess')}
-              aria-expanded="false"
-              hidden
-              class="mt-3 text-xs uppercase tracking-widest text-faint transition hover:text-brand"
-            >
-              {t('storefront.product.showMore')}
-            </button>
-          </div>
-        )
-      }
+    {/* The axes (colour, size) share a row where there is room; the form's own
+        narrow width would stack them. */}
+    <div
+      class:list={[
+        'order-3 [&>*:first-child]:mt-0 [&_form]:max-w-none md:[&>*:first-child]:mt-8',
+        '[&_[data-variant-axes]]:flex [&_[data-variant-axes]]:flex-wrap [&_[data-variant-axes]]:gap-x-10',
+      ]}
+    >
+      <ProductPurchaseForm model={purchase} i18n={formI18n} />
     </div>
   </div>
+</div>
+
+<div class="reveal mt-12 border-t border-line pt-10" style="animation-delay:90ms" hidden={!model.descriptionHtml}>
+  {
+    /* A long description shows its first lines and a "Show more" toggle; the
+       script below adds both, so without JavaScript the text is all there. */
+    model.descriptionHtml && (
+      <div data-collapsible>
+        <div
+          data-collapsible-body
+          class="markdown-content !mx-0 max-w-prose text-muted data-[collapsed]:max-h-72 data-[collapsed]:overflow-hidden data-[collapsed]:[mask-image:linear-gradient(to_bottom,black_70%,transparent)]"
+          set:html={model.descriptionHtml}
+        />
+        <button
+          type="button"
+          data-collapsible-toggle
+          data-more={t('storefront.product.showMore')}
+          data-less={t('storefront.product.showLess')}
+          aria-expanded="false"
+          hidden
+          class="mt-3 text-xs uppercase tracking-widest text-faint transition hover:text-brand"
+        >
+          {t('storefront.product.showMore')}
+        </button>
+      </div>
+    )
+  }
 </div>
 
 <script>
