@@ -11,6 +11,9 @@ export const order = {
   'order.confirmed.qty': 'Qtà',
   'order.confirmed.lineTotal': 'Totale',
   'order.confirmed.total': 'Totale: {amount}',
+  'order.confirmed.shipping': 'Spese di spedizione',
+  'order.confirmed.discount': 'Sconto',
+  'order.confirmed.tax': 'Imposte',
   'order.confirmed.paidWith': 'Pagamento: {method}',
   'order.confirmed.refundedFull': 'Rimborso di {amount} effettuato.',
   'order.confirmed.refundedPartial':

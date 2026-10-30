@@ -72,6 +72,8 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 const paymentLabel = order?.payment_method ? PAYMENT_LABELS[order.payment_method] ?? null : null;
 // The catalog is at / until the home page is pointed elsewhere.
+// Amounts in the page's language: '75,00 €' in Italian, not '€75.00'.
+const money = (cents: number) => formatPrice(cents, order?.currency, Astro.locals.i18n.intl);
 const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 
 // No order yet: the reservation behind the link says whether one is coming. A
@@ -119,16 +121,36 @@ const pageTitle = order
                   <td class="px-4 py-2">{it.name}</td>
                   <td class="px-4 py-2">{it.quantity}</td>
                   <td class="px-4 py-2">
-                    {formatPrice(it.price_cents * it.quantity, order.currency)}
+                    {money(it.price_cents * it.quantity)}
                   </td>
                 </tr>
               ))}
+              {/* What lies between the lines and the total, so the sum adds up
+                  on the page without opening the receipt. */}
+              {order.shipping_cents > 0 && (
+                <tr class="border-t border-line text-muted">
+                  <td class="px-4 py-2" colspan="2">{t('order.confirmed.shipping')}</td>
+                  <td class="px-4 py-2">{money(order.shipping_cents)}</td>
+                </tr>
+              )}
+              {order.discount_cents > 0 && (
+                <tr class="border-t border-line text-muted">
+                  <td class="px-4 py-2" colspan="2">{t('order.confirmed.discount')}</td>
+                  <td class="px-4 py-2">−{money(order.discount_cents)}</td>
+                </tr>
+              )}
+              {order.tax_cents > 0 && (
+                <tr class="border-t border-line text-muted">
+                  <td class="px-4 py-2" colspan="2">{t('order.confirmed.tax')}</td>
+                  <td class="px-4 py-2">{money(order.tax_cents)}</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         <p class="mt-4 text-lg font-semibold">
-          {t('order.confirmed.total', { amount: formatPrice(order.amount_total_cents, order.currency) })}
+          {t('order.confirmed.total', { amount: money(order.amount_total_cents) })}
         </p>
         {showShipping && (packages.length > 0 || (stillWaiting.length > 0 && order.fulfillment_status !== 'fulfilled')) && (
           <section class="mt-8 rounded-lg border border-line bg-surface p-5" data-shipping>
@@ -224,11 +246,11 @@ const pageTitle = order
           <p class="mt-2 text-sm text-muted">
             {order.refunded_cents >= order.amount_total_cents
               ? t('order.confirmed.refundedFull', {
-                  amount: formatPrice(order.refunded_cents, order.currency),
+                  amount: money(order.refunded_cents),
                 })
               : t('order.confirmed.refundedPartial', {
-                  amount: formatPrice(order.refunded_cents, order.currency),
-                  remaining: formatPrice(order.amount_total_cents - order.refunded_cents, order.currency),
+                  amount: money(order.refunded_cents),
+                  remaining: money(order.amount_total_cents - order.refunded_cents),
                 })}
           </p>
         )}
