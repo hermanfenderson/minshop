@@ -123,19 +123,16 @@ const formI18n: I18n = plainDonation
           </p>
         )
       }
-      <p
-        class="mt-4 text-2xl tabular-nums text-muted"
-        hidden={plainDonation}
-        data-price-display
-        data-base={model.priceCents}
-        data-currency={model.currency}
-      >
+      {/* «Minimum donation» as on the cards: in Benefit Mode a bare price reads as a
+          sale. The label sits outside data-price-display, whose text the variant
+          script rewrites. */}
+      <p class="mt-4 text-2xl tabular-nums text-muted" hidden={plainDonation}>
         {
-          model.priceVaries && (
+          (purchase.contribution || model.priceVaries) && (
             <span class="text-base text-faint">{t('storefront.product.priceFrom')} </span>
           )
         }
-        {model.formattedPrice}
+        <span data-price-display data-base={model.priceCents} data-currency={model.currency}>{model.formattedPrice}</span>
       </p>
       {
         /* data-low-stock is the contract, not the wording. Reword or restyle it
@@ -174,35 +171,6 @@ const formI18n: I18n = plainDonation
           </div>
         )
       }
-
-      {/* Share — hidden until JS confirms the browser can share or copy. Uses the
-          Web Share API (mobile/native sheet) with a clipboard-copy fallback. */}
-      <button
-        type="button"
-        data-share
-        data-share-title={model.name}
-        data-share-copied={t('storefront.product.linkCopied')}
-        class="mt-6 hidden w-fit items-center gap-2 text-xs uppercase tracking-widest text-faint transition hover:text-brand"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="18" cy="5" r="3" />
-          <circle cx="6" cy="12" r="3" />
-          <circle cx="18" cy="19" r="3" />
-          <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
-          <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
-        </svg>
-        <span data-share-label>{t('storefront.product.share')}</span>
-      </button>
     </div>
   </div>
 </div>
