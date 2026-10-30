@@ -69,8 +69,11 @@ export function amountInputValue(cents: number, currency: string): string {
   return (cents / minorUnitsPerMajor(currency)).toFixed(decimals);
 }
 
-/** The `step` attribute for that input (0.01 for EUR, 1 for JPY). */
-export function amountInputStep(currency: string): string {
-  const decimals = currencyDecimals(currency);
-  return decimals === 0 ? '1' : `0.${'0'.repeat(decimals - 1)}1`;
+/**
+ * The `step` attribute for that input: one whole unit in every currency (1 €,
+ * not 1 cent — Mauro, 2026-10-30), counted from the minimum, so the arrows
+ * move a donation by a euro at a time.
+ */
+export function amountInputStep(_currency: string): string {
+  return '1';
 }
