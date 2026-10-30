@@ -227,6 +227,42 @@ const shellIcons = siteShell(Astro.locals.locale).icons;
 
     <script>
       // @ts-nocheck -- plain-JS client script (annotations would ship to the browser)
+      // Benefit Mode: a donation amount (step="any", features/benefit/amount.ts)
+      // moves by one whole unit with the arrows and always shows its cents —
+      // 16,50, never 16.5 (Mauro, 2026-10-30). Typing is left alone until the
+      // field is left. Delegated, so the drawer's fields are covered too.
+      {
+        const isAmount = (el) => el instanceof HTMLInputElement && el.type === 'number' && el.step === 'any';
+        const decimals = (el) => (el.min.split('.')[1] ?? '').length;
+        const show = (el, n) => {
+          el.value = n.toFixed(decimals(el));
+        };
+        document.addEventListener('keydown', (e) => {
+          if (!isAmount(e.target) || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+          e.preventDefault();
+          const el = e.target;
+          const min = el.min === '' ? -Infinity : Number(el.min);
+          const max = el.max === '' ? Infinity : Number(el.max);
+          const now = Number(el.value);
+          const next = (Number.isFinite(now) && el.value !== '' ? now : min) + (e.key === 'ArrowUp' ? 1 : -1);
+          show(el, Math.min(max, Math.max(min, next)));
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        // The browser's own spin buttons: an input that was not typed.
+        document.addEventListener('input', (e) => {
+          if (!isAmount(e.target) || e.inputType) return;
+          const n = Number(e.target.value);
+          if (e.target.value !== '' && Number.isFinite(n)) show(e.target, n);
+        });
+        document.addEventListener('focusout', (e) => {
+          if (!isAmount(e.target)) return;
+          const n = Number(e.target.value);
+          if (e.target.value !== '' && Number.isFinite(n)) show(e.target, n);
+        });
+      }
+    </script>
+    <script>
+      // @ts-nocheck -- plain-JS client script (annotations would ship to the browser)
       // Benefit Mode: going on to donate with no free donation in the cart asks
       // once, in a modal (features/benefit/FreeDonation.astro). «Add» puts it in
       // the cart and goes on; «No, thanks» goes on and is remembered for the visit.
