@@ -13,7 +13,9 @@
  * was sent is a cost already incurred, so it is the last thing returned.
  */
 
-export type ReceiptSeriesKind = 'donation' | 'shipping';
+/** 'manual_donation' is the contribution series of an order recorded by hand. */
+export type ReceiptSeriesKind = 'donation' | 'manual_donation' | 'shipping';
+export type ContributionKind = Exclude<ReceiptSeriesKind, 'shipping'>;
 
 export interface LiveReceipt {
   id: number;
@@ -32,7 +34,7 @@ export type ReceiptAction =
   | { type: 'note'; amountCents: number; issueKey: string; cancels: number };
 
 /** What each series should now say. */
-export function keptAmounts(order: OrderAmounts): Record<ReceiptSeriesKind, number> {
+export function keptAmounts(order: OrderAmounts): { donation: number; shipping: number } {
   const shipping = Math.max(0, Math.min(order.shippingCents, order.totalCents));
   const contribution = order.totalCents - shipping;
   const refunded = Math.max(0, Math.min(order.refundedCents, order.totalCents));
@@ -53,12 +55,13 @@ export function planReceipts(
   order: OrderAmounts,
   live: LiveReceipt[],
   lastNote: Partial<Record<ReceiptSeriesKind, number>> = {},
+  contributionKind: ContributionKind = 'donation',
 ): ReceiptAction[] {
   const kept = keptAmounts(order);
   const actions: ReceiptAction[] = [];
-  for (const kind of ['donation', 'shipping'] as const) {
+  for (const kind of [contributionKind, 'shipping'] as const) {
     const current = live.find((r) => r.kind === kind) ?? null;
-    const target = kept[kind];
+    const target = kind === 'shipping' ? kept.shipping : kept.donation;
     if (!current) {
       if (target <= 0) continue;
       // First receipt, or one after a full refund was undone.

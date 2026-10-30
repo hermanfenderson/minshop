@@ -27,6 +27,17 @@ describe('planReceipts', () => {
     ]);
   });
 
+  it('numbers a contribution recorded by hand in its own series', () => {
+    expect(planReceipts(7, order(0, 0), [], {}, 'manual_donation')).toEqual([
+      { type: 'issue', kind: 'manual_donation', amountCents: 4750, issueKey: 'manual_donation:7', replaces: null },
+    ]);
+    const live = [{ id: 4, kind: 'manual_donation' as const, amountCents: 4750 }];
+    expect(planReceipts(7, order(1000, 0), live, {}, 'manual_donation')).toEqual([
+      { type: 'note', amountCents: 1000, issueKey: 'refund_note:4', cancels: 4 },
+      { type: 'issue', kind: 'manual_donation', amountCents: 3750, issueKey: 'manual_donation:7:after:4', replaces: 4 },
+    ]);
+  });
+
   it('does nothing when the receipts already match', () => {
     const live = [
       { id: 1, kind: 'donation' as const, amountCents: 4000 },

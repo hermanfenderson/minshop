@@ -9,8 +9,11 @@ import type { Donor } from '../benefit/donor';
 import { PdfFlow, jpegInfo } from './pdf';
 import { receiptText, type ReceiptSettings, type ReceiptTextSlot } from './settings';
 import { amountInWords } from './words';
+import { RECEIPT_MANUAL_METHODS } from '../orders/manualPaymentMethod';
 
-export type ReceiptKind = 'donation' | 'shipping' | 'refund_note';
+import { isContributionKind, type ReceiptKind } from './kinds';
+
+export { isContributionKind, type ReceiptKind };
 
 export interface ReceiptGift {
   name: string;
@@ -78,12 +81,17 @@ function formatDay(iso: string, intl: string, style: 'numeric' | 'long'): string
 }
 
 function textSlot(input: ReceiptInput): ReceiptTextSlot {
-  return input.kind === 'donation' ? `donation:${input.donor.kind}` : input.kind;
+  return isContributionKind(input.kind) ? `donation:${input.donor.kind}` : input.kind;
 }
 
+/** `method` is the order's rail, or `manual:<how>` for a contribution recorded by hand. */
 function paymentMethodLabel(i18n: ReceiptInput['i18n'], method: string | null): string {
   if (method === 'stripe') return i18n.t('benefit.receipt.method.stripe');
   if (method === 'demo') return i18n.t('benefit.receipt.method.demo');
+  const manual = method?.startsWith('manual:') ? method.slice('manual:'.length) : null;
+  if (manual && (RECEIPT_MANUAL_METHODS as readonly string[]).includes(manual)) {
+    return i18n.t(`benefit.receipt.method.${manual}` as MessageKey);
+  }
   return i18n.t('benefit.receipt.method.other');
 }
 
@@ -132,7 +140,7 @@ export function buildReceiptDocument(input: ReceiptInput): ReceiptDocument {
     label: input.label,
     amountCents: input.amountCents,
     currency: input.currency,
-    title: i18n.t(`benefit.receipt.title.${kind}` as MessageKey),
+    title: i18n.t(`benefit.receipt.title.${isContributionKind(kind) ? 'donation' : kind}` as MessageKey),
     issuer: settings.issuer,
     meta: [
       [i18n.t('benefit.receipt.date'), formatDay(input.issuedOn, i18n.intl, 'numeric')],
@@ -143,7 +151,7 @@ export function buildReceiptDocument(input: ReceiptInput): ReceiptDocument {
     partyHeading: i18n.t(kind === 'refund_note' ? 'benefit.receipt.to' : 'benefit.receipt.from'),
     party: donorLines(input.donor, i18n, input.countryName),
     annex:
-      kind === 'donation' && input.gifts.length > 0
+      isContributionKind(kind) && input.gifts.length > 0
         ? {
             heading: (receiptText(settings, 'annex', i18n.locale) ?? i18n.t('benefit.receipt.annex')).replace(/\s+/g, ' '),
             quantityLabel: i18n.t('benefit.receipt.annexQuantity'),

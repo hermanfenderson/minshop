@@ -16,6 +16,7 @@ import {
   parseReceiptSettings,
   receiptLabel,
   seriesPrefix,
+  OTHER_SERIES,
   receiptText,
   receiptTextKey,
   type ReceiptTextSlot,
@@ -46,7 +47,7 @@ if (Astro.request.method === 'POST') {
     await setSetting(env.DB, 'receipt_prefix', normalizePrefix(String(form.get('receipt_prefix') ?? '')));
     // The other series store a prefix only when it differs from the derived default.
     const base = normalizePrefix(String(form.get('receipt_prefix') ?? ''));
-    for (const series of ['shipping', 'refund_note'] as const) {
+    for (const series of OTHER_SERIES) {
       const value = normalizePrefix(String(form.get(`receipt_prefix_${series}`) ?? ''));
       const derived = seriesPrefix({ ...parseReceiptSettings([]), prefix: base }, series);
       await setSetting(env.DB, `receipt_prefix:${series}`, value && value !== derived ? value : '');
@@ -110,7 +111,16 @@ const waiting = await env.DB
         AND NOT EXISTS (SELECT 1 FROM receipts r WHERE r.order_id = o.id)`,
   )
   .first<{ n: number }>();
-const KIND_LABELS: Record<string, string> = { donation: 'Contribution', shipping: 'Shipping', refund_note: 'Refund note' };
+const KIND_LABELS: Record<string, string> = {
+  donation: 'Contribution',
+  manual_donation: 'Contribution recorded by hand',
+  shipping: 'Shipping',
+  refund_note: 'Refund note',
+};
+const { results: yearRows } = await env.DB
+  .prepare('SELECT DISTINCT series_year AS y FROM receipts ORDER BY y DESC')
+  .all<{ y: number }>();
+const years = yearRows.length > 0 ? yearRows.map((r) => r.y) : [year];
 const msg = error || Astro.url.searchParams.get('msg');
 const input = 'mt-1 block w-full rounded-md border border-line bg-paper px-3 py-2 text-sm';
 const label = 'text-xs uppercase tracking-widest text-gray-400';
@@ -120,7 +130,8 @@ const label = 'text-xs uppercase tracking-widest text-gray-400';
   <h1 class="font-serif text-3xl">Receipts</h1>
   <p class="mt-2 max-w-2xl text-sm text-gray-500">
     In Benefit Mode every paid order gets a contribution receipt, and a separate shipping receipt when shipping was
-    charged. Each kind is numbered in its own series, starting again every year. Receipts are issued only once the
+    charged. Contributions recorded by hand (Orders → Record a payment) have a series of their own. Each kind is
+    numbered in its own series, starting again every year. Receipts are issued only once the
     issuer below is filled in; orders paid before that wait and are issued automatically afterwards.
   </p>
 
@@ -141,9 +152,10 @@ const label = 'text-xs uppercase tracking-widest text-gray-400';
         <textarea name="receipt_issuer" rows="4" class={input}>{settings.issuer.join('\n')}</textarea>
         <span class="mt-1 block text-xs text-gray-500">The first line is the issuer's name, used as {'{issuer}'} in the texts. All lines form the footer.</span>
       </label>
-      <div class="grid gap-3 sm:grid-cols-3">
+      <div class="grid gap-3 sm:grid-cols-4">
         {([
           ['donation', 'receipt_prefix', 'Contribution receipts'],
+          ['manual_donation', 'receipt_prefix_manual_donation', 'Recorded by hand'],
           ['shipping', 'receipt_prefix_shipping', 'Shipping receipts'],
           ['refund_note', 'receipt_prefix_refund_note', 'Refund notes'],
         ] as const).map(([series, name, title]) => (
@@ -228,6 +240,25 @@ const label = 'text-xs uppercase tracking-widest text-gray-400';
 
   <section class="mt-6">
     <h2 class="font-medium">Issued</h2>
+    <form method="GET" action={Astro.locals.urls.href('/api/admin/receipts/export.zip')} class="mt-2 flex flex-wrap items-end gap-3 text-sm">
+      <label class="block">
+        <span class={label}>Year</span>
+        <select name="year" class={input}>
+          {years.map((y) => <option value={y}>{y}</option>)}
+        </select>
+      </label>
+      <label class="block">
+        <span class={label}>Series</span>
+        <select name="kind" class={input}>
+          <option value="">All</option>
+          {Object.entries(KIND_LABELS).map(([value, title]) => <option value={value}>{title}</option>)}
+        </select>
+      </label>
+      <button type="submit" class="rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 hover:border-brand hover:text-brand">
+        Download all (ZIP)
+      </button>
+      <span class="text-xs text-gray-500">The PDFs and a register (registro.csv) listing them in number order.</span>
+    </form>
     {issued.length === 0 ? (
       <p class="mt-2 text-sm text-gray-500">No receipts yet.</p>
     ) : (

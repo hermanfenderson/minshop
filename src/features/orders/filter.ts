@@ -45,6 +45,7 @@ export const ORDER_METHOD_OPTIONS: { value: string; label: string }[] = [
   { value: 'lightning', label: 'Lightning' },
   { value: 'opennode', label: 'Bitcoin (OpenNode)' },
   { value: 'demo', label: 'Demo' },
+  { value: 'manual', label: 'Recorded by hand' },
 ];
 
 const isStatus = (v: string | null): v is OrderStatusFilter =>

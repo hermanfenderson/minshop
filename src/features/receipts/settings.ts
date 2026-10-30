@@ -6,9 +6,10 @@
  *
  * Keys:
  *   receipt_prefix                     printed before contribution receipt numbers ("W" → W12/2027)
- *   receipt_prefix:<series>            the same for 'shipping' and 'refund_note'; absent = the
- *                                      contribution prefix plus S or R, so no two series print
- *                                      the same label (W1/2027, WS1/2027, WR1/2027)
+ *   receipt_prefix:<series>            the same for 'shipping', 'refund_note' and 'manual_donation';
+ *                                      absent = the contribution prefix plus S or R, so no two
+ *                                      series print the same label (W1/2027, WS1/2027, WR1/2027),
+ *                                      and M for contributions recorded by hand (M1/2027)
  *   receipt_issuer                     the issuer block, one line per line; the
  *                                      first line is the issuer's name
  *   receipt_stamp_key / receipt_logo_key   media image keys (JPEG)
@@ -19,16 +20,23 @@
 export const RECEIPT_TEXT_SLOTS = ['donation:person', 'donation:company', 'shipping', 'refund_note', 'annex', 'footer'] as const;
 export type ReceiptTextSlot = (typeof RECEIPT_TEXT_SLOTS)[number];
 
-/** Each series is numbered on its own. */
-export type ReceiptSeries = 'donation' | 'shipping' | 'refund_note';
+/**
+ * Each series is numbered on its own. 'manual_donation' holds the contributions
+ * an admin records by hand (a bank transfer, a cheque): the same receipt, in a
+ * series of its own so they stay apart from what the shop collected.
+ */
+export type ReceiptSeries = 'donation' | 'manual_donation' | 'shipping' | 'refund_note';
+export type OtherSeries = Exclude<ReceiptSeries, 'donation'>;
+export const OTHER_SERIES: readonly OtherSeries[] = ['manual_donation', 'shipping', 'refund_note'];
 
-const SERIES_SUFFIX: Record<Exclude<ReceiptSeries, 'donation'>, string> = { shipping: 'S', refund_note: 'R' };
+const SERIES_SUFFIX: Record<Exclude<OtherSeries, 'manual_donation'>, string> = { shipping: 'S', refund_note: 'R' };
+const MANUAL_DONATION_PREFIX = 'M';
 
 export interface ReceiptSettings {
   /** The contribution receipts' prefix, and the base of the others' defaults. */
   prefix: string;
   /** Explicit prefixes for the other series. */
-  seriesPrefixes: Partial<Record<Exclude<ReceiptSeries, 'donation'>, string>>;
+  seriesPrefixes: Partial<Record<OtherSeries, string>>;
   /** Issuer block lines; empty = not configured, and nothing is issued. */
   issuer: string[];
   stampKey: string | null;
@@ -53,9 +61,9 @@ export function parseReceiptSettings(rows: Iterable<{ key: string; value: string
   const settings: ReceiptSettings = { prefix: '', seriesPrefixes: {}, issuer: [], stampKey: null, logoKey: null, texts: {} };
   for (const { key, value } of rows) {
     if (key === 'receipt_prefix') settings.prefix = normalizePrefix(value);
-    else if (key === 'receipt_prefix:shipping' || key === 'receipt_prefix:refund_note') {
+    else if (key.startsWith('receipt_prefix:') && (OTHER_SERIES as readonly string[]).includes(key.slice('receipt_prefix:'.length))) {
       const prefix = normalizePrefix(value);
-      if (prefix) settings.seriesPrefixes[key.slice('receipt_prefix:'.length) as 'shipping' | 'refund_note'] = prefix;
+      if (prefix) settings.seriesPrefixes[key.slice('receipt_prefix:'.length) as OtherSeries] = prefix;
     } else if (key === 'receipt_issuer') {
       settings.issuer = value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     } else if (key === 'receipt_stamp_key') settings.stampKey = value || null;
@@ -76,7 +84,9 @@ export function receiptText(settings: ReceiptSettings, slot: ReceiptTextSlot, lo
 /** The prefix a series prints. */
 export function seriesPrefix(settings: ReceiptSettings, series: ReceiptSeries): string {
   if (series === 'donation') return settings.prefix;
-  return settings.seriesPrefixes[series] ?? `${settings.prefix}${SERIES_SUFFIX[series]}`;
+  const own = settings.seriesPrefixes[series];
+  if (own) return own;
+  return series === 'manual_donation' ? MANUAL_DONATION_PREFIX : `${settings.prefix}${SERIES_SUFFIX[series]}`;
 }
 
 /** "W12/2027"; with no prefix "12/2027". */

@@ -17,7 +17,9 @@ import {
 import { localDay } from './day';
 import { RECEIPT_SETTINGS_SQL, parseReceiptSettings, seriesPrefix, type ReceiptSettings } from './settings';
 import { allocateReceipt, listOrderReceipts, liveReceipts, type ReceiptRow } from './store';
-import { planReceipts, type ReceiptSeriesKind } from './reconcile';
+import { planReceipts, type ContributionKind, type ReceiptSeriesKind } from './reconcile';
+import { isContributionKind } from './document';
+import { readManualPayment } from '../orders/manualPaymentMethod';
 
 export { getReceiptByPublicId, listOrderReceipts, type ReceiptRow } from './store';
 
@@ -43,6 +45,7 @@ interface ReceiptOrder {
   currency: string;
   payment_method: string | null;
   donor: string | null;
+  manual_payment: string | null;
   created_at: string;
 }
 
@@ -101,18 +104,23 @@ async function completeReceipt(
     const donor = readStoredDonor(order.donor);
     if (!donor) return;
     const i18n = createI18n(orderLocale(order.locale));
+    const manual = readManualPayment(order.manual_payment);
     doc = buildReceiptDocument({
       kind: row.kind,
       label: row.label,
       issuedOn: localDay(row.issued_at, timeZone),
       // A refund note speaks of the day the money went back, not the payment day.
-      paidOn: localDay(row.kind === 'refund_note' ? row.issued_at : order.created_at, timeZone),
+      // A payment recorded by hand happened on the day the money arrived.
+      paidOn:
+        row.kind === 'refund_note'
+          ? localDay(row.issued_at, timeZone)
+          : (manual?.receivedOn ?? localDay(order.created_at, timeZone)),
       amountCents: row.amount_cents,
       currency: row.currency,
       orderRef: orderReference(order.public_id, order.id, getConfig().orderNumber),
-      paymentMethod: order.payment_method,
+      paymentMethod: manual ? `manual:${manual.method}` : order.payment_method,
       donor,
-      gifts: row.kind === 'donation' ? await orderGifts(db, order.id) : [],
+      gifts: isContributionKind(row.kind) ? await orderGifts(db, order.id) : [],
       relatedLabel: related?.label ?? null,
       settings,
       i18n,
@@ -142,12 +150,16 @@ async function completeReceipt(
 export async function issueOrderReceipts(db: D1Database, orderId: number): Promise<void> {
   const order = await db
     .prepare(
-      `SELECT id, public_id, locale, amount_total_cents, shipping_cents, refunded_cents, currency, payment_method, donor, created_at
+      `SELECT id, public_id, locale, amount_total_cents, shipping_cents, refunded_cents, currency, payment_method, donor, manual_payment, created_at
          FROM orders WHERE id = ? AND donor IS NOT NULL`,
     )
     .bind(orderId)
     .first<ReceiptOrder>();
   if (!order || !readStoredDonor(order.donor)) return;
+  // Cash never gets a receipt (it gives the donor no tax benefit).
+  if (readManualPayment(order.manual_payment)?.method === 'cash') return;
+  // Contributions recorded by hand are numbered in their own series.
+  const contributionKind: ContributionKind = order.payment_method === 'manual' ? 'manual_donation' : 'donation';
   const settings = await loadReceiptSettings(db);
   if (settings.issuer.length === 0) return;
   const timeZone = await storeTimeZone(db);
@@ -160,7 +172,7 @@ export async function issueOrderReceipts(db: D1Database, orderId: number): Promi
   const lastNote: Partial<Record<ReceiptSeriesKind, number>> = {};
   for (const r of rows) {
     const cancelled = r.kind === 'refund_note' && r.replaces_receipt_id != null ? byId.get(r.replaces_receipt_id) : undefined;
-    if (cancelled && (cancelled.kind === 'donation' || cancelled.kind === 'shipping')) lastNote[cancelled.kind] = r.id;
+    if (cancelled && (isContributionKind(cancelled.kind) || cancelled.kind === 'shipping')) lastNote[cancelled.kind] = r.id;
   }
   const live = liveReceipts(rows).map((r) => ({ id: r.id, kind: r.kind as ReceiptSeriesKind, amountCents: r.amount_cents }));
   const plan = planReceipts(
@@ -168,6 +180,7 @@ export async function issueOrderReceipts(db: D1Database, orderId: number): Promi
     { totalCents: order.amount_total_cents, shippingCents: order.shipping_cents, refundedCents: order.refunded_cents },
     live,
     lastNote,
+    contributionKind,
   );
   // In plan order: a note is always taken before the receipt that replaces
   // the one it cancels, so an interrupted pass never skips the note.
@@ -210,8 +223,9 @@ export async function sweepReceipts(db: D1Database, limit = 20): Promise<void> {
     .prepare(
       `SELECT o.id FROM orders o
         WHERE o.donor IS NOT NULL
+          AND NOT (json_valid(o.manual_payment) AND json_extract(o.manual_payment, '$.method') = 'cash')
           AND ((SELECT COALESCE(SUM(r.amount_cents), 0) FROM receipts r
-                 WHERE r.order_id = o.id AND r.kind IN ('donation', 'shipping')
+                 WHERE r.order_id = o.id AND r.kind IN ('donation', 'manual_donation', 'shipping')
                    AND NOT EXISTS (SELECT 1 FROM receipts x WHERE x.replaces_receipt_id = r.id))
                  <> o.amount_total_cents - o.refunded_cents
                OR EXISTS (SELECT 1 FROM receipts r WHERE r.order_id = o.id AND (r.pdf_key IS NULL OR r.document = '')))

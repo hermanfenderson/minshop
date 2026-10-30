@@ -70,6 +70,12 @@ describe('parseReceiptSettings', () => {
     expect(seriesPrefix(custom, 'refund_note')).toBe('R');
   });
 
+  it('numbers contributions recorded by hand under M unless set otherwise', () => {
+    expect(seriesPrefix(settings, 'manual_donation')).toBe('M');
+    const custom = parseReceiptSettings([{ key: 'receipt_prefix:manual_donation', value: 'MAN' }]);
+    expect(seriesPrefix(custom, 'manual_donation')).toBe('MAN');
+  });
+
   it('keeps the prefix printable', () => {
     expect(parseReceiptSettings([{ key: 'receipt_prefix', value: ' W/<b> ' }]).prefix).toBe('Wb');
   });
@@ -94,6 +100,16 @@ describe('buildReceiptDocument', () => {
     expect(doc.body).toEqual(['Da Esempio S.r.l.: 40,00\u00a0€ (quaranta/00), 17 marzo 2027.', 'Secondo paragrafo {nope}.']);
     expect(doc.party).toContain('Partita IVA 15861571006');
     expect(doc.footer).toEqual(['Nota privacy.', 'Associazione Esempio ETS - Via Esempio 1, 00100 Roma - C.F. 00000000000']);
+  });
+
+  it('words a contribution recorded by hand like any other, naming how it arrived', () => {
+    const doc = buildReceiptDocument(
+      input({ kind: 'manual_donation', label: 'M1/2027', donor: company, paymentMethod: 'manual:bank_transfer' }),
+    );
+    expect(doc.title).toBe('Ricevuta per erogazione liberale');
+    expect(doc.body[0]).toContain('Da Esempio S.r.l.');
+    const placeholder = buildReceiptDocument(input({ kind: 'manual_donation', paymentMethod: 'manual:cheque' }));
+    expect(placeholder.body.join(' ')).toContain('assegno');
   });
 
   it('lists the gifts in an annex on donation receipts only', () => {

@@ -30,6 +30,7 @@ import { parseOrderOrLegacyPublicId } from '../../../features/ids/publicId';
 import { getFulfillment } from '../../../features/fulfillment/store';
 import { listPackages, loadPackableLines, packedQuantities, waitingLines } from '../../../features/fulfillment/packages';
 import { PRINTFUL_DASHBOARD_URL } from '../../../features/fulfillment/printful';
+import { MANUAL_METHOD_LABELS, readManualPayment } from '../../../features/orders/manualPaymentMethod';
 
 // The route param is the order public ID — ord_ or a preserved legacy shape
 // (hex32/UUID). Numeric row ids are not accepted.
@@ -49,9 +50,13 @@ const PAYMENT_LABELS: Record<string, string> = {
   opennode: 'Bitcoin (OpenNode)',
   demo: 'Demo (no charge)',
 };
-const paymentLabel = order.payment_method
-  ? (PAYMENT_LABELS[order.payment_method] ?? order.payment_method)
-  : '—';
+// A payment received outside the shop (Orders → Record a payment): how and when.
+const manualPayment = readManualPayment(order.manual_payment);
+const paymentLabel = manualPayment
+  ? `${MANUAL_METHOD_LABELS[manualPayment.method]}, recorded by hand — received ${formatDate(`${manualPayment.receivedOn}T12:00:00Z`, { dateStyle: 'medium' }, 'UTC')}`
+  : order.payment_method
+    ? (PAYMENT_LABELS[order.payment_method] ?? order.payment_method)
+    : '—';
 const timeZone = Astro.locals.settings?.timeZone ?? getConfig().timeZone;
 const items = await listOrderItemsWithImages(env.DB, order.id);
 const inventoryExceptions = await listOrderInventoryExceptions(env.DB, order.id);
@@ -291,8 +296,14 @@ const willEmailCustomer =
     </div>
     <div class="col-span-2">
       <dt class="text-xs uppercase tracking-widest text-gray-400">Payment reference</dt>
-      <dd class="font-mono text-xs break-all">{order.provider_session_id ?? '—'}</dd>
+      <dd class="font-mono text-xs break-all">{manualPayment ? manualPayment.reference || '—' : (order.provider_session_id ?? '—')}</dd>
     </div>
+    {manualPayment?.note && (
+      <div class="col-span-2">
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Note</dt>
+        <dd class="whitespace-pre-line">{manualPayment.note}</dd>
+      </div>
+    )}
   </dl>
 
   <RefundPanel order={order} timeZone={timeZone} />
@@ -324,7 +335,7 @@ const willEmailCustomer =
             receipts.map((r) => (
               <li>
                 <a href={Astro.locals.urls.href(`/api/admin/receipts/${r.public_id}`)} target="_blank" class="underline">{r.label}</a>
-                <span class="text-gray-500"> · {r.kind === 'donation' ? 'contribution' : r.kind.replace('_', ' ')} · {formatPrice(r.amount_cents, r.currency.toLowerCase())}</span>
+                <span class="text-gray-500"> · {r.kind === 'donation' ? 'contribution' : r.kind === 'manual_donation' ? 'contribution recorded by hand' : r.kind.replace('_', ' ')} · {formatPrice(r.amount_cents, r.currency.toLowerCase())}</span>
               </li>
             ))
           )}

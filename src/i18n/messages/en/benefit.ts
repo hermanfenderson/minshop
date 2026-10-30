@@ -81,6 +81,10 @@ export const benefit = {
   'benefit.receipt.signature': 'Signature of the legal representative and stamp',
   'benefit.receipt.method.stripe': 'electronic payment via Stripe (card, PayPal or SEPA Direct Debit)',
   'benefit.receipt.method.demo': 'test payment (demo — not a real payment)',
+  'benefit.receipt.method.bank_transfer': 'bank transfer',
+  'benefit.receipt.method.cheque': 'cheque',
+  'benefit.receipt.method.pos': 'card payment at a terminal',
+  'benefit.receipt.method.paypal': 'payment via PayPal',
   'benefit.receipt.method.other': 'electronic payment',
   'benefit.receipt.placeholder.donation.person':
     '{issuer} confirms that it received from {donor} a donation of {amount} ({amount_words}) on {date}, paid by {payment_method}.\n\n[Placeholder text: set the final wording in Admin › Receipts.]',

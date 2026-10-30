@@ -52,6 +52,8 @@ export interface Order {
   ship_address: string | null; // JSON snapshot (ShippingAddress) or null
   /** Benefit Mode donor snapshot (JSON, 0047); null = a standard sale. */
   donor?: string | null;
+  /** A payment received outside the shop (JSON, 0050; manualPaymentMethod.ts); null otherwise. */
+  manual_payment?: string | null;
   created_at: string;
 }
 
@@ -199,6 +201,12 @@ export interface PaidOrderInput {
    * so a payment is never marked settled unless ITS order row actually landed.
    */
   settlePaymentHash?: string | null;
+  /** A payment received outside the shop (manualPayment.ts): how and when, as JSON. */
+  manualPayment?: string | null;
+  /** The donor snapshot for an order with no reservation to copy it from (a manual payment). */
+  donor?: string | null;
+  /** Which order emails apply; both by default. One that does not is recorded as skipped. */
+  notify?: { customer: boolean; owner: boolean };
 }
 
 /**
@@ -551,6 +559,16 @@ export async function recordPaidOrder(
         .bind(o.reservationId, o.providerSessionId, settlementToken),
     );
   }
+  if (o.manualPayment != null || o.donor != null) {
+    stmts.push(
+      db
+        .prepare(
+          `UPDATE orders SET manual_payment = ?, donor = COALESCE(?, donor)
+            WHERE provider_session_id = ? AND settlement_token = ?`,
+        )
+        .bind(o.manualPayment ?? null, o.donor ?? null, o.providerSessionId, settlementToken),
+    );
+  }
   const stockUpdates: Array<{
     statementIndex: number;
     productId: number;
@@ -754,15 +772,16 @@ export async function recordPaidOrder(
   // settlement-token claim like everything else in the batch; ON CONFLICT is
   // belt-and-braces for a re-run against an already-claimed order.
   for (const kind of ['customer-receipt', 'owner-notification'] as const) {
+    const applies = kind === 'customer-receipt' ? (o.notify?.customer ?? true) : (o.notify?.owner ?? true);
     stmts.push(
       db
         .prepare(
-          `INSERT INTO order_notifications (order_id, kind)
-           SELECT id, ? FROM orders
+          `INSERT INTO order_notifications (order_id, kind, state)
+           SELECT id, ?, ? FROM orders
             WHERE provider_session_id = ? AND settlement_token = ?
            ON CONFLICT(order_id, kind) DO NOTHING`,
         )
-        .bind(kind, o.providerSessionId, settlementToken),
+        .bind(kind, applies ? 'pending' : 'skipped', o.providerSessionId, settlementToken),
     );
   }
 

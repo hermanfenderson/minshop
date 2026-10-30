@@ -1,7 +1,7 @@
 // Explicit .ts imports: the D1 integration suite loads this module under plain Node.
 import type { D1Database } from '@cloudflare/workers-types';
 import { generatePublicId } from '../ids/publicId.ts';
-import type { ReceiptKind } from './document.ts';
+import { isContributionKind, type ReceiptKind } from './kinds.ts';
 
 /** Receipt rows (0047): numbering and lookups, with no bindings or rendering. */
 
@@ -86,5 +86,5 @@ export async function allocateReceipt(
  */
 export function liveReceipts(rows: ReceiptRow[]): ReceiptRow[] {
   const superseded = new Set(rows.flatMap((r) => (r.replaces_receipt_id == null ? [] : [r.replaces_receipt_id])));
-  return rows.filter((r) => (r.kind === 'donation' || r.kind === 'shipping') && !superseded.has(r.id));
+  return rows.filter((r) => (isContributionKind(r.kind) || r.kind === 'shipping') && !superseded.has(r.id));
 }

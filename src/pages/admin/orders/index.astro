@@ -233,6 +233,12 @@ const listError = Astro.url.searchParams.get('error');
         {filtered ? 'Export these' : 'Export CSV'}
       </a>
       <a
+        href={Astro.locals.urls.href('/admin/orders/new')}
+        class="rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 hover:border-brand hover:text-brand"
+      >
+        Record a payment
+      </a>
+      <a
         href={Astro.locals.urls.href('/admin/orders/unpaid')}
         class="rounded-md border border-line px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 hover:border-brand hover:text-brand"
       >

@@ -279,9 +279,18 @@ Design proposals (to confirm):
   until the owner decides to publish it.
 - The total counts settled contributions only, net of refunds, line by line:
   in a mixed cart only the selected lines count. Shipping charges never count.
-- Optional manual adjustments by an admin, with a note, for contributions
-  received outside Minshop (bank transfers, card terminals, earlier
-  campaigns).
+- Contributions received outside Minshop are recorded as orders (Admin →
+  Orders → Record a payment, 2026-10-30): payment_method 'manual', the donor,
+  and a receipt in a series of their own (prefix M). They count like any other
+  contribution, and the total and list can tell them apart.
+
+Decided by the owner on 2026-10-30:
+
+- Every product counts towards the total.
+- Each contribution has a listing setting with three values, which an admin can
+  force: listed normally, listed separately (its own list and subtotal, for
+  example the contributions recorded by hand), or not listed — and then not
+  counted in the total shown either.
 - The supporter list is opt-in at checkout. The supporter chooses whether to
   appear, under which display name (their first and last name when they type
   none: asking to be listed means being listed by name, Mauro 2026-10-28), and
@@ -561,8 +570,8 @@ All Benefit Mode questions except crowdfunding were answered by the owner on
 
 ### Still open (crowdfunding, not needed for the first release)
 
-- Crowdfunding (R13): campaign selection by category, explicit list, or
-  both? Can one contribution count in several campaigns?
+- Crowdfunding (R13): every product counts (owner, 2026-10-30). Can one
+  contribution count in several campaigns?
 - Crowdfunding (R13): does the total include the full contribution or only
   what exceeds the perk's cost? Is it available in standard mode?
 - Crowdfunding (R13): which supporter data may be published, and for how long

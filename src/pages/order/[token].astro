@@ -231,7 +231,7 @@ const pageTitle = order
                     <a
                       href={Astro.locals.urls.href(`/order/${token}/receipt/${r.public_id}`)}
                       class="border-b border-line hover:text-brand"
-                    >{t('benefit.receipt.download', { title: t(`benefit.receipt.title.${r.kind}`), label: r.label })}</a>
+                    >{t('benefit.receipt.download', { title: t(`benefit.receipt.title.${r.kind === 'manual_donation' ? 'donation' : r.kind}`), label: r.label })}</a>
                   </li>
                 ))}
               </ul>

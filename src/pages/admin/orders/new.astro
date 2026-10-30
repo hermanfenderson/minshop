@@ -1,0 +1,203 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getConfig, formatPrice } from '../../../config';
+import { toMinorUnits, minorUnitsPerMajor } from '../../../money';
+import { resolveRequiredOrderEmail } from '../../../features/email/orderPolicy';
+import { deliverOrderNotifications } from '../../../features/email/outbox';
+import { dispatchReceipts } from '../../../features/receipts';
+import { localDay } from '../../../features/receipts/day';
+import { languageSettings, LOCALE_REGISTRY } from '../../../features/i18n/settings';
+import {
+  MANUAL_METHOD_LABELS,
+  MANUAL_PAYMENT_METHODS,
+  isManualPaymentMethod,
+  isReceivedOn,
+  recordManualOrder,
+} from '../../../features/orders/manualPayment';
+import { benefitRules } from '../../../features/benefit/mode';
+import { parseDonor, type Donor } from '../../../features/benefit/donor';
+import { findFreeDonationProduct } from '../../../features/benefit/freeDonation';
+import DonorFields from '../../../features/benefit/DonorFields.astro';
+
+// Record a payment received outside the shop — a bank transfer, a cheque, a card
+// terminal — as a paid order (features/orders/manualPayment.ts). In Benefit Mode
+// it takes the donor too, so the contribution gets its receipt (in a series of
+// its own), and cash is not offered: it gives the donor no receipt.
+
+const cfg = getConfig();
+const currency = cfg.currency;
+const settings = Astro.locals.settings;
+const benefit = benefitRules(settings, currency);
+const langs = languageSettings(settings);
+const timeZone = settings?.timeZone ?? cfg.timeZone;
+const today = localDay(new Date().toISOString(), timeZone);
+const methods = MANUAL_PAYMENT_METHODS.filter((m) => !(benefit && m === 'cash'));
+
+// Products that ship nothing: no address is taken here, so nothing may go to a fulfiller.
+interface Choice {
+  value: string;
+  productId: number;
+  productName: string;
+  name: string;
+  variant: { id: number; name: string } | null;
+  priceCents: number;
+  trackInventory: number;
+}
+const { results: rows } = await env.DB
+  .prepare(
+    `SELECT p.id, p.name, p.price_cents, p.track_inventory, v.id AS variant_id, v.name AS variant_name, v.price_cents AS variant_price
+       FROM products p LEFT JOIN product_variants v ON v.product_id = p.id
+      WHERE p.active = 1 AND COALESCE(p.requires_shipping, 1) = 0
+      ORDER BY p.name, v.id`,
+  )
+  .all<{ id: number; name: string; price_cents: number; track_inventory: number; variant_id: number | null; variant_name: string | null; variant_price: number | null }>();
+const choices: Choice[] = (rows ?? []).map((r) => ({
+  value: r.variant_id ? `${r.id}:${r.variant_id}` : String(r.id),
+  productId: r.id,
+  productName: r.name,
+  name: r.variant_name ? `${r.name} — ${r.variant_name}` : r.name,
+  variant: r.variant_id ? { id: r.variant_id, name: r.variant_name ?? '' } : null,
+  priceCents: r.variant_price ?? r.price_cents,
+  trackInventory: r.track_inventory,
+}));
+const freeDonation = benefit ? await findFreeDonationProduct(env.DB) : null;
+
+const values: Record<string, string> = {};
+let error = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  for (const [k, v] of form) if (typeof v === 'string') values[k] = v;
+  const get = (name: string) => String(form.get(name) ?? '').trim();
+  const choice = choices.find((c) => c.value === get('product'));
+  const amountMajor = Number(get('amount').replace(',', '.'));
+  const amountCents = Number.isFinite(amountMajor) ? toMinorUnits(amountMajor, currency) : NaN;
+  const method = get('method');
+  const receivedOn = get('received_on');
+  const rawEmail = get('email');
+  const email = rawEmail ? resolveRequiredOrderEmail(rawEmail, null) : null;
+  const locale = langs.enabledLocales.includes(get('locale')) ? get('locale') : langs.defaultLocale;
+  let donor: Donor | null = null;
+  if (!choice) error = 'Choose what the payment is for.';
+  else if (!(amountCents > 0)) error = 'Enter the amount received.';
+  else if (!isManualPaymentMethod(method) || !methods.includes(method)) error = 'Choose how the money arrived.';
+  else if (!isReceivedOn(receivedOn, today)) error = 'Enter the day the money arrived (not a future day).';
+  else if (rawEmail && !email) error = 'The email address is not valid.';
+  else if (benefit) {
+    const parsed = parseDonor((name) => form.get(name));
+    if (!parsed.ok) error = `Donor details: ${parsed.problems.map((p) => `${p.field.replace(/^donor_/, '').replace(/_/g, ' ')} ${p.code}`).join(', ')}.`;
+    else donor = parsed.donor;
+    if (!error && amountCents < choice!.priceCents) {
+      error = `The minimum for ${choice!.name} is ${formatPrice(choice!.priceCents, currency)}.`;
+    }
+  }
+  if (!error && choice && isManualPaymentMethod(method)) {
+    const { orderId, publicId } = await recordManualOrder(env.DB, {
+      product: { id: choice.productId, name: choice.productName, track_inventory: choice.trackInventory },
+      variant: choice.variant,
+      amountCents,
+      currency,
+      email,
+      locale,
+      payment: { method, receivedOn, reference: get('reference').slice(0, 120), note: get('note').slice(0, 500) },
+      donor: donor ? JSON.stringify(donor) : null,
+      ...(benefit ? { minPriceCents: choice.priceCents } : {}),
+      notifyCustomer: form.get('notify') === 'on',
+    });
+    // The confirmation email (when asked for) and, in Benefit Mode, the receipt.
+    await deliverOrderNotifications(env.DB, orderId, Astro.url.origin, settings ?? undefined);
+    await dispatchReceipts(env.DB, orderId);
+    return Astro.redirect(Astro.locals.urls.href(`/admin/orders/${publicId}`), 303);
+  }
+}
+
+const selected = values.product ?? (freeDonation ? String(freeDonation.id) : '');
+const input = 'mt-1 block w-full rounded-md border border-line bg-paper px-3 py-2 text-sm';
+const label = 'text-xs uppercase tracking-widest text-gray-400';
+const step = 1 / minorUnitsPerMajor(currency);
+---
+
+<AdminLayout title="Record a payment" active="orders">
+  <a href={Astro.locals.urls.href('/admin/orders')} class="text-xs uppercase tracking-widest text-gray-400 hover:text-brand">
+    &larr; Orders
+  </a>
+  <h1 class="mb-2 mt-4 font-serif text-3xl tracking-tight">Record a payment</h1>
+  <p class="mb-6 max-w-prose text-sm text-gray-500">
+    Money received outside the shop — a bank transfer, a cheque, a card terminal — becomes a paid order like the others,
+    with its own order page.
+    {benefit
+      ? 'The contribution gets its receipt in the series for contributions recorded by hand (Admin → Receipts).'
+      : 'Only products that ship nothing can be recorded here.'}
+  </p>
+
+  {error && <p class="mb-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
+
+  {choices.length === 0 ? (
+    <p class="text-sm text-gray-500">No active product ships nothing, so there is nothing to record a payment for.</p>
+  ) : (
+    <form method="POST" class="max-w-xl space-y-4">
+      <label class="block text-sm">
+        <span class={label}>For</span>
+        <select name="product" required class={input}>
+          {choices.map((c) => (
+            <option value={c.value} selected={c.value === selected}>
+              {c.name}{benefit && c.priceCents > 0 ? ` (from ${formatPrice(c.priceCents, currency)})` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block text-sm">
+          <span class={label}>Amount received ({currency.toUpperCase()})</span>
+          <input name="amount" type="number" min={step} step={step} required value={values.amount ?? ''} class={input} />
+        </label>
+        <label class="block text-sm">
+          <span class={label}>Received on</span>
+          <input name="received_on" type="date" max={today} required value={values.received_on ?? today} class={input} />
+        </label>
+        <label class="block text-sm">
+          <span class={label}>How</span>
+          <select name="method" required class={input}>
+            {methods.map((m) => <option value={m} selected={values.method === m}>{MANUAL_METHOD_LABELS[m]}</option>)}
+          </select>
+        </label>
+        <label class="block text-sm">
+          <span class={label}>Reference (optional)</span>
+          <input name="reference" maxlength="120" value={values.reference ?? ''} placeholder="CRO / TRN, cheque number…" class={input} />
+        </label>
+      </div>
+
+      {benefit && (
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+          <DonorFields draft={values} defaultCountry="IT" privacyHref={null} />
+        </div>
+      )}
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block text-sm">
+          <span class={label}>Email (optional)</span>
+          <input name="email" type="email" value={values.email ?? ''} class={input} />
+        </label>
+        <label class="block text-sm">
+          <span class={label}>Language of the emails{benefit ? ' and receipt' : ''}</span>
+          <select name="locale" class={input}>
+            {langs.enabledLocales.map((code) => (
+              <option value={code} selected={(values.locale ?? langs.defaultLocale) === code}>{LOCALE_REGISTRY[code]?.label ?? code}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="notify" checked={values.notify === 'on' || Astro.request.method !== 'POST'} class="h-4 w-4 accent-brand" />
+        Email the order confirmation{benefit ? ' and the receipt link' : ''} to this address
+      </label>
+      <label class="block text-sm">
+        <span class={label}>Note for the admin (optional)</span>
+        <textarea name="note" rows="2" maxlength="500" class={input}>{values.note ?? ''}</textarea>
+      </label>
+      <button type="submit" class="rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">
+        Record payment
+      </button>
+    </form>
+  )}
+</AdminLayout>
