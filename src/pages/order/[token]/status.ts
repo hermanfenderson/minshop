@@ -7,6 +7,7 @@ import {
   expireSelfRenderedReservation,
   getReservationStatusSnapshot,
 } from '../../../features/orders/reservations.ts';
+import { orderRouteParams } from '../../../features/orders/routeParams.ts';
 import { purgeStockProductCache } from '../../../features/cache/purge.ts';
 
 export const prerender = false;
@@ -26,8 +27,8 @@ const headers = {
 export const OPTIONS: APIRoute = () =>
   new Response(null, { status: 204, headers: { ...CORS, 'cache-control': 'private, no-store' } });
 
-export const GET: APIRoute = async ({ params, request, locals }) => {
-  const token = params.token;
+export const GET: APIRoute = async ({ params, request, locals, url }) => {
+  const { token } = orderRouteParams(params, url.pathname);
   if (!token || !isAccessToken(token)) {
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
   }

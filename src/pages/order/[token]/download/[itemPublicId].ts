@@ -4,6 +4,7 @@ import { isAccessToken } from '../../../../features/ids/token.ts';
 import { parsePublicId } from '../../../../features/ids/publicId.ts';
 import { resolveAccessToken } from '../../../../features/orders/guestAccess.ts';
 import { getOrderByPublicId } from '../../../../features/orders/db.ts';
+import { orderRouteParams } from '../../../../features/orders/routeParams.ts';
 import { getFileStorage } from '../../../../features/storage/index.ts';
 
 export const prerender = false;
@@ -29,10 +30,10 @@ function contentDisposition(name: string): string {
 
 // A shopper follows these links from the order page or the receipt, so every
 // refusal is plain text in their language.
-export const GET: APIRoute = async ({ params, locals }) => {
+export const GET: APIRoute = async ({ params, locals, url }) => {
   const { t } = locals.i18n;
-  const token = params.token;
-  const itemPublicId = parsePublicId(params.itemPublicId, 'orderItem');
+  const { token, sub } = orderRouteParams(params, url.pathname);
+  const itemPublicId = parsePublicId(sub, 'orderItem');
   if (!token || !isAccessToken(token) || !itemPublicId) return new Response(t('order.download.notFound'), { status: 404, headers: PRIVATE_HEADERS });
   const access = await resolveAccessToken(env.DB, token);
   if (!access) return new Response(t('order.download.notFound'), { status: 404, headers: PRIVATE_HEADERS });
