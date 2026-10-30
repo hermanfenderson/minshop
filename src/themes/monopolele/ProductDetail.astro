@@ -144,7 +144,7 @@ const formI18n: I18n = plainDonation
         narrow width would stack them. */}
     <div
       class:list={[
-        'order-3 [&>*:first-child]:mt-0 [&_form]:max-w-none md:[&>*:first-child]:mt-8',
+        'mono-buy order-3 [&>*:first-child]:mt-0 [&_form]:max-w-none md:[&>*:first-child]:mt-8',
         '[&_[data-variant-axes]]:flex [&_[data-variant-axes]]:flex-wrap [&_[data-variant-axes]]:gap-x-10',
       ]}
     >
@@ -179,6 +179,38 @@ const formI18n: I18n = plainDonation
     )
   }
 </div>
+
+<style>
+  /* The button beside the amount, where there is room (Mauro, 2026-10-30). The
+     form's markup belongs to ProductPurchaseForm, so this only reorders it: the
+     amount block opens up into the form's grid, the buttons take the cell next
+     to the field and the notes under it follow. */
+  @media (min-width: 480px) {
+    .mono-buy :global(form:has([data-contribution])) {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 1rem;
+      align-items: center;
+    }
+    .mono-buy :global(form:has([data-contribution]) > *),
+    .mono-buy :global([data-contribution] > *) {
+      grid-column: 1 / -1;
+    }
+    .mono-buy :global([data-contribution]) {
+      display: contents;
+    }
+    .mono-buy :global([data-contribution] > input) {
+      grid-column: 1;
+    }
+    .mono-buy :global(form:has([data-contribution]) > div:last-child) {
+      grid-column: 2;
+      order: 1;
+    }
+    .mono-buy :global([data-contribution] > p) {
+      order: 2;
+    }
+  }
+</style>
 
 <script>
   // @ts-nocheck -- plain-JS client script (annotations would ship to the browser)
