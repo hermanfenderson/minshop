@@ -69,6 +69,7 @@ const hasGallery = images.length > 1;
         {images.map((image) => (
           <a
             href={`#pi-${image.anchor}`}
+            data-hero-thumb
             class="shrink-0 overflow-hidden rounded border border-line bg-surface transition hover:border-brand"
           >
             <img
@@ -102,3 +103,19 @@ const hasGallery = images.length > 1;
     </div>
   )
 }
+
+{/* A thumbnail slides the carousel to its photo and leaves the page where it
+    is: following the anchor would also scroll the page and hide the header.
+    Without JavaScript the anchor still works. */}
+<script>
+  // @ts-nocheck -- plain-JS client script
+  document.addEventListener('click', (event) => {
+    const thumb = event.target instanceof Element ? event.target.closest('[data-hero-thumb]') : null;
+    const track = document.querySelector('[data-hero-track]');
+    if (!thumb || !(track instanceof HTMLElement)) return;
+    const img = document.getElementById((thumb.getAttribute('href') || '').slice(1));
+    if (!(img instanceof HTMLElement) || !track.contains(img)) return;
+    event.preventDefault();
+    track.scrollTo({ left: img.offsetLeft });
+  });
+</script>
