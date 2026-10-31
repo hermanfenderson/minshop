@@ -34,6 +34,9 @@ export interface SiteShellSource {
   /** Prefix for root-relative links when the store runs on another host. */
   origin?: string;
   home?: ShellText;
+  /** Where «Continue shopping» in the cart leads: the website's own catalogue
+   *  (e.g. "/libri/"). Default: the store's catalogue. */
+  shopHome?: ShellText;
   logo?: { src: string; alt?: ShellText; width?: number; height?: number; text?: ShellText; tagline?: ShellText };
   /** The website's site icon, so the store shows the same one (PNG files). */
   icons?: { png32?: string; png192?: string; appleTouch?: string };
@@ -82,6 +85,8 @@ export type ShellSegment = { text: string; href: string | null };
 export interface SiteShell {
   name: string;
   homeHref: string;
+  /** Null: the store's catalogue. */
+  shopHomeHref: string | null;
   logo: { src: string; alt: string; width?: number; height?: number; text: string | null; tagline: string | null } | null;
   /** Null: the store's own favicon. */
   icons: { png32: string | null; png192: string | null; appleTouch: string | null } | null;
@@ -169,6 +174,7 @@ export function siteShell(locale: string): SiteShell {
   const resolved: SiteShell = {
     name: shell.name,
     homeHref: absolute(pick(shell.home, locale) ?? '/'),
+    shopHomeHref: shell.shopHome ? absolute(pick(shell.shopHome, locale) ?? '') || null : null,
     logo: shell.logo
       ? {
           src: absolute(shell.logo.src),

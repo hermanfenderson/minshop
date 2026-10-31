@@ -6,6 +6,7 @@ import FreeDonation from '../../features/benefit/FreeDonation.astro';
 import { findFreeDonationProduct, freeDonationLast } from '../../features/benefit/freeDonation';
 import { amountInputStep, amountInputValue } from '../../features/benefit/amount';
 import { catalogPath } from '../../features/settings/home';
+import { siteShell } from '../../features/storefront/controls/site-shell';
 import { readCart, resolveCart, cartCount } from '../../features/cart/cart';
 import ProductImage from '../../features/products/ProductImage.astro';
 import { getSetting } from '../../features/settings/db';
@@ -29,7 +30,9 @@ const [{ lines: cartLines, subtotalCents }, imageDeliverySetting, freeDonationPr
 const { lines, freeLine } = freeDonationLast(cartLines, freeDonationProduct);
 const onlyFreeDonation = !!freeLine && lines.length === 1;
 const offerFreeDonation = !!(benefit && freeDonationProduct && !freeLine);
-const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
+// «Continue shopping»: the website's catalogue when the store lives inside a website
+// (SITE_SHELL shopHome, docs/SITE_SHELL.md), otherwise the store's own.
+const shopHref = siteShell(Astro.locals.i18n.locale).shopHomeHref ?? Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 const imageDelivery = imageDeliverySetting === 'cloudflare' ? 'cloudflare' : 'original';
 const count = cartCount(cart);
 const { t } = Astro.locals.i18n;

@@ -18,13 +18,22 @@ const i18n = storefrontI18n(Astro.props.i18n);
 const { t } = i18n;
 const shell = siteShell(i18n.locale);
 const footer = shell.footer;
-const legalLinks = [
-  ...(footer?.links ?? []).filter((l) => l.href).map((l) => ({ text: l.label, href: l.href! })),
-  ...model.footerLinks,
-];
+// The store's own links are above, outside the placeholder: here only the site's.
+const legalLinks = (footer?.links ?? []).filter((l) => l.href).map((l) => ({ text: l.label, href: l.href! }));
 ---
 
-<footer class="mt-16 bg-footer font-sans text-on-footer">
+{/* The store's own links (terms, privacy: Admin → Navigation) stay when the website's Worker
+    puts the site's footer in place of [data-site-shell="footer"]. */}
+<div class="mt-16">
+{
+  model.footerLinks.length > 0 && (
+    <nav aria-label={t('storefront.footer.nav')} data-shop-links class="mx-auto flex max-w-(--page-max) flex-wrap gap-x-4 gap-y-2 px-(--page-pad-x) py-4 font-sans text-xs text-muted">
+      {model.footerLinks.map((link) => <a href={link.href} class="hover:text-ink">{link.text}</a>)}
+    </nav>
+  )
+}
+<div data-site-shell="footer" data-locale={i18n.locale}>
+<footer class="bg-footer font-sans text-on-footer">
   <div class="mx-auto max-w-(--page-max) px-(--page-pad-x) pb-8 pt-14">
     {
       footer && (footer.about.length > 0 || footer.columns.length > 0) && (
@@ -68,3 +77,5 @@ const legalLinks = [
     </div>
   </div>
 </footer>
+</div>
+</div>

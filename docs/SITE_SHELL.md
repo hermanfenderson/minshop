@@ -27,6 +27,7 @@ Nei campi `footer.about` e `banner.text` la sintassi `[testo](href)` diventa un 
 | `name` | nome del sito (obbligatorio) |
 | `origin` | facoltativo: prefisso dei link relativi, quando lo shop gira su un altro host (es. `https://monopolele.com`) |
 | `home` | link del logo, default `/` |
+| `shopHome` | dove porta «Continua gli acquisti» nel carrello: il catalogo del sito (es. `/libri/`); default il catalogo dello shop |
 | `logo` | `{src, alt, width, height, text?, tagline?}`; senza, il logo dell'Admin |
 | `icons` | `{png32?, png192?, appleTouch?}`: l'icona del sito (PNG), al posto della favicon di Minshop |
 | `fonts` | `{stylesheet?: URL https, faces?: regole @font-face, body, heading, prose?}` (font-family CSS) |
@@ -94,3 +95,14 @@ build del ponte**, così WordPress e Minshop vestono lo stesso telaio:
    di prodotti e cassa (`paper: #fffaf2`, `ink: #072c55`).
 5. `.instances/monopolele-test-shop.env`: `THEME=site-shell`,
    `SITE_SHELL=~/monopolele-web/wordpress/monopolele-bridge/generated/shell.json`.
+
+## Header e footer del sito al posto di quelli del tema
+
+Come per il tema `monopolele`, anche `site-shell` segna header e footer con un segnaposto:
+`<div data-site-shell="header|footer" data-locale="…" data-alternate="…">`. Dentro c'è il
+disegno ricavato dalla shell, che resta quando lo shop gira da solo (workers.dev, locale).
+Il Worker del sito, sullo stesso host, può sostituire il segnaposto con l'header e il footer
+veri del sito (frammenti HTML prodotti dalla sua build, inseriti con `HTMLRewriter`): un solo
+header da mantenere. Restano fuori dal segnaposto i colori e i font della shell e i link
+dello shop (condizioni, privacy: Admin → Navigazione), mostrati sopra il footer.
+Esempi: `monopolele-web/deploy/worker/src/shell.js`, `laltracitta-web/worker/src/shell.js`.

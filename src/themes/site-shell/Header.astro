@@ -31,6 +31,11 @@ const ext = (external: boolean) => (external ? { rel: 'noopener' } : {});
 {shell.head.stylesheet && <link rel="stylesheet" href={shell.head.stylesheet} />}
 <style is:inline set:html={shell.head.css}></style>
 
+{/* Behind the website's Worker the placeholder [data-site-shell="header"] receives the site's
+    own header (as on Monopolele, docs/SITE_SHELL.md «Header e footer del sito»); what sits
+    inside is the fallback for the store on its own (workers.dev, local). Colours and fonts
+    stay outside, so they survive the swap. */}
+<div data-site-shell="header" data-locale={i18n.locale} data-alternate={model.languages?.items.find((l) => !l.current)?.href}>
 {
   shell.banner && shell.banner.length > 0 && (
     <div class="bg-footer px-4 py-1.5 text-center font-sans text-xs font-medium tracking-wide text-on-footer">
@@ -133,6 +138,7 @@ const ext = (external: boolean) => (external ? { rel: 'noopener' } : {});
     </div>
   </div>
 </header>
+</div>
 
 <style>
   .shell-link {

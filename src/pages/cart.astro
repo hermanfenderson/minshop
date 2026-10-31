@@ -9,6 +9,7 @@ import { stripeDestination } from '../features/shipping/destination';
 import ProductImage from '../features/products/ProductImage.astro';
 import { enabledMethods, isMethodAvailable } from '../features/payments';
 import { catalogPath } from '../features/settings/home';
+import { siteShell } from '../features/storefront/controls/site-shell';
 import { getConfig } from '../config';
 import { benefitMethods, benefitRules, isSingleUnitContribution } from '../features/benefit/mode';
 import { amountInputStep, amountInputValue } from '../features/benefit/amount';
@@ -95,7 +96,9 @@ const destination = stripeDestination(
   Astro.locals.i18n,
 );
 // The catalog is at / until the home page is pointed elsewhere.
-const shopHref = Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
+// «Continue shopping»: the website's catalogue when the store lives inside a website
+// (SITE_SHELL shopHome, docs/SITE_SHELL.md), otherwise the store's own.
+const shopHref = siteShell(Astro.locals.i18n.locale).shopHomeHref ?? Astro.locals.urls.href(catalogPath(Astro.locals.settings?.homePage));
 ---
 
 <Layout title={t('cart.page.title')}>
