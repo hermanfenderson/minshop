@@ -35,6 +35,14 @@ export interface CreateCheckoutParams {
   /** Small opaque values echoed back on the webhook (provider limits apply). */
   metadata?: Record<string, string>;
   /**
+   * The shop that sold this (its store name), written on the payment itself so
+   * several shops sharing one provider account can be told apart in its
+   * dashboard and exports (Stripe: payment metadata `shop` and description).
+   */
+  channel?: string;
+  /** Card statement suffix for this shop (Stripe), already validated. */
+  statementSuffix?: string;
+  /**
    * Guest access token for this checkout's /pay and /order capability URLs.
    * Allowlisted URL positions ONLY (self-rendered pay pages, hosted success_url)
    * — never placed in provider metadata or API fields.

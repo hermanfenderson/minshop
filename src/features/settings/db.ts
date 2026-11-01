@@ -1,4 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import { statementSuffix } from '../payments/statementDescriptor';
 import type { I18nSettings } from '../../i18n/settings';
 import { normalizeTimeZone } from './timeZone';
 import {
@@ -57,6 +58,7 @@ export type SettingKey =
   // live encrypted in the vault — see features/secrets/store.ts).
   | 'email_enabled' // '0' = order/login email off; absent = on
   | 'email_provider' // 'resend' | 'cloudflare'; absent = resend
+  | 'stripe_statement_suffix' // card statement suffix for this shop (Admin → Payments → Stripe); absent = none
   | 'logo_image_key' // media image_key shown instead of the text store name; absent = text
   | 'home_page' // what / renders: 'page:<id>' | 'product:<id>'; absent = the catalog list
   | 'announcement' // storefront announcement bar text; absent/empty = bar hidden
@@ -121,6 +123,8 @@ export interface StoreSettings {
    *  immutable key rather than a media id so the layout renders it without a
    *  second D1 lookup. */
   logoImageKey: string | null;
+  /** This shop's suffix on card statements (Stripe), already validated, or null. */
+  stripeStatementSuffix: string | null;
   /** What `/` renders: 'page:<id>', 'product:<id>', or null for the catalog
    *  list. Stored as an id so renaming the target cannot break it. */
   homePage: string | null;
@@ -282,6 +286,7 @@ export function parseStoreSettings(
     emailEnabled: map.get('email_enabled') !== '0',
     emailProvider: map.get('email_provider') === 'cloudflare' ? 'cloudflare' : 'resend',
     logoImageKey: map.get('logo_image_key') ?? null,
+    stripeStatementSuffix: statementSuffix(map.get('stripe_statement_suffix')),
     homePage: map.get('home_page') ?? null,
     announcement: map.get('announcement') ?? null,
     announcementHref: map.get('announcement_href') ?? null,

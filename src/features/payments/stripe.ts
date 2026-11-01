@@ -51,6 +51,31 @@ type ShippingDetails = {
   } | null;
 } | null;
 
+/** The shop's mark on the payment itself (see CreateCheckoutParams.channel). */
+export function paymentIntentFor(
+  params: CreateCheckoutParams,
+  withSuffix: boolean,
+): Stripe.Checkout.SessionCreateParams.PaymentIntentData | null {
+  const order = params.metadata?.public_id;
+  const suffix = withSuffix ? params.statementSuffix : undefined;
+  if (!params.channel && !suffix) return null;
+  return {
+    ...(params.channel && {
+      description: order ? `${params.channel} · ${order}` : params.channel,
+      metadata: { shop: params.channel, ...(order && { order }) },
+    }),
+    ...(suffix && { statement_descriptor_suffix: suffix }),
+  };
+}
+
+export function refusedSuffix(error: unknown): boolean {
+  const e = error as { type?: string; param?: string; message?: string } | null;
+  return (
+    e?.type === 'StripeInvalidRequestError' &&
+    /statement_descriptor/.test(`${e.param ?? ''} ${e.message ?? ''}`)
+  );
+}
+
 /**
  * Stripe adapter for the PaymentProvider port. createFetchHttpClient() is
  * required on Workers (no Node HTTP), and webhook verification must use the
@@ -66,73 +91,89 @@ export function createStripeProvider(
 
   return {
     async createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult> {
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        // A contribution is not a purchase: Stripe then labels its button "Donate".
-        ...(params.donation && { submit_type: 'donate' as const }),
-        // Keep the hosted session within the inventory reservation window.
-        expires_at: Math.floor(Date.now() / 1000) + STRIPE_CHECKOUT_TTL_SECONDS,
-        line_items: params.lineItems.map((li) => ({
-          price_data: {
-            currency: li.currency,
-            unit_amount: li.amountCents,
-            // Stripe Tax requires a tax_behavior on inline prices; 'exclusive' =
-            // tax added on top of the listed price (typical for US).
-            ...(params.automaticTax && { tax_behavior: 'exclusive' as const }),
-            product_data: {
-              name: li.name,
-              ...(li.imageUrl && { images: [li.imageUrl] }),
-            },
-          },
-          quantity: li.quantity,
-        })),
-        success_url: params.successUrl,
-        cancel_url: params.cancelUrl,
-        // The hosted page in the shopper's language when Stripe has it, else 'auto'.
-        locale: stripeCheckoutLocale(params.locale) as Stripe.Checkout.SessionCreateParams.Locale,
-        ...((params.metadata || params.shipping?.shipmentWeightGrams != null || params.locale) && {
-          metadata: {
-            ...(params.metadata ?? {}),
-            // The language travels with the session so the webhook can store it
-            // on the order (emails go out in it, long after this request).
-            ...(params.locale && { locale: params.locale }),
-            // Stripe picks the rate AFTER the session exists, so the weight it was
-            // priced at has to travel with the session to reach the order.
-            ...(params.shipping?.shipmentWeightGrams != null && {
-              shipping_weight_grams: String(params.shipping.shipmentWeightGrams),
-            }),
-          },
-        }),
-        ...(params.allowPromotionCodes && { allow_promotion_codes: true }),
-        ...(params.automaticTax && { automatic_tax: { enabled: true } }),
-        ...(params.shipping && {
-          shipping_address_collection: {
-            allowed_countries: stripeAllowedCountries(
-              params.shipping.addressCountries,
-              params.shipping.hasCatchAll === true,
-            ) as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
-          },
-          shipping_options: params.shipping.options.map((o) => ({
-            shipping_rate_data: {
-              type: 'fixed_amount' as const,
-              display_name: o.label,
-              fixed_amount: {
-                amount: o.amountCents,
-                currency: params.lineItems[0]?.currency ?? 'usd',
-              },
-              // The mode travels as rate metadata because the label is merchant
-              // prose: settlement reads this back to record delivery_method
-              // without parsing "Local pickup" out of display text.
-              metadata: { delivery: o.pickup ? 'pickup' : 'shipping' },
+      const create = async (withSuffix: boolean): Promise<CheckoutResult> => {
+        const paymentIntentData = paymentIntentFor(params, withSuffix);
+        const session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          // A contribution is not a purchase: Stripe then labels its button "Donate".
+          ...(params.donation && { submit_type: 'donate' as const }),
+          // Keep the hosted session within the inventory reservation window.
+          expires_at: Math.floor(Date.now() / 1000) + STRIPE_CHECKOUT_TTL_SECONDS,
+          line_items: params.lineItems.map((li) => ({
+            price_data: {
+              currency: li.currency,
+              unit_amount: li.amountCents,
+              // Stripe Tax requires a tax_behavior on inline prices; 'exclusive' =
+              // tax added on top of the listed price (typical for US).
               ...(params.automaticTax && { tax_behavior: 'exclusive' as const }),
+              product_data: {
+                name: li.name,
+                ...(li.imageUrl && { images: [li.imageUrl] }),
+              },
             },
+            quantity: li.quantity,
           })),
-        }),
-      });
-      if (!session.url) {
-        throw new Error('Stripe did not return a checkout URL');
+          success_url: params.successUrl,
+          cancel_url: params.cancelUrl,
+          // The hosted page in the shopper's language when Stripe has it, else 'auto'.
+          locale: stripeCheckoutLocale(params.locale) as Stripe.Checkout.SessionCreateParams.Locale,
+          ...((params.metadata || params.shipping?.shipmentWeightGrams != null || params.locale) && {
+            metadata: {
+              ...(params.metadata ?? {}),
+              // The language travels with the session so the webhook can store it
+              // on the order (emails go out in it, long after this request).
+              ...(params.locale && { locale: params.locale }),
+              // Stripe picks the rate AFTER the session exists, so the weight it was
+              // priced at has to travel with the session to reach the order.
+              ...(params.shipping?.shipmentWeightGrams != null && {
+                shipping_weight_grams: String(params.shipping.shipmentWeightGrams),
+              }),
+            },
+          }),
+          // On the PaymentIntent too, not only the session: the Payments list, its
+          // filters and exports read the payment, so a shared account can split
+          // sales by shop (`shop`, the description) and find the order (`order`).
+          ...(paymentIntentData && { payment_intent_data: paymentIntentData }),
+          ...(params.allowPromotionCodes && { allow_promotion_codes: true }),
+          ...(params.automaticTax && { automatic_tax: { enabled: true } }),
+          ...(params.shipping && {
+            shipping_address_collection: {
+              allowed_countries: stripeAllowedCountries(
+                params.shipping.addressCountries,
+                params.shipping.hasCatchAll === true,
+              ) as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+            },
+            shipping_options: params.shipping.options.map((o) => ({
+              shipping_rate_data: {
+                type: 'fixed_amount' as const,
+                display_name: o.label,
+                fixed_amount: {
+                  amount: o.amountCents,
+                  currency: params.lineItems[0]?.currency ?? 'usd',
+                },
+                // The mode travels as rate metadata because the label is merchant
+                // prose: settlement reads this back to record delivery_method
+                // without parsing "Local pickup" out of display text.
+                metadata: { delivery: o.pickup ? 'pickup' : 'shipping' },
+                ...(params.automaticTax && { tax_behavior: 'exclusive' as const }),
+              },
+            })),
+          }),
+        });
+        if (!session.url) {
+          throw new Error('Stripe did not return a checkout URL');
+        }
+        return { url: session.url };
+      };
+      try {
+        return await create(true);
+      } catch (error) {
+        // The suffix must fit with the account's prefix, which only Stripe knows:
+        // a refused suffix costs the statement line, never the sale.
+        if (!params.statementSuffix || !refusedSuffix(error)) throw error;
+        console.error('Stripe refused the statement descriptor suffix; checkout without it:', error);
+        return create(false);
       }
-      return { url: session.url };
     },
 
     async verifyWebhook(payload: string, headers: Headers): Promise<WebhookResult> {

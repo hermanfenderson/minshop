@@ -535,6 +535,8 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect: astroRed
         public_id: publicId,
         reservation_id: publicId,
       },
+      channel: settings.storeName ?? cfg.storeName,
+      statementSuffix: settings.stripeStatementSuffix ?? undefined,
       accessToken,
       payUrl: urls.absolute(`/pay/${accessToken}`),
       locale: locals.locale,

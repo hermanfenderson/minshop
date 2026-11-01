@@ -310,6 +310,8 @@ Checkout and the webhook depend on a `PaymentProvider` port (`src/features/payme
 | `lightning` | Bitcoin Lightning via a **self-hosted** node — minshop mints a BOLT11 invoice and renders its own `/pay` page (QR + `lightning:` link), then confirms settlement | run **phoenixd** or **LNbits** (below); enter its URL + key |
 | `opennode` | **Hosted** Lightning checkout (custodial processor) — redirect + webhook, like Stripe | paste the OpenNode API key |
 
+**Several shops, one Stripe account.** Every Stripe payment carries the shop's store name (metadata `shop`, plus `order` = the checkout's public id, and the description `<store name> · <order>`), so the Payments list can be filtered and exported by shop. Settings → Payments → Stripe also takes a **statement descriptor suffix** for the shopper's card statement (`PREFIX* SUFFIX`, 22 characters with the account's shortened descriptor). If Stripe refuses the suffix, the checkout goes ahead without it and the error is logged.
+
 Two ports, nested: the outer `PaymentProvider` (stripe / lightning / opennode) and an inner `LightningBackend` (phoenixd / lnbits) shared by the self-rendered flow. Adding another node is one adapter file.
 
 **How settlement is trusted.** Lightning webhooks are treated as an untrusted *nudge* — on receipt minshop **re-polls the node** for the payment (the authority), so a forged webhook can't fake a sale. The `/pay` page also settles on load by polling, so it works even with no public webhook (e.g. local dev). Orders stay "paid-only": unpaid invoices live in a `pending_payments` table, never in `orders`.

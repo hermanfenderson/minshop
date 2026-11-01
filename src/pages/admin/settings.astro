@@ -59,6 +59,7 @@ import SecretField from '../../components/SecretField.astro';
 import { DEFAULT_SHIPPING_SURCHARGE_PCT, parseSurchargePct } from '../../features/fulfillment/shippingQuote';
 import { fulfillmentWebhookKey, getFulfillmentProvider } from '../../features/fulfillment';
 import MethodToggle from '../../components/MethodToggle.astro';
+import { STATEMENT_SUFFIX_MAX, statementSuffix } from '../../features/payments/statementDescriptor';
 import { onDemandImageDeliveryAvailable } from '../../features/products/image';
 import { catalogIsOrphaned } from '../../features/navigation/db';
 import { CACHE_TAG } from '../../features/cache/tags';
@@ -288,6 +289,7 @@ if (Astro.request.method === 'POST') {
     }
   } else if (action === 'save_stripe') {
     await applySecrets(['stripe_secret_key', 'stripe_webhook_secret']);
+    await setSetting(env.DB, 'stripe_statement_suffix', statementSuffix(String(form.get('stripe_statement_suffix') ?? '')));
   } else if (action === 'save_lightning') {
     const requestedBackend = String(form.get('lightning_backend') ?? '');
     if (requestedBackend !== 'lnbits' && requestedBackend !== 'phoenixd') {
@@ -1329,6 +1331,11 @@ const sections = [
           <input type="hidden" name="_action" value="save_stripe" />
           <SecretField name="stripe_secret_key" label="Secret key" hint="sk_live_… or sk_test_…" storedInD1={inD1('stripe_secret_key')} vault={vault} />
           <SecretField name="stripe_webhook_secret" label="Webhook signing secret" hint="whsec_…" storedInD1={inD1('stripe_webhook_secret')} vault={vault} />
+          <label class="block text-sm">
+            <span class="font-medium">Statement descriptor suffix</span>
+            <input type="text" name="stripe_statement_suffix" value={settings.stripeStatementSuffix ?? ''} maxlength={STATEMENT_SUFFIX_MAX} placeholder="e.g. BOOKS" class="mt-1 block w-full rounded-md border border-line bg-paper px-3 py-2 text-sm" />
+            <span class="mt-1 block text-xs text-gray-500">Shown on card statements after the account's shortened descriptor ("PREFIX* SUFFIX", 22 characters in all), so shops sharing one Stripe account read differently. Every payment also carries this shop's name (metadata <code>shop</code>) for filters and exports. Blank = none.</span>
+          </label>
           {vault && (
             <button type="submit" class="mt-1 rounded-md bg-brand px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-brand-hover">
               Save
