@@ -86,15 +86,19 @@ function isDocumentPath(path: string): boolean {
 /**
  * Runtime settings overlay (store name, languages, …): ONE read per request,
  * only where it is needed. HTML documents batch it with the menus; the cart
- * fragment and any request that names a language read settings alone (the
- * language must be checked against the enabled ones). Other APIs and assets
- * read nothing.
+ * fragment, checkout and any request that names a language read settings
+ * alone (the language must be checked against the enabled ones). Other APIs
+ * and assets read nothing.
  */
 async function loadSettings(context: APIContext, path: string): Promise<void> {
   const isDocument = isDocumentPath(path);
   const wantsSettings =
     isDocument ||
     path.startsWith('/partials/') ||
+    // Checkout speaks the store's language too: the hosted payment page, the
+    // order and its emails take it from here. Without the settings a store whose
+    // only language is not the built-in default would check out in English.
+    path === '/api/checkout' ||
     namesLanguage(context.url, MOUNT, LOCALE_REGISTRY, 'lang');
   if (!wantsSettings) return;
   if (!isDocument) {
